@@ -1,4 +1,4 @@
-# /core/map_creater.py
+# /map_core/MapBase.py
 # 用于地图的构建
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -10,8 +10,9 @@ class MapBase:
     def __init__(self):
         import os
         import json
-        # 动态获取地图配置文件路径 'core/data/map_config.json'
-        config_path = os.path.join(os.path.dirname(__file__), 'data', 'map_config.json')
+        # 动态获取地图配置文件路径 'map_core/data/map_config.json'
+        config_path = os.path.join(os.path.dirname(__file__), 'data', 'map_config copy.json')
+        print("Config path: ",config_path)
         # 读取地图配置文件
         try:
             with open(config_path, 'r', encoding='utf-8') as f:

@@ -1,0 +1,79 @@
+# res_protocol_system/NetworkManager.py
+# -*- coding: utf-8 -*-
+"""
+RES+3.1 穿梭车通信协议上位机系统 - 模块化设计
+按功能划分不同模块，便于团队协作维护
+"""
+
+import threading
+import time
+from .RESProtocol import RESProtocol
+
+# ------------------------
+# 模块 5: 心跳管理器
+# 职责: 维护心跳机制和小车状态
+# 维护者: 核心系统工程师
+# ------------------------
+class HeartbeatManager:
+    def __init__(self, network_manager, packet_builder):
+        self.network = network_manager
+        self.builder = packet_builder
+        self.last_heartbeat_time = 0
+        self.last_response_time = 0
+        self.heartbeat_active = True
+        self.current_status = {}
+        self.thread = None
+        
+    def start(self):
+        """启动心跳线程"""
+        self.heartbeat_active = True
+        self.thread = threading.Thread(target=self._heartbeat_loop)
+        self.thread.daemon = True
+        self.thread.start()
+    
+    def stop(self):
+        """停止心跳"""
+        self.heartbeat_active = False
+        if self.thread and self.thread.is_alive():
+            self.thread.join(timeout=2.0)
+    
+    def _heartbeat_loop(self):
+        """心跳发送循环"""
+        while self.heartbeat_active:
+            # 带电量心跳每5次发送一次
+            frame_type = RESProtocol.FrameType.HEARTBEAT_WITH_BATTERY if (
+                time.time() % 5 < 0.6) else RESProtocol.FrameType.HEARTBEAT
+                
+            packet = self.builder.build_heartbeat(frame_type)
+            
+            if self.network.send(packet):
+                self.last_heartbeat_time = time.time()
+
+            # 等待间隔
+            time.sleep(RESProtocol.HEARTBEAT_INTERVAL)
+    
+    def update_status(self, data):
+        """更新小车状态"""
+        self.current_status = data
+        self.last_response_time = time.time()
+        
+        # 检查是否需要触发警报
+        if data['result'] != 0:
+            return self.handle_error(data['result'])
+    
+    def handle_error(self, error_code):
+        """处理错误码"""
+        error_msg, solution = RESProtocol.ErrorHandler.get_error_info(error_code)
+        is_critical = RESProtocol.ErrorHandler.is_critical_error(error_code)
+        
+        return {
+            'error_code': error_code,
+            'error_msg': error_msg,
+            'solution': solution,
+            'is_critical': is_critical,
+            'timestamp': time.time()
+        }
+    
+    def is_connected(self):
+        """判断连接状态"""
+        return time.time() - self.last_response_time < RESProtocol.HEARTBEAT_INTERVAL * 3   

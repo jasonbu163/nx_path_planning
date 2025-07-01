@@ -1,6 +1,6 @@
 # TaskScheduler.py
 # 任务调度器模块
-from core import PathCustom
+from map_core import PathCustom
 from queue import PriorityQueue
 import networkx as nx
 import matplotlib.pyplot as plt

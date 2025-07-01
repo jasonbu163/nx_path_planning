@@ -1,46 +1,42 @@
-import networkx as nx
-from core import PathCustom
+# main.py
+from fastapi import FastAPI
+from api.v1.wcs import routes as wcs_routes
+from api.v1.wms import routes as wms_routes
+from models.database import Base, engine
+# from daemon.scheduler import TaskScheduler
+import threading
 
-def main():
-    # 创建路径基类实例
-    my_path = PathCustom()
-    G = my_path.G
-    pos = my_path.pos
-    assert nx.is_tree(G), "图不是树结构，无法进行路径规划"
+app = FastAPI(
+    title="仓库管理系统 API",
+    description="WMS/WCS 整合管理系统",
+    version="1.0.0",
+    openapi_url="/api/v1/openapi.json",
+    docs_url="/api/v1/docs",
+    redoc_url="/api/v1/redoc"
+)
 
-    # 设置起点和终点
-    source = "1,2,1"
-    target = "8,7,1"
-    path = my_path.find_shortest_path(source, target)
-    print(f"找到的路径: {path}")
-    my_path.draw_path(path, G, pos)
+# 包含 WMS 路由
+app.include_router(
+    wms_routes.router,
+    prefix="/api/v1/wms",
+    tags=["WMS"]
+)
 
-    # 模拟节点状态，后续会使用sqlite来存储和更新节点状态
-    # 这里的节点状态可以是从数据库中查询得到的
-    node_status = {
-        "1,2,1": "occupied",
-        "2,2,1": "occupied",
-        "3,2,1": "free",
-        "4,2,1": "free",
-        "4,3,1": "free",
-        "4,4,1": "free",
-        "4,5,1": "free",
-        "4,6,1": "free",
-        "4,7,1": "free",
-        "5,7,1": "free",
-        "6,7,1": "free",
-        "7,7,1": "free",
-        "5,2,1": "free",
-        "1,1,1": "free",
-        "8,7,1": "free"
-        }
+# 包含 WCS 路由
+app.include_router(
+    wcs_routes.router,
+    prefix="/api/v1/wcs",
+    tags=["WCS"]
+)
 
-    # 检查路径上的阻塞点
-    blocking_nodes = [node for node in path[1:-1] if node_status.get(node) == "occupied"]
+@app.get("/")
+def root():
+    return {
+        "message": "仓库管理系统 API 已启动",
+        "documentation": "/api/v1/docs",
+        "wms_api": "/api/v1/wms",
+        "wcs_api": "/api/v1/wcs"
+    }
 
-    from queue import PriorityQueue
-    if blocking_nodes:
-        print(f"路径上的阻塞点: {blocking_nodes}")
-
-if __name__ == "__main__":
-    main()
+# scheduler = TaskScheduler()
+# threading.Thread(target=scheduler.run, daemon=True).start()
