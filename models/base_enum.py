@@ -40,6 +40,7 @@ class LocationStatus(str, Enum):
     FREE = 'free'             # 空闲
     OCCUPIED = 'occupied'     # 占用
     HIGHWAY = 'highway'       # 过道
+    LIFT = 'lift'              # 梯
 
 class ERPUploadStatus(str, Enum):
     NOT_UPLOADED = 'not_uploaded'   # 未上传

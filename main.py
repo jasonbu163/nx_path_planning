@@ -2,9 +2,7 @@
 from fastapi import FastAPI
 from api.v1.wcs import routes as wcs_routes
 from api.v1.wms import routes as wms_routes
-from models.database import Base, engine
 # from daemon.scheduler import TaskScheduler
-import threading
 
 app = FastAPI(
     title="仓库管理系统 API",
@@ -40,3 +38,14 @@ def root():
 
 # scheduler = TaskScheduler()
 # threading.Thread(target=scheduler.run, daemon=True).start()
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",  # 保持此设置即可支持localhost和局域网
+        port=8765,
+        reload=True,
+        workers=1
+    )

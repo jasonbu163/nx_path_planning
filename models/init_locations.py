@@ -27,6 +27,9 @@ HIGHWAY_NODES = [
     "4,1,2", "4,2,2", "4,3,2", "4,4,2", "4,5,2", "4,6,2", "4,7,2",
     "4,1,1", "4,2,1", "4,3,1", "4,4,1", "4,5,1", "4,6,1", "4,7,1"
 ]
+LIFT_NODES = [
+    "6,3,1", "6,3,2", "6,3,3", "6,3,4"
+]
 
 # 创建数据库会话
 engine = init_db()
@@ -40,10 +43,20 @@ session.query(LocationList).delete()
 # 生成location数据
 locations = []
 for idx, location in enumerate(map_config['nodes'], start=1):
+    # 先检查lift节点
+    if location in LIFT_NODES:
+        status = "lift"
+    # 再检查highway节点
+    elif location in HIGHWAY_NODES:
+        status = "highway"
+    # 其他节点设为free
+    else:
+        status = "free"
+        
     locations.append(LocationList(
         id=idx,
         location=location,
-        status="highway" if location in HIGHWAY_NODES else "free",
+        status=status,
         pallet_id=None
     ))
 

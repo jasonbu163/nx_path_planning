@@ -5,6 +5,7 @@ RES+3.1 穿梭车通信协议上位机系统 - 模块化设计
 按功能划分不同模块，便于团队协作维护
 """
 
+import asyncio
 import threading
 import time
 
@@ -56,3 +57,41 @@ class TaskExecutor:
                 'start_time': time.time()
             }
             return True
+    
+    async def send_task(self, task_id, segments):
+        """
+        发送穿梭车任务
+        :param task_id: 任务ID
+        :param segments: 路径段列表 [(x, y, z, action), ...]
+        :return: 是否成功发送
+        """
+        # 构建任务报文
+        packet = self.builder.build_task_command(task_id, segments)
+        
+        # 发送任务
+        return self.network.send(packet)
+
+    async def send_emergency_stop(self):
+        """发送紧急停止命令"""
+        # 构建紧急停止报文
+        packet = self.builder.build_emergency_stop()
+        
+        # 发送命令
+        return self.network.send(packet)
+
+    async def send_command(self, command_id, cmd_no=1, task_no=0, param=0):
+        """
+        发送控制命令
+        :param command_id: 命令ID
+        :param cmd_no: 命令序号
+        :param task_no: 任务序号
+        :param param: 命令参数
+        :return: 是否成功发送
+        """
+        # 构建通用命令报文
+        packet = self.builder.build_general_command(
+            command_id, cmd_no, task_no, param
+        )
+        
+        # 发送命令
+        return self.network.send(packet)

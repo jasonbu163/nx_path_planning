@@ -7,6 +7,7 @@ RES+3.1 穿梭车通信协议上位机系统 - 模块化设计
 
 import socket
 import time
+import asyncio
 
 # ------------------------
 # 模块 4: 通信处理器
@@ -21,20 +22,25 @@ class NetworkManager:
         self.reconnect_attempts = 0
         self.max_reconnect = 5
     
-    def connect(self):
-        """建TCP连接"""
+    async def connect(self):
+        """建立TCP连接"""
         try:
             if self.sock:
                 self.sock.close()
                 
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)  # 禁用Nagle算法
             self.sock.settimeout(3.0)  # 设置超时3秒
+            print(f"[调试] 正在连接到 {self.host}:{self.port}")
+            # logger.info(f"[网络] 正在连接到 {self.host}:{self.port}")  # 添加连接日志
             
             # 添加连接目标服务器的步骤
             server_address = (self.host, self.port)  # 需要替换为实际服务器地址
-            self.sock.connect(server_address)
+            await asyncio.get_event_loop().sock_connect(self.sock, server_address)
             
             self.reconnect_attempts = 0
+            print(f"[调试] 连接成功")
+            # logger.info("[网络] 连接成功")  # 添加连接成功日志
             return True
         except socket.error as e:
             print(f"连接失败: {str(e)} 错误码: {e.errno}")
@@ -42,52 +48,68 @@ class NetworkManager:
             self.reconnect_attempts += 1
             # 添加自动重连机制
             if self.reconnect_attempts < 3:
-                time.sleep(1)
-                return self.connect()
+                await asyncio.sleep(1)
+                return await self.connect()
             return False
         except Exception as ex:
             print(f"未知错误: {str(ex)}")
             return False
 
-    def send(self, packet):
+    async def send(self, packet):
         """发送数据包"""
         try:
             if not self.sock:
-                if not self.connect():
+                if not await self.connect():
                     return False
-                    
-            # TCP连接使用send方法发送数据
-            # 确保sock存在
-            assert self.sock is not None, "Socket should be initialized after connect"
-            self.sock.sendall(packet)
+            
+            # 使用asyncio的write方法发送数据
+            assert self.sock is not None  # 添加类型断言消除Pylance错误
+            self.sock.send(packet)
             return True
         except socket.error as e:
             print(f"发送失败: {str(e)}")
             return False
     
-    def receive(self, timeout=1.0):
+    async def receive(self, timeout=1.0):
         """接收数据包"""
         if not self.sock:
             return None
             
         try:
+            # 设置接收超时时间
             self.sock.settimeout(timeout)
-            # TCP连接使用recv接收数据
-            data = self.sock.recv(2048)  # 缓冲区2KB
-            if not data:  # 连接关闭
-                print("检测到连接断开")
-                self.reconnect()
+            
+            # 使用asyncio的read方法接收数据
+            loop = asyncio.get_event_loop()
+            data = await loop.sock_recv(self.sock, 2048)
+            
+            if not data:  # 空数据表示连接关闭
+                print("检测到连接断开，空数据")
+                await self.reconnect()
                 return None
+                
             print(f"[调试] 收到数据包: {data}")  # 打印收到的数据包
             return data
         except socket.timeout:
+            # 超时属于正常情况，不视为错误
+            print("接收超时，等待下一次数据")
             return None
         except socket.error as e:
-            print(f"接收错误: {str(e)}")
-            self.reconnect()
+            # 处理特定的socket错误
+            if e.errno == 104:  # ECONNRESET
+                print("检测到连接被对端重置")
+            elif e.errno == 65:  # EHOSTUNREACH
+                print("无法到达目标主机")
+            else:
+                print(f"未知的socket错误: {e.errno}")
+                
+            await self.reconnect()
+            return None
+        except Exception as ex:
+            print(f"未知接收错误: {str(ex)}")
             return None
 
-    def reconnect(self):
+    async def reconnect(self):
         """重新连接机制"""
         if self.sock:
             self.sock.close()
@@ -95,25 +117,14 @@ class NetworkManager:
         
         if self.reconnect_attempts < self.max_reconnect:
             print(f"尝试重连... (尝试次数: {self.reconnect_attempts + 1})")
-            time.sleep(2)  # 等待2秒后重连
-            if self.connect():
+            await asyncio.sleep(2)  # 等待2秒后重连
+            if await self.connect():
                 print("重连成功")
                 return True
         return False
 
-    def close(self):
+    async def close(self):
         """关闭连接"""
         if self.sock:
             self.sock.close()
             self.sock = None
-
-def main():
-    parser = NetworkManager(host="localhost", port=65432)
-    parser.connect()
-    data = b'\x02\xfd\x01\xc3\x00\x00\x00\x00'
-    parser.send(data)
-    parser.receive()
-    parser.close()
-
-if __name__ == "__main__":
-    main()

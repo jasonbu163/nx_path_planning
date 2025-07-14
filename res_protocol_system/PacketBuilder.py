@@ -13,7 +13,7 @@ class PacketBuilder:
     def __init__(self, device_id=1):
         self.device_id = device_id
         self.life_counter = 0
-        self.crc16 = crcmod.mkCrcFun(0x18005, rev=True, initCrc=0xFFFF, xorOut=0xFFFF)
+        self.crc16 = crcmod.mkCrcFun(0x18005, rev=True, initCrc=0xFFFF, xorOut=0x0000)
 
     def _increment_life(self):
         """更新生命计数器"""
@@ -86,7 +86,7 @@ class PacketBuilder:
         # 返回报文
         return packet
     
-    def bulid_task_command(self, task_no, segments):
+    def build_task_command(self, task_no, segments):
         """
         构建整体任务报文
         :param task_no: 任务序号 (1-255)

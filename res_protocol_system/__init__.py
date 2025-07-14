@@ -7,6 +7,7 @@ from .PacketBuilder import PacketBuilder
 from .NetworkManager import NetworkManager
 from .HeartbeatManager import HeartbeatManager
 from .TaskExecutor import TaskExecutor
+from .DataReceiver import DataReceiver
 
 __all__ = [
     'RESProtocol',
@@ -14,5 +15,6 @@ __all__ = [
     'PacketBuilder',
     'NetworkManager',
     'HeartbeatManager',
-    'TaskExecutor'
+    'TaskExecutor',
+    'DataReceiver'
 ]

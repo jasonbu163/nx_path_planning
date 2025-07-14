@@ -36,6 +36,22 @@ class RESProtocol:
         SLEEPING = 7
         NODE_STANDBY = 11
 
+    class CommandID(IntEnum):
+        """指令码枚举"""
+        EMERGENCY_STOP = 0x81
+        PAUSE_RESUME = 0x82
+        CHANGE_SPEED = 0x83
+        SET_SEGMENT = 0x90
+        QUERY_PALLET = 0x91
+        SET_FLOOR = 0x92
+        SLEEP = 0x96
+        WAKE_UP = 0x97
+        SEND_MAP = 0x98
+        GET_BATTERY = 0x99
+        SET_PARAM = 0x9D
+        GET_PARAM = 0x9E
+        GET_VERSION = 0xA0
+
     class ErrorHandler:
         """错误码映射表"""
         ERROR_MAP = {
@@ -44,7 +60,10 @@ class RESProtocol:
             12462: ("行驶系统总时间超时", "发送急停指令并检查小车状态"),
             12456: ("前方有托盘障碍物", "重新规划路径"),
             12457: ("前方有障碍物", "清理障碍物并重新下发指令"),
-            8404: ("压到限位开关", "检查换向机构")
+            8404: ("压到限位开关", "检查换向机构"),
+            # 添加更多错误码...
+            3001: ("充电失败", "检查充电连接"),
+            3002: ("电池温度过高", "暂停使用"),
         }
 
         @classmethod

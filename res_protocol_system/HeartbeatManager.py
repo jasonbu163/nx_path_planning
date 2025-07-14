@@ -5,9 +5,14 @@ RES+3.1 穿梭车通信协议上位机系统 - 模块化设计
 按功能划分不同模块，便于团队协作维护
 """
 
+import logging
 import threading
 import time
 from .RESProtocol import RESProtocol
+
+# 配置日志记录
+import logging
+logger = logging.getLogger(__name__)
 
 # ------------------------
 # 模块 5: 心跳管理器
@@ -39,18 +44,23 @@ class HeartbeatManager:
     
     def _heartbeat_loop(self):
         """心跳发送循环"""
+        logger.info("[心跳] 开始运行心跳线程")
         while self.heartbeat_active:
-            # 带电量心跳每5次发送一次
-            frame_type = RESProtocol.FrameType.HEARTBEAT_WITH_BATTERY if (
-                time.time() % 5 < 0.6) else RESProtocol.FrameType.HEARTBEAT
+            try:
+                # 带电量心跳每5次发送一次
+                frame_type = RESProtocol.FrameType.HEARTBEAT_WITH_BATTERY if (
+                    time.time() % 5 < 0.6) else RESProtocol.FrameType.HEARTBEAT
+                    
+                packet = self.builder.build_heartbeat(frame_type)
                 
-            packet = self.builder.build_heartbeat(frame_type)
-            
-            if self.network.send(packet):
-                self.last_heartbeat_time = time.time()
+                if self.network.sendall(packet):
+                    self.last_heartbeat_time = time.time()
 
-            # 等待间隔
-            time.sleep(RESProtocol.HEARTBEAT_INTERVAL)
+                # 等待间隔
+                time.sleep(RESProtocol.HEARTBEAT_INTERVAL)
+            except Exception as e:
+                logger.error(f"[心跳] 发生异常: {str(e)}", exc_info=True)
+                time.sleep(5)
     
     def update_status(self, data):
         """更新小车状态"""

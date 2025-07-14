@@ -10,7 +10,7 @@ print("当前工作目录:", os.getcwd())
 print("sys.path:", sys.path)
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from res_protocol_system import RESProtocol, PacketBuilder, PacketParser, NetworkManager, HeartbeatManager, TaskExecutor
+from res_protocol_system import RESProtocol, PacketBuilder, PacketParser, NetworkManager, HeartbeatManager, TaskExecutor, DataReceiver
 import time
 import threading
 
@@ -20,10 +20,10 @@ def main():
     # =========================================================================
     
     # 1.1 创建网络管理器
-    # CAR_IP = "192.168.8.30"  # 小车的IP地址
-    # CAR_PORT = 2504           # 小车通信端口
-    CAR_IP = "localhost"      # 小车的IP地址
-    CAR_PORT = 65432            # 小车通信端口
+    CAR_IP = "192.168.8.30"  # 小车的IP地址
+    CAR_PORT = 2504           # 小车通信端口
+    # CAR_IP = "localhost"      # 小车的IP地址
+    # CAR_PORT = 65432            # 小车通信端口
     network = NetworkManager(CAR_IP, CAR_PORT)
     
     # 1.2 创建协议组件
@@ -35,10 +35,16 @@ def main():
     
     # 1.4 创建任务执行器
     task_executor = TaskExecutor(network, builder)
+
+    data_rec = DataReceiver(network, parser, task_executor, heartbeat_mgr)
     
     # 1.5 启动心跳管理
     heartbeat_mgr.start()
+
+    
     print("系统初始化完成，心跳已启动")
+
+    print(data_rec)
     
     # =========================================================================
     # 步骤2: 连接小车
@@ -51,7 +57,8 @@ def main():
     
     # 等待连接建立
     time.sleep(0.5)
-    print(f"已连接小车 {CAR_IP}:{CAR_PORT}")
+    print(heartbeat_mgr.is_connected())
+    # print(f"已连接小车 {CAR_IP}:{CAR_PORT}")
     
     # =========================================================================
     # 步骤3: 定义任务处理函数
@@ -74,8 +81,8 @@ def main():
     # 4.1 定义路径段 (格式: (x, y, z, 动作))
     # 动作: 0-直行, 1-左转, 2-右转, 3-提升, 4-下降, 5-停止
     warehouse_segments = [
-        (1, 2, 1, 0),    # 从(10,20)到下一个点的直行
-        (1, 5, 1, 0),    # 直行到(10,50)
+        (1, 1, 1, 0),    # 从(10,20)到下一个点的直行
+        (2, 1, 1, 0),    # 直行到(10,50)
         (3, 5, 1, 0),    # 左转到(30,50)
         (3, 6, 1, 0),    # 提升货物
         (3, 8, 1, 0),    # 直行到(30,80)楼层1
@@ -167,4 +174,5 @@ def main():
     print("系统已安全关闭")
 
 if __name__ == "__main__":
+    
     main()
