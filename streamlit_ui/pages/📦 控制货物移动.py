@@ -32,9 +32,9 @@ for i, step in enumerate(steps):
                 st.markdown("**货物目标坐标**（x=行, y=列, z=层）")
                 col1, col2 = st.columns(2)
                 with col1:
-                    x = st.selectbox("目标行号 (x)", list(range(1, 7)), key=f"{key}_x_{i}")
+                    x = st.selectbox("目标行号 (x)", list(range(1, 9)), key=f"{key}_x_{i}")
                 with col2:
-                    y = st.selectbox("目标列号 (y)", list(range(1, 9)), key=f"{key}_y_{i}")
+                    y = st.selectbox("目标列号 (y)", list(range(1, 8)), key=f"{key}_y_{i}")
                 user_inputs["target"] = f"{x},{y},{location_id}"
         else:    
             user_inputs["target"] = f"5,3,{location_id}"

@@ -49,9 +49,9 @@ with st.expander("🚗 到位操作", expanded=True):
     st.markdown("**小车目标坐标**（x=行, y=列, z=层）")
     col1, col2 = st.columns(2)
     with col1:
-        x = st.selectbox("货物行号 (x)", list(range(1, 7)), key=f"car_x")
+        x = st.selectbox("货物行号 (x)", list(range(1, 9)), key=f"car_x")
     with col2:
-        y = st.selectbox("货物列号 (y)", list(range(1, 9)), key=f"car_y")
+        y = st.selectbox("货物列号 (y)", list(range(1, 8)), key=f"car_y")
     user_inputs["target"] = f"{x},{y},{location_id}"
 
     if st.button(f"🚗 [执行] 操作小车"):

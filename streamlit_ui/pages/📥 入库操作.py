@@ -223,13 +223,13 @@ for i, step in enumerate(steps):
                         with col1:
                             x = st.selectbox(
                                 f"起点 - 行号 (x)",
-                                list(range(1, 7)),
+                                list(range(1, 9)),
                                 key=f"{key}_x_{i}",
                             )
                         with col2:
                             y = st.selectbox(
                                 f"起点 - 列号 (y)",
-                                list(range(1, 9)),
+                                list(range(1, 8)),
                                 key=f"{key}_y_{i}",
                             )
                         user_inputs[key] = f"{x},{y},{location_id}"
