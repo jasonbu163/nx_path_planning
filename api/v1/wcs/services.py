@@ -8,7 +8,7 @@ from typing import Optional
 import time
 
 from map_core import PathCustom
-from devices.plc_service_asyncio import PLCService, PLCAddress
+from devices.plc_service_asyncio import DevicesService, PLCAddress
 from devices import plc_enum
 
 path_planner = PathCustom()
@@ -16,7 +16,7 @@ path_planner = PathCustom()
 PLC_IP = "192.168.8.10"
 CAR_IP = "192.168.8.30"
 CAR_PORT = 2504
-device_service = PLCService(PLC_IP, CAR_IP, CAR_PORT)
+device_service = DevicesService(PLC_IP, CAR_IP, CAR_PORT)
 
 # from config import CAR_IP, CAR_PORT
 # from res_protocol_system import HeartbeatManager, NetworkManager, PacketBuilder
@@ -97,6 +97,37 @@ def get_good_move_segments(source: str, target: str):
         return False
     return segments
 
+################# 小车 #################
+async def get_car_current_location():
+    """
+    获取小车当前位置信息
+    """
+    msg = await device_service.car_current_location(2)
+
+    return msg
+
+async def change_car_location_by_target(target: str):
+    """
+    改变小车位置
+    """
+    await device_service.change_car_location(target)
+    return "小车指令发送成功！"
+
+async def car_move_by_target(target: str):
+    """
+    移动小车
+    """
+    await device_service.car_move(target)
+    return "小车指令发送成功！"
+
+async def good_move_by_target(target: str):
+    """
+    移动货物
+    """
+    await device_service.good_move(target)
+    return "小车指令发送成功！"
+
+################# 提升机 #################
 async def lift_by_id(location_id: int):
     """
     移动电梯
@@ -117,36 +148,52 @@ async def lift_by_id(location_id: int):
     from random import randint
     task_num = randint(1, 99)
     
-    if lift_running==0 and lift_idle==1 and lift_no_cargo==1 and lift_has_cargo==0 and lift_has_car==0:
-        device_service.lift_move(plc_enum.TASK_TYPE.IDEL, task_num, location_id)
-            ######################## 电梯清零 #################################
-        # 确认电梯到位后，清除到位状态
-        if device_service.read_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value) == 1:
-            device_service.write_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 0)
-    
-    elif lift_running==0 and lift_idle==1 and lift_no_cargo==1 and lift_has_cargo==0 and lift_has_car==1:
-        device_service.lift_move(plc_enum.TASK_TYPE.CAR, task_num, location_id)
-        # 确认电梯到位后，清除到位状态
-        if device_service.read_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value) == 1:
-            device_service.write_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 0)
-
-    elif lift_running==0 and lift_idle==1 and lift_no_cargo==0 and lift_has_cargo==1 and lift_has_car==0:
-        device_service.lift_move(plc_enum.TASK_TYPE.GOOD, task_num, location_id)
-        # 确认电梯到位后，清除到位状态
-        if device_service.read_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value) == 1:
-            device_service.write_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 0)
-    else:
-        return "非法操作"
-    
-    time.sleep(2)
-    await device_service.wait_for_bit_change(11, PLCAddress.RUNNING.value, 0)
-
-    await device_service.disconnect()
-
     if location_id not in [1,2,3,4]:
-        return False
-    return "提升机运行结束"
 
+        return False, "非法输入！！！"
+    
+    else:
+        if lift_running==0 and lift_idle==1 and lift_no_cargo==1 and lift_has_cargo==0 and lift_has_car==0:
+            device_service.lift_move(plc_enum.TASK_TYPE.IDEL, task_num, location_id)
+                ######################## 电梯清零 #################################
+            # 确认电梯到位后，清除到位状态
+            if device_service.read_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value) == 1:
+                device_service.write_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 0)
+            
+            time.sleep(2)
+            await device_service.wait_for_bit_change(11, PLCAddress.RUNNING.value, 0)
+            await device_service.disconnect()
+            return True, "提升机运行结束"
+        
+        elif lift_running==0 and lift_idle==1 and lift_no_cargo==1 and lift_has_cargo==0 and lift_has_car==1:
+            device_service.lift_move(plc_enum.TASK_TYPE.CAR, task_num, location_id)
+            # 确认电梯到位后，清除到位状态
+            if device_service.read_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value) == 1:
+                device_service.write_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 0)
+            
+            time.sleep(2)
+            await device_service.wait_for_bit_change(11, PLCAddress.RUNNING.value, 0)
+            await device_service.disconnect()
+            return True, "提升机运行结束"
+
+        elif lift_running==0 and lift_idle==1 and lift_no_cargo==0 and lift_has_cargo==1 and lift_has_car==0:
+            device_service.lift_move(plc_enum.TASK_TYPE.GOOD, task_num, location_id)
+            # 确认电梯到位后，清除到位状态
+            if device_service.read_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value) == 1:
+                device_service.write_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 0)
+            
+            time.sleep(2)
+            await device_service.wait_for_bit_change(11, PLCAddress.RUNNING.value, 0)
+            await device_service.disconnect()
+            return True, "提升机运行结束"
+        
+        else:
+            await device_service.disconnect()
+            return False, "非法操作"
+        
+
+
+################# 输送线 #################
 async def task_lift_inband():
     """
     货物： 入口 --》 电梯， 入库！！！
@@ -375,3 +422,4 @@ async def out_lift(floor:int):
     else:
         await device_service.disconnect()
         return "非法输入！！！"
+    

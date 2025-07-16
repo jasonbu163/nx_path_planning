@@ -23,7 +23,7 @@ class IntCounter:
         time.sleep(1)
         return struct.pack('B', self.count)
 
-class PLCService:
+class DevicesService:
     def __init__(self, plc_ip: str, car_ip: str, car_port: int):
         """
         初始化TCP客户端
@@ -434,6 +434,20 @@ class PLCService:
         """
         version_type = (RESProtocol.VERSION << 4) | (frame_type & 0x0F)
         return struct.pack('!B',version_type)
+    
+    def segments_task_len(self, segments):
+        """
+        计算任务段数
+        :param segments: 路径段列表 [(x, y, z, action), ...]
+        :return: 任务段数
+        """
+        task_len = len(segments)
+        print(f"任务段数(无动作): {task_len}")
+        for segment in segments:
+            if segment[3] != 0:
+                task_len += 1
+        print(f"任务段数(含动作): {task_len}")
+        return task_len
 
     # 心跳报文
     def heartbeat(self):
@@ -476,6 +490,7 @@ class PLCService:
         # cmd_info = struct.pack('!BBB', task_no, cmd_no, cmd)
         cmd_info = b'\x02\xbd\x50'
 
+        location = tuple(map(int, location.split(',')))
         # 位置数据
         x, y, z = location[0], location[1], location[2]
         # 位置编码: X(8位) | Y(8位) | Z(8位) | 动作(8位)
@@ -517,8 +532,9 @@ class PLCService:
         
         # 构建数据内容
         # 计算动态长度: 4字节*段数
-        segment_count = len(segments)
-        # print("任务段数: ", segment_count)
+        segment_count = self.segments_task_len(segments)
+        print("创建 任务序号: ", task_no)
+        print("创建 任务段数: ", segment_count)
         # 添加任务数据
         payload = struct.pack('!BB', task_no, segment_count)
         # 添加路径段
@@ -572,8 +588,10 @@ class PLCService:
         cmd = 144
         cmd_info = struct.pack('!BB', cmd_no, cmd)
         # 计算动态长度: 4字节*段数
-        segment_count = struct.pack('>I', len(segments))
-        # print("任务段数: ", segment_count)
+        segment_count = struct.pack('>I', self.segments_task_len(segments))
+        
+        print("发送 任务序号: ", task_no)
+        print("发送 任务段数: ", segment_count)
 
         payload = task_no + cmd_info + segment_count
         
@@ -613,9 +631,9 @@ class PLCService:
         return msg
     
     # 修改小车位置
-    async def car_change_location(self, car_location):
+    async def change_car_location(self, car_location):
         """
-        :param car_location: 小车位置 如，(6,3,1)
+        :param car_location: 小车位置 如，"6,3,1"
         """
         packet = self.location_change(car_location)
         print(packet)
@@ -627,19 +645,37 @@ class PLCService:
                 # msg = parser.parse_heartbeat_response(response)
                 # print(msg)
                 await self.car_close()
+                return "位置修改成功"
+        return "位置修改失败"
+
+    # 获取小车位置
+    async def car_current_location(self, times: int):
+        """
+        获取小车位置
+        :param times: 心跳次数
+        :return: 小车当前位置
+        例如: "6,3,1"
+        """
+        # 发送
+        heartbeat_msg = await self.send_heartbeat(times)
+        car_current_location = heartbeat_msg['current_location']
+        car_current_location = f"{car_current_location[0]},{car_current_location[1]},{car_current_location[2]}"
+        return car_current_location
+    
 
     # 发送小车移动任务
     async def car_move(self, target):
         """
-        :param target: 小车移动目标 如，(6,3,1)
+        :param target: 小车移动目标 如，"6,3,1"
         """
         # 创建任务号
         import random
         task_no = random.randint(1, 100)
 
         # 获取小车当前坐标
-        heartbeat_msg = self.send_heartbeat(1)
+        heartbeat_msg = await self.send_heartbeat(1)
         car_current_location = heartbeat_msg['current_location']
+        car_current_location = f"{car_current_location[0]},{car_current_location[1]},{car_current_location[2]}"
         
         # 创建移动路径
         # segments = [
@@ -649,6 +685,7 @@ class PLCService:
         #     (1,1,1,0)
         #             ]
         segments = self.map.build_segments(car_current_location, target)
+        # print(segments)
 
         # 发送任务报文
         task_packet = self.build_task(task_no, segments)
@@ -658,19 +695,78 @@ class PLCService:
             if response:
                 # msg = parser.parse_task_response(response)
                 # print(msg)
-                await self.car_close()
-        time.sleep(2)
+                # 发送任务确认执行报文
+                do_packet = self.do_task(task_no, segments)
+                await self.car_send_message(do_packet)
+                response = await self.car_receive_message()
+                if response:
+                    # msg = parser.parse_task_response(response)
+                    # print(msg)
+                    await self.car_close()
+
+    def add_pick_drop_actions(self, point_list):
+        """
+        在路径列表的起点和终点添加货物操作动作
+        :param point_list: generate_point_list()生成的路径列表
+        :return: 修改后的路径列表（起点动作=1提起，终点动作=2放下）
+        """
+        # 确保路径至少有两个点
+        if len(point_list) < 2:
+            return point_list
         
-        # 发送任务确认执行报文
-        do_packet = self.do_task(task_no, segments)
+        # 创建列表副本防止修改原数据
+        new_list = [tuple(point) for point in point_list]
+        
+        # 修改起点动作（索引0）为1（提起货物）
+        new_list[0] = tuple(new_list[0][:3]) + (1,)
+        
+        # 修改终点动作（索引-1）为2（放下货物）
+        new_list[-1] = tuple(new_list[-1][:3]) + (2,)
+        
+        return new_list
+
+
+    # 发送移动货物任务
+    async def good_move(self, target):
+        """
+        :param target: 小车移动目标 如，(6,3,1)
+        """
+        # 创建任务号
+        import random
+        task_no = random.randint(1, 100)
+
+        # 获取小车当前坐标
+        heartbeat_msg = await self.send_heartbeat(1)
+        car_current_location = heartbeat_msg['current_location']
+        car_current_location = f"{car_current_location[0]},{car_current_location[1]},{car_current_location[2]}"
+        
+        # 创建移动路径
+        # segments = [
+        #     (6,3,1,0),
+        #     (4,3,1,5),
+        #     (4,1,1,6),
+        #     (1,1,1,0)
+        #             ]
+        segments = self.map.build_segments(car_current_location, target)
+        segments = self.add_pick_drop_actions(segments)
+        # print(segments)
+
+        # 发送任务报文
+        task_packet = self.build_task(task_no, segments)
         if await self.car_connect():
-            await self.car_send_message(do_packet)
+            await self.car_send_message(task_packet)
             response = await self.car_receive_message()
             if response:
                 # msg = parser.parse_task_response(response)
                 # print(msg)
-                await self.car_close()
-
+                # 发送任务确认执行报文
+                do_packet = self.do_task(task_no, segments)
+                await self.car_send_message(do_packet)
+                response = await self.car_receive_message()
+                if response:
+                    # msg = parser.parse_task_response(response)
+                    # print(msg)
+                    await self.car_close()
 
     ############# PLC联合小车的业务动作 #######################
 

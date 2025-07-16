@@ -67,6 +67,8 @@ class GoodMovePath(PathBase):
     """WCS路径切割模型"""
     points: list[str]
 
+class CarMoveBase(BaseModel):
+    target: str = Field(..., examples=["6,3,1"], description="目标点")
 
 class LiftBase(BaseModel):
     """WCS提升机基础模型"""

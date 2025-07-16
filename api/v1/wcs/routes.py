@@ -91,7 +91,7 @@ async def get_path(request: schemas.PathBase):
 
 @router.post("/control/car_move_segments")
 @standard_response
-async def car_move_segments(request: schemas.CarMovePath):
+async def car_move_segments(request: schemas.PathBase):
     """
     根据起点和终点控制车辆移动
     """
@@ -107,7 +107,7 @@ async def car_move_segments(request: schemas.CarMovePath):
     
 @router.post("/control/good_move_segments")
 @standard_response
-async def good_move_segments(request: schemas.GoodMovePath):
+async def good_move_segments(request: schemas.PathBase):
     """
     根据起点和终点控制车辆移动, 带上货物
     """
@@ -121,7 +121,79 @@ async def good_move_segments(request: schemas.GoodMovePath):
     except Exception as e:
         return StandardResponse.isError(message=str(e))
 
+################# 小车 #################
 
+@router.get("/control/get_car_location")
+@standard_response
+async def get_car_location():
+    """
+    获取小车当前位置
+    :return: 小车当前位置坐标
+    例如：{"current_location": "5,3,1"}
+    """
+    try:
+        # 获取任务
+        msg = await services.get_car_current_location()
+
+        # 返回执行路径
+        return StandardResponse.isSuccess(data=msg)
+
+    except Exception as e:
+        return StandardResponse.isError(message=str(e))
+    
+@router.post("/control/change_car_location")
+@standard_response
+async def change_car_location(request: schemas.CarMoveBase):
+    """
+    修改小车位置
+    :param request: 请求体，包含目标位置
+    例如：{"target": "6,3,1"}
+    目标位置格式为 "x,y,z"，如 "6,3,1"
+    """
+    try:
+        # 获取任务
+        msg = await services.change_car_location_by_target(request.target)
+
+        # 返回执行路径
+        return StandardResponse.isSuccess(data=msg)
+
+    except Exception as e:
+        return StandardResponse.isError(message=str(e))
+
+@router.post("/control/car_move")
+@standard_response
+async def car_move_control(request: schemas.CarMoveBase):
+    """
+    目标楼层移动电梯
+    """
+    try:
+        # 获取任务
+        msg = await services.car_move_by_target(request.target)
+
+        # 返回执行路径
+        return StandardResponse.isSuccess(data=msg)
+
+    except Exception as e:
+        return StandardResponse.isError(message=str(e))
+
+@router.post("/control/good_move")
+@standard_response
+async def good_move_control(request: schemas.CarMoveBase):
+    """
+    目标楼层移动电梯
+    """
+    try:
+        # 获取任务
+        msg = await services.good_move_by_target(request.target)
+
+        # 返回执行路径
+        return StandardResponse.isSuccess(data=msg)
+
+    except Exception as e:
+        return StandardResponse.isError(message=str(e))
+
+
+################# 提升机 #################
 @router.post("/control/lift")
 @standard_response
 async def lift_control(request: schemas.LiftBase):
@@ -132,12 +204,16 @@ async def lift_control(request: schemas.LiftBase):
         # 获取任务
         msg = await services.lift_by_id(request.location_id)
 
-        # 返回执行路径
-        return StandardResponse.isSuccess(data=msg)
+        if msg[0] == True:
+            return StandardResponse.isSuccess(message=msg[1])
+        else:
+            return StandardResponse.isError(message=msg[1])
 
     except Exception as e:
         return StandardResponse.isError(message=str(e))
-    
+
+
+################# 输送线 #################
 @router.get("/control/task_lift_inband")
 @standard_response
 async def lift_inband_control():

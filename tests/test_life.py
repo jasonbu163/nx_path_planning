@@ -9,7 +9,8 @@ import struct
 import asyncio
 from async_tcp_client_module import AsyncTCPClient
 from res_protocol_system import PacketBuilder, RESProtocol, PacketParser
-from devices.plc_service_asyncio import PLCService
+from devices.plc_service_asyncio import DevicesService
+from map_core import PathCustom
 
 
 class IntCounter:
@@ -117,6 +118,41 @@ def location_change(location):
     # 返回报文
     return packet
 
+def segments_task_len(segments):
+    """
+    计算任务段数
+    :param segments: 路径段列表 [(x, y, z, action), ...]
+    :return: 任务段数
+    """
+    task_len = len(segments)
+    print(f"任务段数(无动作): {task_len}")
+    for segment in segments:
+        if segment[3] != 0:
+            task_len += 1
+    print(f"任务段数(含动作): {task_len}")
+    return task_len
+
+def add_pick_drop_actions(point_list):
+    """
+    在路径列表的起点和终点添加货物操作动作
+    :param point_list: generate_point_list()生成的路径列表
+    :return: 修改后的路径列表（起点动作=1提起，终点动作=2放下）
+    """
+    # 确保路径至少有两个点
+    if len(point_list) < 2:
+        return point_list
+    
+    # 创建列表副本防止修改原数据
+    new_list = [tuple(point) for point in point_list]
+    
+    # 修改起点动作（索引0）为1（提起货物）
+    new_list[0] = tuple(new_list[0][:3]) + (1,)
+    
+    # 修改终点动作（索引-1）为2（放下货物）
+    new_list[-1] = tuple(new_list[-1][:3]) + (2,)
+    
+    return new_list
+
 
 # 任务报文
 def build_task(task_no, segments):
@@ -134,7 +170,7 @@ def build_task(task_no, segments):
 
     # 构建数据内容
     # 计算动态长度: 4字节*段数
-    segment_count = len(segments)
+    segment_count = segments_task_len(segments)
     # print("任务段数: ", segment_count)
     # 添加任务数据
     payload = struct.pack("!BB", task_no, segment_count)
@@ -170,7 +206,7 @@ def build_task(task_no, segments):
 
 
 # 确认执行任务报文
-def do_task(task_no, segments_len):
+def do_task(task_no, segments):
     """
     构建整体任务报文
     :param task_no: 任务序号 (1-255)
@@ -190,7 +226,7 @@ def do_task(task_no, segments_len):
     cmd = 144
     cmd_info = struct.pack("!BB", cmd_no, cmd)
     # 计算动态长度: 4字节*段数
-    segment_count = struct.pack(">I", segments_len)
+    segment_count = struct.pack(">I", segments_task_len(segments))
     # print("任务段数: ", segment_count)
 
     payload = task_no + cmd_info + segment_count
@@ -216,20 +252,25 @@ def do_task(task_no, segments_len):
 
 
 async def my_app_1():
-    HOST = "192.168.8.30"
-    PORT = 2504
-    client = AsyncTCPClient(HOST, PORT)
+    # HOST = "192.168.8.30"
+    # PORT = 2504
+    # client = AsyncTCPClient(HOST, PORT)
+    PLC_IP = "192.168.8.10"
+    CAR_IP = "192.168.8.30"
+    CAR_PORT = 2504
+    client = DevicesService(PLC_IP, CAR_IP, CAR_PORT)
+    map = PathCustom()
 
     # 心跳报文
-    for i in range(2):
-        packet = heartbeat()
-        if await client.connect():
-            await client.send_message(packet)
-            response = await client.receive_message()
-            if response:
-                msg = parser.parse_heartbeat_response(response)
-                print(msg)
-                await client.close()
+    # for i in range(2):
+    #     packet = heartbeat()
+    #     if await client.connect():
+    #         await client.send_message(packet)
+    #         response = await client.receive_message()
+    #         if response:
+    #             msg = parser.parse_heartbeat_response(response)
+    #             print(msg)
+    #             await client.close()
 
     # 初始化小车位置
     # car_location = (6, 3, 2)
@@ -251,45 +292,65 @@ async def my_app_1():
 
     task_no = random.randint(1, 100)
     # segments = [(1, 1, 1, 0), (4, 1, 1, 5), (4, 3, 1, 6), (6, 3, 1, 0)]
-    segments = [(5, 3, 2, 0), (4, 3, 2, 5),(4,2,2,0)]
-    segments_len = len(segments)
-    task_packet = build_task(task_no, segments)
-    if await client.connect():
-        await client.send_message(task_packet)
-        response = await client.receive_message()
+    # segments = [(5, 3, 1, 0), (4, 3, 1, 5)]
+    start = "5,1,1"
+    target = "5,3,1"
+    segments = map.build_segments(start, target)
+    print(segments)
+
+    # 用 DeviceService()
+    task_packet = client.build_task(task_no, segments)
+    if await client.car_connect():
+        await client.car_send_message(task_packet)
+        response = await client.car_receive_message()
         if response:
             # msg = parser.parse_task_response(response)
             # print(msg)
-            await client.close()
-    time.sleep(1)
-    do_packet = do_task(task_no, segments_len)
-    if await client.connect():
-        await client.send_message(do_packet)
-        response = await client.receive_message()
-        if response:
-            # msg = parser.parse_task_response(response)
-            # print(msg)
-            await client.close()
+            do_packet = client.do_task(task_no, segments)
+            await client.car_send_message(do_packet)
+            response = await client.car_receive_message()
+            if response:
+                # msg = parser.parse_task_response(response)
+                # print(msg)
+                await client.car_close()
+
+    # 用 AsyncTCPClient()
+    # task_packet = build_task(task_no, segments)
+    # if await client.connect():
+    #     await client.send_message(task_packet)
+    #     response = await client.receive_message()
+    #     if response:
+    #         # msg = parser.parse_task_response(response)
+    #         # print(msg)
+    #         # time.sleep(0.5)
+    #         do_packet = do_task(task_no, segments)
+    #         await client.send_message(do_packet)
+    #         response = await client.receive_message()
+    #         if response:
+    #             # msg = parser.parse_task_response(response)
+    #             # print(msg)
+    #             await client.close()
 
 
 async def my_app_2():
     PLC_IP = "192.168.8.10"
     CAR_IP = "192.168.8.30"
     CAR_PORT = 2504
-    client = PLCService(PLC_IP, CAR_IP, CAR_PORT)
+    client = DevicesService(PLC_IP, CAR_IP, CAR_PORT)
 
     # 心跳报文
-    msg = await client.send_heartbeat(10)
+    msg = await client.send_heartbeat(2)
     print(msg)
 
     # 初始化小车位置
-    car_location = (6, 3, 1)
-    await client.car_change_location(car_location)
+    # car_location = (5, 3, 1)
+    # await client.car_change_location(car_location)
 
     # 任务报文
-    car_target = (4, 1, 1)
-    await client.car_move(car_target)
+    car_target = "4,1,1"
+    # await client.car_move(car_target)
+    await client.good_move(car_target)
 
-asyncio.run(my_app_1())
+# asyncio.run(my_app_1())
 
 # asyncio.run(my_app_2())
