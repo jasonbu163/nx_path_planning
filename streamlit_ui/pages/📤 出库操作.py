@@ -5,6 +5,11 @@ from api_config import API_BASE
 
 st.title("📤 出库操作")
 
+st.subheader("⚠️ 确保小车在需要出库的楼层 ⚠️")
+st.subheader("⚠️ 小车不在任务楼层，先去把🚗小车移到出库楼层 ⚠️")
+st.link_button("🚗 前往小车跨层页面", url="/小车跨层")
+st.subheader("⚠️ 小车在出库楼层，就不需要小车跨层了 ⚠️")
+
 st.image("img/locations.png")
 
 # 统一设置任务层号
@@ -37,13 +42,51 @@ with st.expander("📋 电梯到位操作", expanded=True):
         except Exception as e:
             st.error(f"请求失败：{e}")
 
+st.subheader("🚗 操作小车到达货物坐标")
+with st.expander("🚗 到位操作", expanded=True):
+    user_inputs = {}
+
+    st.markdown("**小车目标坐标**（x=行, y=列, z=层）")
+    col1, col2 = st.columns(2)
+    with col1:
+        x = st.selectbox("货物行号 (x)", list(range(1, 7)), key=f"car_x")
+    with col2:
+        y = st.selectbox("货物列号 (y)", list(range(1, 9)), key=f"car_y")
+    user_inputs["target"] = f"{x},{y},{location_id}"
+
+    if st.button(f"🚗 [执行] 操作小车"):
+        try:
+            body = {}
+            for k, v in user_inputs.items():
+                try:
+                    body[k] = int(v)
+                except:
+                    body[k] = v
+            url = API_BASE + "/api/v1/wcs/control/car_move"
+            # st.write(f"请求：{url}")
+            resp = requests.post(url, json=body)
+
+            if resp.status_code == 200:
+                st.success(f"✅ 动作发送成功")
+            else:
+                st.error(f"请求失败，状态码：{resp.status_code}")
+                st.text(resp.text)
+            
+            # try:
+            #     st.json(resp.json())
+            # except:
+            #     st.text(resp.text)
+
+        except Exception as e:
+            st.error(f"请求失败：{e}")
+
 st.subheader("🚦 出库操作开始！")
 
 # 出库任务步骤配置
 steps = [
     {
         "step": 1,
-        "title": "步骤 1：启动PLC确认，小车去放料",
+        "title": "步骤 1：启动输送线确认",
         "api": "/api/v1/wcs/control/task_in_lift",
         "method": "POST",
         "params": {"location_id": location_id}
@@ -51,11 +94,10 @@ steps = [
     {
         "step": 2,
         "title": "步骤 2：操作小车放料，移动货物",
-        "api": "/api/v1/wcs/control/good_move_segments",
+        "api": "/api/v1/wcs/control/good_move",
         "method": "POST",
         "params": {
-            "source": "1,1,1",
-            "target": "6,3,1",
+            "target": "5,3,1",
         }
     },
     {
@@ -86,17 +128,9 @@ for i, step in enumerate(steps):
     with st.expander(step["title"], expanded=True):
         user_inputs = {}
 
-        if step["api"] == "/api/v1/wcs/control/good_move_segments":
+        if step["api"] == "/api/v1/wcs/control/good_move":
             for key, default in step["params"].items():
-                if key == "source":
-                    st.markdown("**取料点坐标**（x=行, y=列, z=层）")
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        x = st.selectbox("目标行号 (x)", list(range(1, 7)), key=f"{key}_x_{i}")
-                    with col2:
-                        y = st.selectbox("目标列号 (y)", list(range(1, 9)), key=f"{key}_y_{i}")
-                    user_inputs[key] = f"{x},{y},{location_id}"
-                elif key == "target":
+                if key == "target":
                     user_inputs[key] = f"5,3,{location_id}"
                     
                 else:

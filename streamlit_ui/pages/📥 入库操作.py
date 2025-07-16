@@ -5,8 +5,9 @@ from api_config import API_BASE
 st.title("📥 入库操作")
 
 st.subheader("⚠️ 确保小车在需要入库的楼层 ⚠️")
-st.subheader("⚠️ 小车如果不在，先去把🚗小车移到入库楼层 ⚠️")
+st.subheader("⚠️ 小车不在任务楼层，先去把🚗小车移到入库楼层 ⚠️")
 st.link_button("🚗 前往小车跨层页面", url="/小车跨层")
+st.subheader("⚠️ 小车在入库楼层，就不需要小车跨层了 ⚠️")
 
 st.image("img/locations.png")
 
@@ -41,6 +42,32 @@ st.subheader("📌 设置物料需要入库的楼层")
 with st.expander("📋 任务层号设置", expanded=True):
     location_id = st.selectbox("请选择任务所在楼层 (z)", list(range(1, 5)), index=0)
 
+st.subheader("🚗 操作小车到达目标输送线等待货物")
+with st.expander("🚗 到位操作", expanded=True):
+    user_inputs = {}
+    user_inputs["target"] = f"5,3,{location_id}"
+
+    if st.button(f"🚗 [执行] 操作小车"):
+        try:
+            body = {"location_id": f"{location_id}"}
+            url = API_BASE + "/api/v1/wcs/control/car_move"
+            # st.write(f"请求：{url}")
+            resp = requests.post(url, json=body)
+
+            if resp.status_code == 200:
+                st.success(f"✅ 动作发送成功")
+            else:
+                st.error(f"请求失败，状态码：{resp.status_code}")
+                st.text(resp.text)
+            
+            # try:
+            #     st.json(resp.json())
+            # except:
+            #     st.text(resp.text)
+
+        except Exception as e:
+            st.error(f"请求失败：{e}")
+
 st.subheader("🚦 入库操作开始！")
 steps = [
     {
@@ -67,10 +94,9 @@ steps = [
     {
         "step": 4,
         "title": "步骤 4：操作小车取料，移动货物",
-        "api": "/api/v1/wcs/control/good_move_segments",
+        "api": "/api/v1/wcs/control/good_move",
         "method": "POST",
         "params": {
-            "source": "1,1,1",
             "target": "6,3,1",
         },
     },
