@@ -29,7 +29,7 @@ for i, step in enumerate(steps):
         user_inputs = {}
         if step["api"] == "/api/v1/wcs/control/car_move":
             for key, default in step["params"].items():
-                st.markdown("**小车目标坐标**（x=行, y=列, z=层）")
+                st.markdown("**小车目标位置**（x=行, y=列, z=层）")
                 col1, col2 = st.columns(2)
                 with col1:
                     x = st.selectbox("目标行号 (x)", list(range(1, 9)), key=f"{key}_x_{i}")

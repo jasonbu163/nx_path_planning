@@ -16,10 +16,17 @@ with st.expander("📋 任务层号选择", expanded=True):
 steps = [
     {
         "step": 1,
-        "title": "🚗 控制小车移动货物",
+        "title": "步骤 1：🚗 控制小车，到达货物位置",
+        "api": "/api/v1/wcs/control/car_move",
+        "method": "POST",
+        "params": {"target": f"5,3,1"}
+    },
+    {
+        "step": 2,
+        "title": "步骤 2：📦 控制小车移动货物",
         "api": "/api/v1/wcs/control/good_move",
         "method": "POST",
-        "params": {"target": f"5,3,{location_id}"}
+        "params": {"target": f"5,3,1"}
     },
 ]
 
@@ -27,14 +34,23 @@ steps = [
 for i, step in enumerate(steps):
     with st.expander(step["title"], expanded=True):
         user_inputs = {}
-        if step["api"] == "/api/v1/wcs/control/good_move":
+        if step["api"] == "/api/v1/wcs/control/car_move":
             for key, default in step["params"].items():
-                st.markdown("**货物目标坐标**（x=行, y=列, z=层）")
+                st.markdown("**移动🚗，到达需要移动的📦货物位置**（x=行, y=列, z=层）")
                 col1, col2 = st.columns(2)
                 with col1:
-                    x = st.selectbox("目标行号 (x)", list(range(1, 9)), key=f"{key}_x_{i}")
+                    x = st.selectbox("📦 行号 (x)", list(range(1, 9)), key=f"{key}_x_{i}")
                 with col2:
-                    y = st.selectbox("目标列号 (y)", list(range(1, 8)), key=f"{key}_y_{i}")
+                    y = st.selectbox("📦 列号 (y)", list(range(1, 8)), key=f"{key}_y_{i}")
+                user_inputs["target"] = f"{x},{y},{location_id}"
+        if step["api"] == "/api/v1/wcs/control/good_move":
+            for key, default in step["params"].items():
+                st.markdown("**🚗货物，去往目标位置**（x=行, y=列, z=层）")
+                col1, col2 = st.columns(2)
+                with col1:
+                    x = st.selectbox("🏁 目标行号 (x)", list(range(1, 9)), key=f"{key}_x_{i}")
+                with col2:
+                    y = st.selectbox("🏁 目标列号 (y)", list(range(1, 8)), key=f"{key}_y_{i}")
                 user_inputs["target"] = f"{x},{y},{location_id}"
         else:    
             user_inputs["target"] = f"5,3,{location_id}"

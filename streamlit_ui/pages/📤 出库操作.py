@@ -6,7 +6,8 @@ from api_config import API_BASE
 st.title("📤 出库操作")
 
 st.subheader("⚠️ 确保小车在需要出库的楼层 ⚠️")
-st.subheader("⚠️ 小车不在任务楼层，先去把🚗小车移到出库楼层 ⚠️")
+st.subheader("⚠️ 如果小车不在任务楼层 ⚠️")
+st.subheader("⚠️ 先去把🚗小车移到出库楼层 ⚠️")
 st.link_button("🚗 前往小车跨层页面", url="/小车跨层")
 st.subheader("⚠️ 小车在出库楼层，就不需要小车跨层了 ⚠️")
 
@@ -14,16 +15,17 @@ st.image("img/locations.png")
 
 # 统一设置任务层号
 st.subheader("📌 先设置出库物料的楼层")
-with st.expander("📋 任务层号选择", expanded=True):
+with st.expander("📋 楼层层号选择", expanded=True):
     location_id = st.selectbox("请选择任务所在层 (z)", list(range(1, 5)), index=0)
 
-st.subheader("🚧 电梯要先到要出库的物料楼层！！不管上一次任务去了哪里！")
+st.subheader("🚧 电梯要先到要出库的物料楼层！！🚧")
+st.subheader("🚧 不管上一次任务去了哪里！！🚧")
 with st.expander("📋 电梯到位操作", expanded=True):
     # floor_id = st.selectbox(f"请输入电梯层", list(range(1, 5)))
 
     if st.button(f"🚀 [执行] 操作电梯到物料层"):
         try:
-            body = {"location_id": f"{location_id}"}
+            body = {"location_id": location_id}
             url = API_BASE + "/api/v1/wcs/control/lift"
             # st.write(f"请求：{url}")
             resp = requests.post(url, json=body)
@@ -42,16 +44,16 @@ with st.expander("📋 电梯到位操作", expanded=True):
         except Exception as e:
             st.error(f"请求失败：{e}")
 
-st.subheader("🚗 操作小车到达货物坐标")
-with st.expander("🚗 到位操作", expanded=True):
+st.subheader("🚗 操作小车到达需要出库的货物位置")
+with st.expander("🚗 到达货物位置操作", expanded=True):
     user_inputs = {}
 
     st.markdown("**小车目标坐标**（x=行, y=列, z=层）")
     col1, col2 = st.columns(2)
     with col1:
-        x = st.selectbox("货物行号 (x)", list(range(1, 9)), key=f"car_x")
+        x = st.selectbox("📦 行号 (x)", list(range(1, 9)), key=f"car_x")
     with col2:
-        y = st.selectbox("货物列号 (y)", list(range(1, 8)), key=f"car_y")
+        y = st.selectbox("📦 列号 (y)", list(range(1, 8)), key=f"car_y")
     user_inputs["target"] = f"{x},{y},{location_id}"
 
     if st.button(f"🚗 [执行] 操作小车"):
@@ -93,7 +95,7 @@ steps = [
     },
     {
         "step": 2,
-        "title": "步骤 2：操作小车放料，移动货物",
+        "title": "步骤 2：操作小车取/放料，移动货物",
         "api": "/api/v1/wcs/control/good_move",
         "method": "POST",
         "params": {
@@ -112,7 +114,7 @@ steps = [
         "title": "步骤 4：电梯移动到1楼",
         "api": "/api/v1/wcs/control/lift",
         "method": "POST",
-        "params": {"location_id": "1"}
+        "params": {"location_id": 1}
     },
     {
         "step": 5,
@@ -128,16 +130,20 @@ for i, step in enumerate(steps):
     with st.expander(step["title"], expanded=True):
         user_inputs = {}
 
-        if step["api"] == "/api/v1/wcs/control/good_move":
-            for key, default in step["params"].items():
-                if key == "target":
-                    user_inputs[key] = f"5,3,{location_id}"
+        if step["step"] == 1:
+            user_inputs["location_id"] = location_id
                     
-                else:
-                    user_inputs[key] = st.text_input(key, value=str(default), key=f"{key}_{i}")
-        else:
-            if "location_id" in step["params"]:
-                user_inputs["location_id"] = f"{location_id}"
+        elif step["step"] == 2:
+            user_inputs["target"] = f"5,3,{location_id}"
+
+        elif step["step"] == 3:
+            user_inputs["location_id"] = location_id
+                    
+        elif step["step"] == 4:
+            user_inputs["location_id"] = 1
+                    
+        elif step["step"] == 5:
+            user_inputs = {}
 
         if st.button(f"🚀 [执行] 步骤{step['title']}", key=f"exec_{i}"):
             try:
@@ -147,6 +153,7 @@ for i, step in enumerate(steps):
                         body[k] = int(v)
                     except:
                         body[k] = v
+                # st.write(f"请求：{step['api']} - {body}")
 
                 url = API_BASE + step["api"]
                 resp = (

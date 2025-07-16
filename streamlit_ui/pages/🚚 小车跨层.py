@@ -7,8 +7,8 @@ st.title("🚚 小车跨层操作")
 
 st.image("img/locations.png")
 
-st.subheader("🚧 电梯先到小车楼层！！")
-with st.expander("📋 电梯到位操作", expanded=True):
+st.subheader("🚧 电梯先到需要跨层🚗小车楼层！！")
+with st.expander("📋 电梯到达🚗层操作", expanded=True):
     floor_id = st.selectbox(f"请输入电梯层", list(range(1, 5)), key="floor_id")
 
     if st.button(f"🚀 [执行] 操作电梯"):
@@ -100,7 +100,7 @@ for i, step in enumerate(steps):
 
         if step["step"] == 1:
             st.markdown("**小车移动到电梯口输送线**")
-            z = floor_a if step["step"] in [1, 2] else floor_b
+            z = floor_a
             body["target"] = f"5,3,{z}"
 
         elif step["step"] == 2:
@@ -111,7 +111,7 @@ for i, step in enumerate(steps):
         elif step["step"] == 3 and "lift" in step["api"]:
             st.markdown("**操作电梯载车**")
             z = floor_b  # 跨层操作的电梯移动目标一定是楼层 B
-            body["location_id"] = str(z)
+            body["location_id"] = z
 
         elif step["step"] == 4:
             st.markdown("**确认电梯载车到达目标楼层**")
@@ -126,7 +126,7 @@ for i, step in enumerate(steps):
         elif step["step"] == 6 and "lift" in step["api"]:
             st.markdown("**必须确认整个流程结束**")
             z = floor_b  # 跨层操作的电梯移动目标一定是楼层 B
-            body["location_id"] = str(z)
+            body["location_id"] = z
 
 
         if st.button(f"🚀 [执行] {step['title']}", key=f"btn_{i}"):

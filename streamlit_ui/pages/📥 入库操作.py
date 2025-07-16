@@ -5,7 +5,8 @@ from api_config import API_BASE
 st.title("📥 入库操作")
 
 st.subheader("⚠️ 确保小车在需要入库的楼层 ⚠️")
-st.subheader("⚠️ 小车不在任务楼层，先去把🚗小车移到入库楼层 ⚠️")
+st.subheader("⚠️ 如果小车不在任务楼层 ⚠️")
+st.subheader("⚠️ 先去把🚗小车移到需要入库的楼层 ⚠️")
 st.link_button("🚗 前往小车跨层页面", url="/小车跨层")
 st.subheader("⚠️ 小车在入库楼层，就不需要小车跨层了 ⚠️")
 
@@ -18,9 +19,9 @@ with st.expander("📋 电梯到位操作", expanded=True):
 
     if st.button(f"🚀 [执行] 操作电梯到1楼"):
         try:
-            body = {"location_id": f"{floor_id}"}
+            body = {"location_id": floor_id}
             url = API_BASE + "/api/v1/wcs/control/lift"
-            # st.write(f"请求：{url}")
+            # st.write(f"请求：{url} - 参数：{body}")
             resp = requests.post(url, json=body)
 
             if resp.status_code == 200:
@@ -43,15 +44,22 @@ with st.expander("📋 任务层号设置", expanded=True):
     location_id = st.selectbox("请选择任务所在楼层 (z)", list(range(1, 5)), index=0)
 
 st.subheader("🚗 操作小车到达目标输送线等待货物")
+st.markdown("**⚠️ 小车如果在输送线，可以不用执行这个操作 ⚠️**")
 with st.expander("🚗 到位操作", expanded=True):
     user_inputs = {}
     user_inputs["target"] = f"5,3,{location_id}"
 
     if st.button(f"🚗 [执行] 操作小车"):
         try:
-            body = {"location_id": f"{location_id}"}
+            body = {}
+            for k, v in user_inputs.items():
+                try:
+                    body[k] = int(v)
+                except:
+                    body[k] = v
             url = API_BASE + "/api/v1/wcs/control/car_move"
-            # st.write(f"请求：{url}")
+            # st.write(f"请求：{url} - 参数：{body}")
+
             resp = requests.post(url, json=body)
 
             if resp.status_code == 200:
@@ -128,7 +136,8 @@ for i, step in enumerate(steps):
                                 body[k] = v
 
                     url = API_BASE + step["api"]
-                    # st.write(f"请求：{url}")
+                    
+                    # st.write(f"请求：{url} - 参数：{body}")
 
                     resp = (
                         requests.post(url, json=body)
@@ -142,11 +151,6 @@ for i, step in enumerate(steps):
                         st.error(f"请求失败，状态码：{resp.status_code}")
                         st.text(resp.text)
 
-                    # try:
-                    #     st.json(resp.json())
-                    # except:
-                    #     st.text(resp.text)
-
                 except Exception as e:
                     st.error(f"请求失败：{e}")
 
@@ -157,10 +161,10 @@ for i, step in enumerate(steps):
 
             if st.button(f"🚀 [执行] {step['title']}", key=f"btn_{i}"):
                 try:
-                    body = {"location_id": f"{location_id}"}
+                    body = {"location_id": location_id}
                     url = API_BASE + step["api"]
                     
-                    # st.write(f"请求：{url}")
+                    # st.write(f"请求：{url} - 参数：{body}")
 
                     resp = requests.post(url, json=body)
 
@@ -169,11 +173,6 @@ for i, step in enumerate(steps):
                     else:
                         st.error(f"请求失败，状态码：{resp.status_code}")
                         st.text(resp.text)
-
-                    # try:
-                    #     st.json(resp.json())
-                    # except:
-                    #     st.text(resp.text)
 
                 except Exception as e:
                     st.error(f"请求失败：{e}")
@@ -185,9 +184,10 @@ for i, step in enumerate(steps):
 
             if st.button(f"🚀 [执行] {step['title']}", key=f"btn_{i}"):
                 try:
-                    body = {"location_id": f"{location_id}"}
+                    body = {"location_id": location_id}
                     url = API_BASE + step["api"]
-                    # st.write(f"请求：{url}")
+
+                    # st.write(f"请求：{url} - 参数：{body}")
 
                     resp = requests.post(url, json=body)
 
@@ -196,11 +196,6 @@ for i, step in enumerate(steps):
                     else:
                         st.error(f"请求失败，状态码：{resp.status_code}")
                         st.text(resp.text)
-
-                    # try:
-                    #     st.json(resp.json())
-                    # except:
-                    #     st.text(resp.text)
 
                 except Exception as e:
                     st.error(f"请求失败：{e}")
@@ -255,8 +250,7 @@ for i, step in enumerate(steps):
 
                     url = API_BASE + step["api"]
                     
-                    # st.write(f"请求：{url}")
-                    # st.write(f"参数：{body}")
+                    # st.write(f"请求：{url} - 参数：{body}")
 
                     resp = (
                         requests.post(url, json=body)
@@ -270,11 +264,6 @@ for i, step in enumerate(steps):
                         st.error(f"请求失败，状态码：{resp.status_code}")
                         st.text(resp.text)
 
-                    # try:
-                    #     st.json(resp.json())
-                    # except:
-                    #     st.text(resp.text)
-
                 except Exception as e:
                     st.error(f"请求失败：{e}")
 
@@ -285,10 +274,10 @@ for i, step in enumerate(steps):
 
             if st.button(f"🚀 [执行] {step['title']}", key=f"btn_{i}"):
                 try:
-                    body = {"location_id": f"{location_id}"}
+                    body = {"location_id": location_id}
                     url = API_BASE + step["api"]
 
-                    # st.write(f"请求：{url}")
+                    # st.write(f"请求：{url} - 参数：{body}")
 
                     resp = requests.post(url, json=body)
 
@@ -298,10 +287,5 @@ for i, step in enumerate(steps):
                         st.error(f"请求失败，状态码：{resp.status_code}")
                         st.text(resp.text)
 
-                    # try:
-                    #     st.json(resp.json())
-                    # except:
-                    #     st.text(resp.text)
-                    
                 except Exception as e:
                     st.error(f"请求失败：{e}")
