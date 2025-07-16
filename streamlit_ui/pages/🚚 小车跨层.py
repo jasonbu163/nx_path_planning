@@ -115,7 +115,7 @@ for i, step in enumerate(steps):
 
         elif step["step"] == 4:
             st.markdown("**确认电梯载车到达目标楼层**")
-            z = floor_a
+            z = floor_b
             body["target"] = f"6,3,{z}"
 
         elif step["step"] == 5:
