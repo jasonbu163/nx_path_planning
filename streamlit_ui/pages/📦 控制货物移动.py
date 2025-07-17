@@ -34,7 +34,7 @@ steps = [
 for i, step in enumerate(steps):
     with st.expander(step["title"], expanded=True):
         user_inputs = {}
-        if step["api"] == "/api/v1/wcs/control/car_move":
+        if step["step"] == 1:
             for key, default in step["params"].items():
                 st.markdown("**移动🚗，到达需要移动的📦货物位置**（x=行, y=列, z=层）")
                 col1, col2 = st.columns(2)
@@ -43,7 +43,7 @@ for i, step in enumerate(steps):
                 with col2:
                     y = st.selectbox("📦 列号 (y)", list(range(1, 8)), key=f"{key}_y_{i}")
                 user_inputs["target"] = f"{x},{y},{location_id}"
-        if step["api"] == "/api/v1/wcs/control/good_move":
+        if step["step"] == 2:
             for key, default in step["params"].items():
                 st.markdown("**🚗货物，去往目标位置**（x=行, y=列, z=层）")
                 col1, col2 = st.columns(2)
