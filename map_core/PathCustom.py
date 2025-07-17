@@ -93,8 +93,25 @@ class PathCustom(PathBase):
             return 'x'
         return 'diagonal'
     
+    def find_path(self, source, target):
+        """
+        找到的路径: 
+        """
+        found_path = self.find_shortest_path(source, target)
+        # 计算列表长度
+        path_length = len(found_path)
+        print(f"路径长度: {path_length}")
+        # 输出路径
+        if path_length > 1:
+            return found_path
+        elif path_length == 1:
+            return False, "起点和终点相同，无需路径规划"
+        elif found_path is None:
+            return False, "未找到路径"
+        else:
+            return False, "路径规划失败"
     def find_and_cut_path(self, source, target):
-        path = self.find_shortest_path(source, target)
+        path = self.find_path(source, target)
         cut_path = self.cut_path(path)
         return {
             "source": source,
@@ -150,10 +167,10 @@ class PathCustom(PathBase):
         :param target: 终点坐标 如，target = "1,3,1"
         """
         
-        found_path = self.find_shortest_path(source, target)
+        found_path = self.find_path(source, target)
         if found_path is None:
             print("未找到路径")
-            return
+            return False
         # print(f"找到的路径: {found_path}")
 
         cuted_path = self.cut_path(found_path)
@@ -195,7 +212,7 @@ class PathCustom(PathBase):
         :param target: 终点坐标 如，target = "1,3,1"
         """
         
-        found_path = self.find_shortest_path(source, target)
+        found_path = self.find_path(source, target)
         if found_path is None:
             print("未找到路径")
             return
@@ -223,7 +240,7 @@ if __name__ == "__main__":
     # 绘制地图和路径
     source = "1,3,1"
     target = "8,7,1"
-    path = path_custom.find_shortest_path(source, target)
+    path = path_custom.find_path(source, target)
 
     # 路径切割
     cut_path = path_custom.cut_path(path)

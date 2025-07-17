@@ -17,16 +17,14 @@ def main():
     G = my_path.G
     pos = my_path.pos
     assert nx.is_tree(G), "图不是树结构，无法进行路径规划"
-
+        
     # 设置起点和终点
-    source = "5,3,1"
-    target = "1,1,1"
-    # found_path = my_path.find_shortest_path(source, target)
-    # if found_path is None:
-    #     print("未找到路径")
-    #     return
-    # print(f"找到的路径: {found_path}")
-
+    source = "1,1,1"
+    target = "6,3,1"
+    
+    # found_path = my_path.find_path(source, target)
+    # print(f"路径: {found_path}")
+    
     # cuted_path = my_path.cut_path(found_path)
     # print(f"切分之后的路径: {cuted_path}")
 
@@ -35,21 +33,13 @@ def main():
 
     # task_segments = my_path.generate_point_list(task_path)
     # print(f"任务分段: {task_segments}")
+
     segments = my_path.build_segments(source, target)
     print(f"找到的路径分段:{segments}")
 
     task_segments = my_path.build_pick_task(source, target)
     print(f"取货任务分段: {task_segments}")
 
-    def heartbeat(times: int):
-        import time
-        for i in range(times):
-            print(f"心跳: {i}")
-            time.sleep(1)
-        return i
-    
-    x = heartbeat(10)
-    print(f"心跳返回值: {x}")
 
     # my_path.draw_path(found_path, G, pos)
 
