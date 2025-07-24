@@ -1,17 +1,17 @@
 # devices/plc_controller.py
 from plc_service import PLCService
-from plc_service_asyncio import PLCService
+from plc_service_asyncio import DevicesService
 from plc_enum import PLCAddress, TASK_TYPE, FLOOR
 import time
 import struct
 import logging
 
 class PLCController(PLCService):
-    def __init__(self, plc_ip: str, car_ip: str):
+    def __init__(self, plc_ip: str, car_ip: str, car_port: int):
         self.plc_ip = plc_ip
-        self.client = PLCService(plc_ip)
         self.car_ip = car_ip
-        
+        self.client = DevicesService(plc_ip, car_ip, car_port)
+
         # 配置日志
         logging.basicConfig(
             level=logging.INFO,
@@ -168,7 +168,7 @@ class PLCController(PLCService):
         :::param target_floor: 目标楼层
         """
         # 确认提升机
-        print(f"确认提升机状态: {self.client.read_bit(11, PLCAddress.PLATFORM_PALLET_READY.value)}")
+        print(f"确认提升机状态: {self.client.read_bit(11, PLCAddress.RUNNING.value)}")
 
         # 确认目标层到达
         time.sleep(1)
@@ -225,7 +225,7 @@ class PLCController(PLCService):
 
         # 小车 进入 提升机
         # 等待电梯到达楼层 读取电梯是否空闲
-        await PLCService.wait_for_bit_change(self.client, 11, 13, 3, 1)
+        await DevicesService.wait_for_bit_change(self.client, 11, 13, 3, 1)
         # car_move(car_location, [6, 3, car_current_floor])
         
         # 提升机到达目标层
@@ -234,7 +234,7 @@ class PLCController(PLCService):
 
         # 小车 离开 提升机
         # 等待电梯到达楼层 读取电梯是否空闲
-        await PLCService.wait_for_bit_change(self.client, 11, 13, 3, 1)
+        await DevicesService.wait_for_bit_change(self.client, 11, 13, 3, 1)
         # 修改小车楼层
         # car_location_change([6, 3, traget_floor])
         # car_move([6, 3, traget_floor], [5, 3, target_floor])

@@ -248,3 +248,11 @@ if __name__ == "__main__":
 
     # 绘制地图和路径
     path_custom.draw_path(path, path_custom.G, path_custom.pos)
+
+
+#################################
+# 注意⚠️ 临时删除了边 ["4,5,1", "5,5,1"],
+# 删除的文件路径为 /map_core/data/map_config copy.json
+# 因为临时需要禁用 5,5,1 这个点
+
+#################################

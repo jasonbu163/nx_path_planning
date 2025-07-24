@@ -2,6 +2,7 @@
 import struct
 import crcmod
 from .RESProtocol import RESProtocol
+import logging
 
 # ------------------------
 # 模块 2: 报文构建器
@@ -15,6 +16,16 @@ class PacketBuilder:
         self.life_counter = 0
         self.crc16 = crcmod.mkCrcFun(0x18005, rev=True, initCrc=0xFFFF, xorOut=0x0000)
 
+        # 配置日志
+        logging.basicConfig(
+                    level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s'
+                )
+        self.logger = logging.getLogger(__name__)
+
+    ########################################
+    # 包头构建工作
+    ########################################
     def _increment_life(self):
         """更新生命计数器"""
         self.life_counter = (self.life_counter + 1) % 256
@@ -26,16 +37,24 @@ class PacketBuilder:
         格式: 设备ID(1) + 生命(1) + 版本类型(1)
         """
         version_type = (RESProtocol.VERSION << 4) | (frame_type & 0x0F)
+        # return struct.pack('!BBB',
+        #                   self.device_id,
+        #                   self._increment_life(),
+        #                   version_type)
         return struct.pack('!BBB',
                           self.device_id,
-                          self._increment_life(),
+                          1,
                           version_type)
     
-    def _pack_data(self, data: bytes):
+    def _pack_type_info(self, frame_type):
         """
-        构建报文数据
+        构建版本信息
+        如果使用_pack_pre_info则不需要
+        格式: 报文版本(4bit) 报文类型(4bit)
         """
-        return data
+        version_type = (RESProtocol.VERSION << 4) | (frame_type & 0x0F)
+        return struct.pack('!B',version_type)
+    
     def _data_length(self, data: bytes):
         """
         计算报文长度
@@ -58,6 +77,37 @@ class PacketBuilder:
         print('CRC16校验值:', hex(crc))
         return struct.pack('<H', crc)
     
+    ########################################
+    # 报文构建方法
+    ########################################
+
+    def segments_task_len(self, segments):
+        """
+        计算任务段数
+        :param segments: 路径段列表 [(x, y, z, action), ...]
+        :return: 任务段数
+        """
+        task_len = len(segments)
+        self.logger.info(f"任务段数(无动作): {task_len}")
+        for segment in segments:
+            if segment[3] != 0:
+                task_len += 1
+        self.logger.info(f"任务段数(含动作): {task_len}")
+        return task_len
+
+    ################ 心跳报文 ################
+    def heartbeat(self):
+        header = RESProtocol.HEADER
+        device_id = struct.pack('B', self.device_id)
+        # life = struct.pack('B', self._increment_life())
+        life = struct.pack('B', 1)
+        message = b'\x10\x00\x0b'
+        footer = RESProtocol.FOOTER
+        data = header + device_id + life + message
+        crc = self._calculate_crc(data)
+        packet = data + crc + footer
+        return packet
+    
     def build_heartbeat(self, frame_type=RESProtocol.FrameType.HEARTBEAT):
         """
         构建心跳报文
@@ -71,7 +121,7 @@ class PacketBuilder:
         data_length = self._data_length(pre_info)
         
         # 组合数据段
-        data_part = pre_info + data_length
+        data_part = header+ pre_info + data_length
 
         # 计算CRC
         crc = self._calculate_crc(data_part)
@@ -81,7 +131,7 @@ class PacketBuilder:
 
         # 组装报文
         packet = header + data_part + crc + footer
-        print("[发送] 心跳报文: ", packet)
+        self.logger.info("[发送] 心跳报文: ", packet)
 
         # 返回报文
         return packet
@@ -174,11 +224,14 @@ class PacketBuilder:
 
 def main():
     # 初始化
-    pb = PacketBuilder(1)
+    pb = PacketBuilder(2)
 
     # 构建心跳报文
-    heartbeat = pb.build_heartbeat()
-    print(f"心跳报文: {heartbeat}")
+    heartbeat = pb.heartbeat()
+    build_heartbeat = pb.build_heartbeat()
+    print(f"[1] 心跳报文: {heartbeat}")
+    print("#####################################")
+    print(f"[2] 心跳报文: {build_heartbeat}")
 
     # 构建任务报文
     # task_no = 1
