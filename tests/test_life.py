@@ -9,7 +9,7 @@ import struct
 import asyncio
 from async_tcp_client_module import AsyncTCPClient
 from res_protocol_system import PacketBuilder, RESProtocol, PacketParser
-from devices.plc_service_asyncio import DevicesService
+from devices.service_asyncio import DevicesService
 from map_core import PathCustom
 
 

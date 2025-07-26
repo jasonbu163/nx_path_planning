@@ -7,7 +7,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import asyncio
 import struct
 import random
-from devices.plc_service_asyncio import PLCService
+from devices.service_asyncio import PLCService
 from devices.plc_enum import PLCAddress, TASK_TYPE
 import time
 import logging

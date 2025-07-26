@@ -1,8 +1,8 @@
 # res_protocol_system/PacketBuilder.py
 import struct
 import crcmod
+
 from .RESProtocol import RESProtocol
-import logging
 
 # ------------------------
 # 模块 2: 报文构建器
@@ -11,45 +11,46 @@ import logging
 # ------------------------
 
 class PacketBuilder:
+    """
+    [报文构建器类] - 构建创建各种类型的协议报文
+    """
     def __init__(self, device_id=1):
-        self.device_id = device_id
-        self.life_counter = 0
-        self.crc16 = crcmod.mkCrcFun(0x18005, rev=True, initCrc=0xFFFF, xorOut=0x0000)
+        """
+        [初始化报文构建器]
 
-        # 配置日志
-        logging.basicConfig(
-                    level=logging.INFO,
-                    format='%(asctime)s - %(levelname)s - %(message)s'
-                )
-        self.logger = logging.getLogger(__name__)
+        ::: param :::
+            device_id: 设备ID
+        """
+        self.device_id = device_id
+        self._life_counter = 0
+        self.crc16 = crcmod.mkCrcFun(0x18005, rev=True, initCrc=0xFFFF, xorOut=0x0000)
 
     ########################################
     # 包头构建工作
     ########################################
     def _increment_life(self):
-        """更新生命计数器"""
-        self.life_counter = (self.life_counter + 1) % 256
-        return self.life_counter
+        """
+        [生命周期计数器] - 生命周期为1-256，超过256后重新开始计数
+        """
+        self._life_counter = (self._life_counter % 255) + 1
+        return self._life_counter
     
     def _pack_pre_info(self, frame_type):
         """
-        构建报文前段信息
+        [构建报文前段信息]
+
         格式: 设备ID(1) + 生命(1) + 版本类型(1)
         """
         version_type = (RESProtocol.VERSION << 4) | (frame_type & 0x0F)
-        # return struct.pack('!BBB',
-        #                   self.device_id,
-        #                   self._increment_life(),
-        #                   version_type)
         return struct.pack('!BBB',
                           self.device_id,
-                          1,
+                          self._increment_life(),
                           version_type)
     
     def _pack_type_info(self, frame_type):
         """
-        构建版本信息
-        如果使用_pack_pre_info则不需要
+        [构建版本信息] - 如果使用_pack_pre_info则不需要
+
         格式: 报文版本(4bit) 报文类型(4bit)
         """
         version_type = (RESProtocol.VERSION << 4) | (frame_type & 0x0F)
@@ -57,7 +58,7 @@ class PacketBuilder:
     
     def _data_length(self, data: bytes):
         """
-        计算报文长度
+        [计算报文长度]
         """
         header_length = 2
         data_length = len(data)
@@ -65,37 +66,42 @@ class PacketBuilder:
         crc_length = 2
         footer_length = 2
         packet_length = header_length + data_length + len_length + crc_length + footer_length
-        print('报文长度:', packet_length)
+        print(f"[CAR] 报文长度:{packet_length}")
         return struct.pack('!H', packet_length)
     
     def _calculate_crc(self, data: bytes):
         """
-        计算CRC校验位
+        [计算CRC校验位]
+
         格式: 校验位(2)
         """
         crc = self.crc16(data)
-        print('CRC16校验值:', hex(crc))
+        print(f"[CAR] CRC16校验值: {hex(crc)}")
         return struct.pack('<H', crc)
     
-    ########################################
-    # 报文构建方法
-    ########################################
 
-    def segments_task_len(self, segments):
+    def _segments_task_len(self, segments):
         """
-        计算任务段数
-        :param segments: 路径段列表 [(x, y, z, action), ...]
-        :return: 任务段数
+        [计算任务段数]
+
+        ::: param :::
+            segments: 路径段列表 [(x, y, z, action), ...]
+
+        ::: return :::
+            任务段数
         """
         task_len = len(segments)
-        self.logger.info(f"任务段数(无动作): {task_len}")
+        print(f"[CAR] 任务段数(无动作): {task_len}")
         for segment in segments:
             if segment[3] != 0:
                 task_len += 1
-        self.logger.info(f"任务段数(含动作): {task_len}")
+        print(f"[CAR] 任务段数(含动作): {task_len}")
         return task_len
 
-    ################ 心跳报文 ################
+    ########################################
+    # 心跳报文
+    ########################################
+
     def heartbeat(self):
         header = RESProtocol.HEADER
         device_id = struct.pack('B', self.device_id)
@@ -110,8 +116,7 @@ class PacketBuilder:
     
     def build_heartbeat(self, frame_type=RESProtocol.FrameType.HEARTBEAT):
         """
-        构建心跳报文
-        固定长度11字节
+        [构建心跳报文] - 固定长度11字节
         """
         # 构建基础头部
         header = RESProtocol.HEADER
@@ -131,17 +136,25 @@ class PacketBuilder:
 
         # 组装报文
         packet = header + data_part + crc + footer
-        self.logger.info("[发送] 心跳报文: ", packet)
+        print("[CAR] 心跳报文: ", packet)
 
         # 返回报文
         return packet
     
+    ########################################
+    # 任务报文
+    ########################################
+    
     def build_task_command(self, task_no, segments):
         """
-        构建整体任务报文
-        :param task_no: 任务序号 (1-255)
-        :param segments: 路径段列表 [(x, y, z, action), ...]
-        :return: 任务报文
+        [构建整体任务报文]
+
+        ::: param :::
+            task_no: 任务序号 (1-255)
+            segments: 路径段列表 [(x, y, z, action), ...]
+
+        ::: return :::
+            任务报文
         """
         # 构建基础头部
         header = RESProtocol.HEADER
@@ -183,14 +196,21 @@ class PacketBuilder:
         # 返回报文
         return packet
 
+    ########################################
+    # 指令报文
+    ########################################
+    
     def build_debug_command(self, cmd_id, sub_cmd_id=0, param=0):
         """
-        构建调试指令报文
-        固定长度19字节
-        :param cmd_id: 主指令ID (0x9D, 0x9E等)
-        :param sub_cmd_id: 次指令ID
-        :param param: 参数值 (32位)
-        :return: 调试指令报文
+        [构建调试指令报文] - 固定长度19字节
+
+        ::: param :::
+            cmd_id: 主指令ID (0x9D, 0x9E等)
+            sub_cmd_id: 次指令ID
+            param: 参数值 (32位)
+
+        ::: return :::
+            调试指令报文
         """
         
         # 构建基础头部
@@ -220,36 +240,3 @@ class PacketBuilder:
         
         # 返回报文
         return packet
-
-
-def main():
-    # 初始化
-    pb = PacketBuilder(2)
-
-    # 构建心跳报文
-    heartbeat = pb.heartbeat()
-    build_heartbeat = pb.build_heartbeat()
-    print(f"[1] 心跳报文: {heartbeat}")
-    print("#####################################")
-    print(f"[2] 心跳报文: {build_heartbeat}")
-
-    # 构建任务报文
-    # task_no = 1
-    # warehouse_segments = [
-    #         (1, 2, 1, 0),    # 从(10,20)到下一个点的直行
-    #         (1, 5, 1, 0),    # 直行到(10,50)
-    #         (3, 5, 1, 1),    # 左转到(30,50)
-    #         (3, 6, 1, 3),    # 提升货物
-    #         (3, 8, 1, 0),    # 直行到(30,80)楼层1
-    #         (3, 8, 1, 4),    # 下降货物
-    #         (3, 8, 1, 5)     # 停止
-    #     ]
-    # task_cmd = pb.bulid_task_command(task_no=task_no, segments=warehouse_segments)
-    # print(f'任务报文: {task_cmd}')
-
-    # 构建调试命令报文
-    # debug_cmd = pb.build_debug_command(cmd_id=0x01, sub_cmd_id=0x01, param=0x01)
-    # print(f'调试命令报文: {debug_cmd}')
-
-if __name__ == '__main__':
-    main()

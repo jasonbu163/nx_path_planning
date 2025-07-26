@@ -5,8 +5,9 @@ import asyncio
 from typing import Callable, Any, Union
 import struct
 import time
+import random
 
-from .plc_enum import PLCAddress, FLOOR, TASK_TYPE
+from .plc_enum import PLCAddress, FLOOR_CODE
 from res_protocol_system import PacketBuilder, PacketParser, RESProtocol
 from map_core import PathCustom
 
@@ -22,8 +23,8 @@ class IntCounter:
         return struct.pack('B', self.count)
 
 # PLC设备服务类
-class DevicesService:
-    def __init__(self, plc_ip: str, car_ip: str, car_port: int):
+class DevicesService():
+    def __init__(self, PLC_IP: str, CAR_IP: str, CAR_PORT: int):
         """
         初始化TCP客户端
         :param plc_ip: plc地址
@@ -31,14 +32,14 @@ class DevicesService:
         :param car_port: 小车端口
         """
         
-        self.plc_ip = plc_ip
+        self.plc_ip = PLC_IP
         self.client = Client()
         self._connected = False
         self._monitor_task = None  # 用于存储监控任务的引用
         self._stop_monitor = asyncio.Event()  # 停止监控的事件标志
         
-        self.car_ip = car_ip
-        self.car_port = car_port
+        self.car_ip = CAR_IP
+        self.car_port = CAR_PORT
         self.reader = None
         self.writer = None
         self.connected = False
@@ -129,7 +130,7 @@ class DevicesService:
             self.connected = True
             self.logger.info(f"[CLIENT] 已连接到服务器 {self.car_ip}:{self.car_port}")
         except ConnectionRefusedError:
-            self.logger.info("[CLIENT] 无法连接到服务器")
+            self.logger.error("[CLIENT] 无法连接到服务器")
             self.connected = False
         return self.connected
     
@@ -486,7 +487,7 @@ class DevicesService:
         """
         构建调试指令报文
         固定长度19字节
-        :param cmd_id: (x, y, z)
+        :param location: "x,y,z"
         :return: 调试指令报文
         """
         
@@ -675,7 +676,17 @@ class DevicesService:
         car_current_location = f"{car_current_location[0]},{car_current_location[1]},{car_current_location[2]}"
         return car_current_location
     
-
+    # 获取小车状态
+    async def car_status(self, times: int):
+        """
+        获取小车状态
+        :param times: 心跳次数
+        :return: 小车状态
+        """
+        # 发送
+        heartbeat_msg = await self.send_heartbeat(times)
+        car_status = heartbeat_msg['car_status']
+        return car_status
     # 发送小车移动任务
     async def car_move(self, target):
         """
@@ -792,8 +803,8 @@ class DevicesService:
     def get_lift(self):
         # 读取提升机所在层
         db = self.read_db(11, PLCAddress.CURRENT_LAYER.value, 2)
-        # return struct.unpack('!H', db)[0]
-        return db
+        return struct.unpack('!H', db)[0]
+        # return db
     
     # 移动提升机
     def lift_move(self, task_type, task_num, end_floor):
@@ -804,13 +815,14 @@ class DevicesService:
         end_floor = struct.pack('!H', end_floor)
 
         # 任务类型
-        self.write_db(12, 0, task_type)
+        self.write_db(12, PLCAddress.TASK_TYPE.value, task_type)
         # 任务号
-        self.write_db(12, 6, task_num)
-        # 起始层
-        # self.write_db(12, start=2, data=start_floor)
+        self.write_db(12, PLCAddress.TASK_NUMBER.value, task_num)
+        # 起始层 起始位被电气部份屏蔽 可以不输入
+        # self.write_db(12, PLCAddress.START_LAYER.value, start_floor)
         # 目标层
-        self.write_db(12, start=4, data=end_floor)
+        self.write_db(12, PLCAddress.TARGET_LAYER.value, end_floor)
+        
         # 读取提升机是否空闲
         if self.read_bit(11, PLCAddress.IDLE.value):
             self.write_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 1)
@@ -826,7 +838,7 @@ class DevicesService:
             self.write_bit(12, PLCAddress.FEED_COMPLETE_1010.value, 0)
 
         # 进入到提升机
-        lift_code = struct.pack('!H', FLOOR.LIFT)
+        lift_code = struct.pack('!H', FLOOR_CODE.LIFT)
         time.sleep(1)
         self.write_db(12, PLCAddress.TARGET_1010.value, lift_code)
         if self.read_db(12, PLCAddress.TARGET_1010.value, 2) == lift_code:
@@ -838,7 +850,7 @@ class DevicesService:
         self.write_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 1)
 
         # 写入出库
-        data = struct.pack('!H', FLOOR.GATE)
+        data = struct.pack('!H', FLOOR_CODE.GATE)
         time.sleep(1)
         self.write_db(12, PLCAddress.TARGET_1020.value, data)
         time.sleep(1)
@@ -921,7 +933,6 @@ class DevicesService:
         else:
             self.logger.info("无效的楼层")
         
-
     def lift_to_everylayer(self, target_floor):
         """
         :::param target_floor: 目标楼层
@@ -936,7 +947,7 @@ class DevicesService:
         time.sleep(0.5)
         # 移动到1层
         if target_floor == 1:
-            data = struct.pack('!H', FLOOR.LAYER_1)
+            data = struct.pack('!H', FLOOR_CODE.LAYER_1)
             self.write_db(12, PLCAddress.TARGET_1020.value, data)
             time.sleep(2)
             # 清零
@@ -948,7 +959,7 @@ class DevicesService:
         
         # 移动到2层
         elif target_floor == 2:
-            data = struct.pack('!H', FLOOR.LAYER_2)
+            data = struct.pack('!H', FLOOR_CODE.LAYER_2)
             self.write_db(12, PLCAddress.TARGET_1020.value, data)
             time.sleep(2)
             # 清零
@@ -960,7 +971,7 @@ class DevicesService:
         
         # 移动到3层
         elif target_floor == 3:
-            data = struct.pack('!H', FLOOR.LAYER_3)
+            data = struct.pack('!H', FLOOR_CODE.LAYER_3)
             self.write_db(12, PLCAddress.TARGET_1020.value, data)
             time.sleep(2)
             # 清零
@@ -972,7 +983,7 @@ class DevicesService:
 
         # 移动到4层
         elif target_floor == 4:
-            data = struct.pack('!H', FLOOR.LAYER_4)
+            data = struct.pack('!H', FLOOR_CODE.LAYER_4)
             self.write_db(12, PLCAddress.TARGET_1020.value, data)
             time.sleep(2)
             # 清零
@@ -984,65 +995,25 @@ class DevicesService:
 
         else:
             raise ValueError("Invalid target floor")
-
-    # 小车换层
-    async def car_cross_layer(self, target_location: str):
-        """
-        穿梭车跨层
-        :::param traget_location: 目标位置 如 "6,3,1"
-        """
-        # 获取小车坐标
-        car_location =  await self.car_current_location(1)
-        self.logger.info(f"🚗 穿梭车当前坐标: {car_location}")
-        car_cur_loc = list(map(int, car_location.split(',')))
-        car_current_floor = car_cur_loc[2]
-        self.logger.info(f"🚗 穿梭车当前楼层: {car_current_floor}")
         
-        # 获取目标位置坐标 
-        self.logger.info(f"🧭 穿梭车目的坐标: {target_location}")
-        target_loc = list(map(int, target_location.split(',')))
-        traget_floor = target_loc[2]
-        self.logger.info(f"🧭 穿梭车目的楼层: {traget_floor}")
-
-
-
-
-        self.logger.info("🚚 移动空载电梯到小车楼层...")
-        # 提升机到达小车所在层
-        # 随机生成个3位整数整数任务号
-        import random
-        task_num = random.randint(100, 999)
-        if traget_floor != car_current_floor:
-            self.lift_move(TASK_TYPE.IDEL, task_num, car_current_floor)
-            # 等待电梯到达楼层 读取电梯是否空闲
-            await self.wait_for_bit_change(11, 13.3, 1)
-        # # 空载校准
-        # elif traget_floor == car_current_floor:
-        #     self.lift_move(TASK_TYPE.IDEL, task_num, car_current_floor)
-        #     # 等待电梯到达楼层 读取电梯是否空闲
-        #     await self.wait_for_bit_change(11, 13.3, 1)
-        else:
-            pass
-
-        # 小车 进入 提升机
-        # car_move(car_location, [6, 3, car_current_floor])
-        self.logger.info("⏳ ！！！人工操作小车移动！！！")
-        self.logger.info("⏳ 等待小车动作完成...")
-        finish = input("人工确认小车进入提升机, 完成请输入(ok):")
-        if finish == "ok":
-            self.logger.info("人工确认小车动作完成！！")
+    async def wait_car_move_complete_by_location(self, location: str):
+        """
+        等待小车移动到指定位置
+        :param location: 目标位置 如 "6,3,1"
+        """
+        target_loc = list(map(int, location.split(',')))
+        target_x, target_y, target_z = target_loc[0], target_loc[1], target_loc[2]
         
-        # 提升机到达目标层
-        self.lift_move(TASK_TYPE.CAR, task_num+1, traget_floor)
-
-        # 小车 离开 提升机
-        # 等待电梯到达楼层 读取电梯是否空闲
-        await self.wait_for_bit_change(11, 13.3, 1)
-        # 修改小车楼层
-        # car_location_change([6, 3, traget_floor])
-        # car_move([6, 3, traget_floor], [5, 3, target_floor])
-        self.logger.info("⏳ ！！！人工操作小车移动！！！")
-        self.logger.info("⏳ 等待小车动作完成...")
-        finish = input("人工确认小车进入提升机, 完成请输入(ok):")
-        if finish == "ok":
-            self.logger.info("人工确认小车动作完成！！")
+        self.logger.info(f"⏳ 等待小车移动到位置: {location}")
+        
+        while True:
+            # 获取小车当前位置
+            car_location = await self.car_current_location(1)
+            car_cur_loc = list(map(int, car_location.split(',')))
+            car_x, car_y, car_z = car_cur_loc[0], car_cur_loc[1], car_cur_loc[2]
+            
+            if (car_x == target_x) and (car_y == target_y) and (car_z == target_z):
+                self.logger.info("✅ 小车已到达目标位置")
+                return True
+            
+            await asyncio.sleep(1)

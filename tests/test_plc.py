@@ -17,7 +17,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-from devices.plc_service import PLCService
+from devices.plc_connection_module import PLCService
 from devices.plc_enum import PLCAddress, TASK_TYPE
 import time
 import struct
