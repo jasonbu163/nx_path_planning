@@ -1,7 +1,7 @@
 # /core/PathCustom.py
 # 用于自定义路径规划
-import networkx as nx
-import matplotlib.pyplot as plt
+from typing import Union
+
 from .PathBase import PathBase
 
 class PathCustom(PathBase):
@@ -13,7 +13,7 @@ class PathCustom(PathBase):
         super().__init__()  # 调用父类的初始化方法
 
     # 获取坐标x轴y轴z轴
-    def get_point(self, point):
+    def get_point(self, point: str):
         x, y, z = map(int, point.split(","))
         return x, y, z
     
@@ -98,6 +98,9 @@ class PathCustom(PathBase):
         找到的路径: 
         """
         found_path = self.find_shortest_path(source, target)
+        if found_path is None:
+            print("无法找到路径")
+            return
         # 计算列表长度
         path_length = len(found_path)
         print(f"路径长度: {path_length}")
@@ -160,7 +163,7 @@ class PathCustom(PathBase):
         return result
     
 
-    def build_segments(self, source: str, target: str):
+    def build_segments(self, source: str, target: str) -> list:
         """
         生成移动路径
         :param source: 起点坐标 如，source = "1,1,1"
@@ -170,7 +173,7 @@ class PathCustom(PathBase):
         found_path = self.find_path(source, target)
         if found_path is None:
             print("未找到路径")
-            return False
+            return [False, "未找到路径"]
         # print(f"找到的路径: {found_path}")
 
         cuted_path = self.cut_path(found_path)

@@ -77,3 +77,5 @@ class CarConnectionBase(DevicesLogger):
             self._connected = False
             self.logger.info("[CAR] 连接已关闭")
         return True
+    
+    

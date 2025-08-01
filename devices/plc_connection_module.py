@@ -1,6 +1,6 @@
 # /devices/plc_connection_module.py
 from snap7.client import Client
-from typing import Union
+from typing import Union, Callable, Any
 import asyncio
 
 from .devices_logger import DevicesLogger
@@ -19,6 +19,9 @@ class PLCConnectionBase(DevicesLogger):
         self._ip = HOST
         self.client = Client()
         self._connected = False
+
+        self._monitor_task = None  # 用于存储监控任务的引用
+        self._stop_monitor = asyncio.Event()  # 停止监控的事件标志
 
     
     #####################################################
@@ -194,3 +197,151 @@ class PLCConnectionBase(DevicesLogger):
             self._connected = False
             self.logger.info("⛔ PLC连接已关闭")
         return True
+    
+    async def monitor_condition(
+        self,
+        MONITOR_DB: int,
+        MONITOR_OFFSET: float,
+        BITS: int,
+        TARGET_VALUE: int,
+        CALLBACK: Callable[[], Any],
+        POLL_INTERVAL: float = 0.5
+    ) -> None:
+        """
+        [监控PLC状态] - 监控PLC状态并执行回调
+        
+        ::: param :::
+            MONITOR_DB: 监控的DB块号
+            MONITOR_OFFSET: 监控的地址偏移 
+            BITS: 监控的位数
+            TARGET_VALUE: 要匹配的目标值
+            CALLBACK: 条件满足时的回调函数
+            POLL_INTERVAL: 轮询间隔(秒)
+        """
+        try:
+            self.logger.info(f"🔍 启动PLC监控: DB{MONITOR_DB}[{MONITOR_OFFSET}] {BITS}位 == 0x{TARGET_VALUE:02X}")
+            
+            while not self._stop_monitor.is_set():
+                # 异步读取PLC状态
+                try:
+                    current_value = await asyncio.to_thread(
+                        self.read_bit, MONITOR_DB, MONITOR_OFFSET, BITS
+                    )
+                except Exception as e:
+                    self.logger.error(f"读取PLC状态失败: {e}")
+                    await asyncio.sleep(POLL_INTERVAL)
+                    continue
+                
+                # 检查条件是否满足
+                if current_value == TARGET_VALUE:
+                    self.logger.info("🎯 条件满足! 执行回调函数")
+                    try:
+                        # 执行回调函数
+                        if asyncio.iscoroutinefunction(CALLBACK):
+                            await CALLBACK()
+                        else:
+                            await asyncio.to_thread(CALLBACK)
+                        self.logger.info("✅ 回调执行完成")
+                        return
+                    except Exception as e:
+                        self.logger.error(f"回调执行失败: {e}")
+                        return
+                
+                await asyncio.sleep(POLL_INTERVAL)
+        except asyncio.CancelledError:
+            self.logger.info("⏹️ 监控任务已取消")
+        finally:
+            self._stop_monitor.clear()
+
+    async def start_monitoring(
+        self,
+        MONITOR_DB: int,
+        MONITOR_OFFSET: float,
+        BITS: int,
+        TARGET_VALUE: int,
+        CALLBACK: Callable[[], Any],
+        POLL_INTERVAL: float = 0.5
+    ) -> asyncio.Task:
+        """
+        [启动监控任务] - 启动监控任务
+
+        ::: param :::
+            MONITOR_DB: 监控的DB块号
+            MONITOR_OFFSET: 监控的偏移地址
+            BITS: 监控的位数
+            TARGET_VALUE: 要匹配的目标值
+            CALLBACK: 条件满足时执行的回调函数
+            POLL_INTERVAL: 轮询间隔(秒)
+
+        ::: return :::
+            asyncio.Task: 监控任务对象 - 返回asyncio.Task类型
+        """
+        # 停止现有监控任务
+        await self.stop_monitoring()
+        
+        # 创建新监控任务
+        self._monitor_task = asyncio.create_task(
+            self.monitor_condition(
+                MONITOR_DB,
+                MONITOR_OFFSET,
+                BITS,
+                TARGET_VALUE,
+                CALLBACK,
+                POLL_INTERVAL
+            )
+        )
+        return self._monitor_task
+
+    async def stop_monitoring(self) -> None:
+        """
+        [停止监控任务] - 停止当前正在运行的监控任务
+        """
+        if self._monitor_task and not self._monitor_task.done():
+            self._stop_monitor.set()
+            self._monitor_task.cancel()
+            try:
+                await self._monitor_task
+            except asyncio.CancelledError:
+                pass
+            finally:
+                self._monitor_task = None
+
+    
+    # 等待PLC动作完成的超时时间（秒）
+    ACTION_TIMEOUT = 30.0
+    async def wait_for_bit_change(
+            self,
+            DB_NUMBER: int,
+            ADDRESS: float,
+            TRAGET_VALUE: int,
+            TIMEOUT: float = ACTION_TIMEOUT
+            ) -> bool:
+        """
+        [等待PLC指定的位状态变化为目标值]
+        
+        ::: param :::
+            DB_NUMBER: DB块号 
+            ADDRESS: 位地址 
+            TRAGET_VALUE: 目标值 
+            TIMEOUT: 超时时间（秒）
+        """
+        start_time = asyncio.get_event_loop().time()
+        
+        while True:
+            # 读取当前值
+            # Address = f"{byte_offset}.{bit_offset}"
+            current_value = await asyncio.to_thread(self.read_bit, DB_NUMBER, ADDRESS, 1)
+            
+            if current_value == TRAGET_VALUE:
+                # self.logger.info(f"✅ PLC动作完成: DB{db_number}[{byte_offset}.{bit_offset}] == {target_value}")
+                self.logger.info(f"✅ PLC动作完成: DB{DB_NUMBER}[{ADDRESS}] == {TRAGET_VALUE}")
+                return True
+                
+            # 检查超时
+            elapsed = asyncio.get_event_loop().time() - start_time
+            if elapsed > TIMEOUT:
+                self.logger.info(f"❌ 超时错误: 等待PLC动作超时 ({TIMEOUT}s)")
+                return False
+                
+            # 等待一段时间再次检查
+            await asyncio.sleep(0.5)

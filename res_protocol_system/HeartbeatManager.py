@@ -5,24 +5,34 @@ RES+3.1 穿梭车通信协议上位机系统 - 模块化设计
 按功能划分不同模块，便于团队协作维护
 """
 
-import logging
 import threading
 import time
-from .RESProtocol import RESProtocol
 
-# 配置日志记录
-import logging
-logger = logging.getLogger(__name__)
+from .RESProtocol import RESProtocol, FrameType, ErrorHandler
+from .PacketBuilder import PacketBuilder
+from devices.devices_logger import DevicesLogger
 
 # ------------------------
 # 模块 5: 心跳管理器
 # 职责: 维护心跳机制和小车状态
 # 维护者: 核心系统工程师
 # ------------------------
-class HeartbeatManager:
-    def __init__(self, network_manager, packet_builder):
-        self.network = network_manager
-        self.builder = packet_builder
+class HeartbeatManager(DevicesLogger):
+    def __init__(
+            self,
+            NETTWORK_MANAGER,
+            PACKET_BUILDER
+            ):
+        """
+        [初始化心跳管理器]
+
+        ::: param :::
+            NETTWORK_MANAGER: 网络管理实例
+            PACKET_BUILDER: 数据包构造器实例
+        """
+        super().__init__(self.__class__.__name__)
+        self.network = NETTWORK_MANAGER
+        self.builder = PACKET_BUILDER if PACKET_BUILDER else PacketBuilder()
         self.last_heartbeat_time = 0
         self.last_response_time = 0
         self.heartbeat_active = True
@@ -44,12 +54,12 @@ class HeartbeatManager:
     
     def _heartbeat_loop(self):
         """心跳发送循环"""
-        logger.info("[心跳] 开始运行心跳线程")
+        self.logger.info("[心跳] 开始运行心跳线程")
         while self.heartbeat_active:
             try:
                 # 带电量心跳每5次发送一次
-                frame_type = RESProtocol.FrameType.HEARTBEAT_WITH_BATTERY if (
-                    time.time() % 5 < 0.6) else RESProtocol.FrameType.HEARTBEAT
+                frame_type = FrameType.HEARTBEAT_WITH_BATTERY.value if (
+                    time.time() % 5 < 0.6) else FrameType.HEARTBEAT.value
                     
                 packet = self.builder.build_heartbeat(frame_type)
                 
@@ -57,9 +67,9 @@ class HeartbeatManager:
                     self.last_heartbeat_time = time.time()
 
                 # 等待间隔
-                time.sleep(RESProtocol.HEARTBEAT_INTERVAL)
+                time.sleep(RESProtocol.HEARTBEAT_INTERVAL.value)
             except Exception as e:
-                logger.error(f"[心跳] 发生异常: {str(e)}", exc_info=True)
+                self.logger.error(f"[心跳] 发生异常: {str(e)}", exc_info=True)
                 time.sleep(5)
     
     def update_status(self, data):
@@ -73,8 +83,8 @@ class HeartbeatManager:
     
     def handle_error(self, error_code):
         """处理错误码"""
-        error_msg, solution = RESProtocol.ErrorHandler.get_error_info(error_code)
-        is_critical = RESProtocol.ErrorHandler.is_critical_error(error_code)
+        error_msg, solution = ErrorHandler.get_error_info(error_code)
+        is_critical = ErrorHandler.is_critical_error(error_code)
         
         return {
             'error_code': error_code,
@@ -86,4 +96,4 @@ class HeartbeatManager:
     
     def is_connected(self):
         """判断连接状态"""
-        return time.time() - self.last_response_time < RESProtocol.HEARTBEAT_INTERVAL * 3   
+        return time.time() - self.last_response_time < RESProtocol.HEARTBEAT_INTERVAL.value * 3   

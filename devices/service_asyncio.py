@@ -8,7 +8,8 @@ import time
 import random
 
 from .plc_enum import PLCAddress, FLOOR_CODE
-from res_protocol_system import PacketBuilder, PacketParser, RESProtocol
+from res_protocol_system import PacketBuilder, PacketParser
+from res_protocol_system.RESProtocol import RESProtocol, FrameType
 from map_core import PathCustom
 
 # 整数计数器类，用于生成连续的整数
@@ -440,12 +441,12 @@ class DevicesService():
 
     ################### 小车的高级应用 #####################
 
-    def _pack_pre_info(self, frame_type):
+    def _pack_pre_info(self, frame_type: int):
         """
         构建报文前段信息
         格式: 报文版本(4bit) 报文类型(4bit)
         """
-        version_type = (RESProtocol.VERSION << 4) | (frame_type & 0x0F)
+        version_type = (RESProtocol.VERSION.value << 4) | (frame_type & 0x0F)
         return struct.pack('!B',version_type)
     
     def segments_task_len(self, segments):
@@ -464,10 +465,10 @@ class DevicesService():
 
     # 心跳报文
     def heartbeat(self):
-        header = RESProtocol.HEADER
+        header = RESProtocol.HEADER.value
         device_id = struct.pack('B', 2)
         message = b'\x10\x00\x0b'
-        footer = RESProtocol.FOOTER
+        footer = RESProtocol.FOOTER.value
         data = header + device_id + self.counter() + message
         crc = self.builder._calculate_crc(data)
         packet = data + crc + footer
@@ -483,19 +484,19 @@ class DevicesService():
     #     self.logger.info(packet)
 
     # 更换位置指令报文
-    def location_change(self, location):
+    def location_change(self, LOCATION: str):
         """
         构建调试指令报文
         固定长度19字节
-        :param location: "x,y,z"
+        :param LOCATION: "x,y,z"
         :return: 调试指令报文
         """
         
         # 构建基础头部
-        header = RESProtocol.HEADER
+        header = RESProtocol.HEADER.value
         device_id = struct.pack('B', 2)
         life = self.counter()
-        packet_info = self._pack_pre_info(RESProtocol.FrameType.COMMAND)
+        packet_info = self._pack_pre_info(FrameType.COMMAND.value)
 
         # 调试指令信息
         # task_no = 2
@@ -504,12 +505,12 @@ class DevicesService():
         # cmd_info = struct.pack('!BBB', task_no, cmd_no, cmd)
         cmd_info = b'\x02\xbd\x50'
 
-        location = tuple(map(int, location.split(',')))
+        location = tuple(map(int, LOCATION.split(',')))
         # 位置数据
         x, y, z = location[0], location[1], location[2]
         # 位置编码: X(8位) | Y(8位) | Z(8位) | 动作(8位)
         position = struct.pack('!BBBB', 0, x, y, z)
-        self.logger.info("位置编码: ", position)
+        self.logger.info(f"[CAR] 位置编码: {position}")
 
         # 组合数据部份
         payload = cmd_info + position
@@ -521,11 +522,11 @@ class DevicesService():
         crc = self.builder._calculate_crc(data_part)
 
         # 基础尾部字段
-        footer = RESProtocol.FOOTER
+        footer = RESProtocol.FOOTER.value
         
         # 组合完整报文
         packet = data_part + crc + footer
-        self.logger.info("[发送] 调试指令报文: ", packet)
+        self.logger.info(f"[CAR] 调试指令报文: {packet}")
         
         # 返回报文
         return packet
@@ -542,7 +543,7 @@ class DevicesService():
         header = b'\x02\xfd'
         device_id = struct.pack('B', 2)
         life = self.counter()
-        packet_info = self._pack_pre_info(RESProtocol.FrameType.TASK)
+        packet_info = self._pack_pre_info(FrameType.TASK.value)
         
         # 构建数据内容
         # 计算动态长度: 4字节*段数
@@ -572,7 +573,7 @@ class DevicesService():
         crc = self.builder._calculate_crc(data_part)
         
         # 基础尾部字段
-        footer = RESProtocol.FOOTER
+        footer = RESProtocol.FOOTER.value
 
         # 组装报文
         packet = data_part + crc + footer
@@ -590,10 +591,10 @@ class DevicesService():
         :return: 任务报文
         """
         # 构建基础头部
-        header = RESProtocol.HEADER
+        header = RESProtocol.HEADER.value
         device_id = struct.pack('B', 2)
         life = self.counter()
-        packet_info = self._pack_pre_info(RESProtocol.FrameType.COMMAND)
+        packet_info = self._pack_pre_info(FrameType.COMMAND.value)
         
         # 构建数据内容
         # 任务号
@@ -619,7 +620,7 @@ class DevicesService():
         crc = self.builder._calculate_crc(data_part)
         
         # 基础尾部字段
-        footer = RESProtocol.FOOTER
+        footer = RESProtocol.FOOTER.value
 
         # 组装报文
         packet = data_part + crc + footer

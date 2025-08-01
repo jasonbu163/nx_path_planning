@@ -52,7 +52,12 @@ class PLCController(PLCConnectionBase):
         # 返回原数据
         # return db
     
-    def life_move(self, TASK_TYPE, TASK_NUM, END_FLOOR) -> None:
+    def lift_move(
+            self,
+            TASK_TYPE: int,
+            TASK_NUM: int,
+            END_FLOOR: int
+            ) -> None:
         """
         [电梯操作] - 控制电梯到达目标楼层
 
