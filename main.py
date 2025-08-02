@@ -1,39 +1,57 @@
 # main.py
 from fastapi import FastAPI
-from api.v1.wcs import routes as wcs_routes
-from api.v1.wms import routes as wms_routes
+from api.v1.wcs import routes as wcs_v1_routes
+from api.v1.wms import routes as wms_v1_routes
+from api.v2.wcs import routes as wcs_v2_routes
+from api.v2.wms import routes as wms_v2_routes
 # from daemon.scheduler import TaskScheduler
 
 app = FastAPI(
     title="仓库管理系统 API",
     description="WMS/WCS 整合管理系统",
-    version="1.0.0",
-    openapi_url="/api/v1/openapi.json",
-    docs_url="/api/v1/docs",
-    redoc_url="/api/v1/redoc"
+    version="2.0.0",
+    openapi_url="/api/v2/openapi.json",
+    docs_url="/api/v2/docs",
+    redoc_url="/api/v2/redoc"
 )
 
-# 包含 WMS 路由
+# 包含 WMS 路由 (v1)
 app.include_router(
-    wms_routes.router,
+    wms_v1_routes.router,
     prefix="/api/v1/wms",
-    tags=["WMS"]
+    tags=["WMS-v1"]
 )
 
-# 包含 WCS 路由
+# 包含 WCS 路由 (v1)
 app.include_router(
-    wcs_routes.router,
+    wcs_v1_routes.router,
     prefix="/api/v1/wcs",
-    tags=["WCS"]
+    tags=["WCS-v1"]
+)
+
+# 包含 WMS 路由 (v2)
+app.include_router(
+    wms_v2_routes.router,
+    prefix="/api/v2/wms",
+    tags=["WMS-v2"]
+)
+
+# 包含 WCS 路由 (v2)
+app.include_router(
+    wcs_v2_routes.router,
+    prefix="/api/v2/wcs",
+    tags=["WCS-v2"]
 )
 
 @app.get("/")
 def root():
     return {
         "message": "仓库管理系统 API 已启动",
-        "documentation": "/api/v1/docs",
-        "wms_api": "/api/v1/wms",
-        "wcs_api": "/api/v1/wcs"
+        "documentation": "/api/v2/docs",
+        "wms_v1_api": "/api/v1/wms",
+        "wcs_v1_api": "/api/v1/wcs",
+        "wms_v2_api": "/api/v2/wms",
+        "wcs_v2_api": "/api/v2/wcs"
     }
 
 # scheduler = TaskScheduler()

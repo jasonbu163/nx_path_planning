@@ -1,4 +1,4 @@
-# api/v1/wcs/schemas.py
+# api/v2/wcs/schemas.py
 from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Optional, Generic, TypeVar
@@ -33,18 +33,48 @@ class Task(TaskBase):
 
 # WCS Location Schema
 class LocationBase(BaseModel):
+
     """库位基础模型"""
     location: str = Field(..., examples=["1,1,4"], description="库位坐标")
-    status: Optional[str] = Field(default="FREE", examples=["FREE", "OCCUPIED"], description="库位状态")
+    status: Optional[str] = Field(
+        default="free",
+        examples=["free", "occupied", "highway", "lift"],
+        description="库位状态: free - 可用库位, occupied - 库位已经使用, highway - 过道位置, lift - 为电梯位置"
+        )
     pallet_id: Optional[str] = Field(None, examples=["P1001"], description="托盘号")
 
-class LocationPallet(LocationBase):
-    """托盘号修改"""
+class LocationID(BaseModel):
+    """库位ID"""
+    id: Optional[int] = Field(default=1, examples=[1, 2, 3], description="库位ID")
+
+class LocationPosition(BaseModel):
+    """库位坐标"""
+    location: Optional[str] = Field(default="1,1,4", examples=["1,1,4"], description="库位坐标")
+
+class LocationPallet(BaseModel):
+    """托盘号"""
+    pallet_id: Optional[str] = Field(..., examples=["P1001"], description="托盘号")
+
+class UpdatePalletByID(LocationID):
+    """更新托盘号 - 根据位置ID"""
     new_pallet_id: Optional[str] = Field(..., examples=["P1001"], description="托盘号")
 
-class LocationStatusUpdate(LocationBase):
-    """库位状态修改"""
-    new_status: Optional[str] = Field(..., examples=["OCCUPIED"], description="新状态")
+class UpdatePalletByLocation(LocationPosition):
+    """更新托盘号 - 根据位置坐标"""
+    new_pallet_id: Optional[str] = Field(..., examples=["P1001"], description="托盘号")
+
+class LocationStatus(BaseModel):
+    """库位状态"""
+    status: Optional[str] = Field(..., examples=["free"], description="新状态")
+
+class UpdateStatusByID(LocationID):
+    """更新托盘号 - 根据位置ID"""
+    new_status: Optional[str] = Field(..., examples=["free"], description="新状态")
+
+class UpdateStatusByLocation(LocationPosition):
+    """更新托盘号 - 根据位置坐标"""
+    new_status: Optional[str] = Field(..., examples=["free"], description="新状态")
+
 
 class Location(LocationBase):
     """WCS库位模型"""
@@ -59,20 +89,11 @@ class PathBase(BaseModel):
     source: str = Field(..., examples=["1,1,1"], description="起始点")
     target: str = Field(..., examples=["6,3,1"], description="目标点")
 
-class CarMovePath(PathBase):
-    """WCS路径模型"""
-    path: list[str]
-
-class GoodMovePath(PathBase):
-    """WCS路径切割模型"""
-    points: list[str]
-
 class CarMoveBase(BaseModel):
+    """WCS穿梭车基础模型"""
     target: str = Field(..., examples=["6,3,1"], description="目标点")
 
 class LiftBase(BaseModel):
-    """WCS提升机基础模型"""
-    # task_type: int = Field(..., examples=[1, 2, 4], description="任务类型")
-    # task_num: int = Field(..., examples=[1, 2, 3], description="任务号")
-    location_id: int = Field(..., examples=[1, 2, 3], description="提升机位置ID")
+    """WCS电梯基础模型"""
+    layer: int = Field(..., examples=[1, 2, 3], description="电梯楼层")
 

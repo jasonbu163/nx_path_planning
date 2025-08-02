@@ -850,7 +850,7 @@ class DevicesService():
         # 告诉PLC目标层到达
         self.write_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 1)
 
-        # 写入出库
+       # 写入出库
         data = struct.pack('!H', FLOOR_CODE.GATE)
         time.sleep(1)
         self.write_db(12, PLCAddress.TARGET_1020.value, data)

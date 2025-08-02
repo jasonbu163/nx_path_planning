@@ -1,4 +1,4 @@
-# /api/v1/wms/schemas.py
+# /api/v2/wms/schemas.py
 from pydantic import BaseModel, Field
 from pydantic.fields import FieldInfo
 from datetime import datetime

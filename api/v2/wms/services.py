@@ -1,4 +1,4 @@
-# api/v1/wms/services.py
+# api/v2/wms/services.py
 from sqlalchemy.orm import Session
 from models.base_model import OrderList as OrderModel
 from . import schemas

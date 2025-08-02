@@ -2,6 +2,7 @@
 
 import time
 import struct
+from typing import Union
 
 from .plc_connection_module import PLCConnectionBase
 from .plc_enum import PLCAddress, FLOOR_CODE
@@ -18,7 +19,8 @@ class PLCController(PLCConnectionBase):
         ::: param :::
             PLC_IP: plc地址, 如 “192.168.3.10”
         """
-        super().__init__(PLC_IP)
+        self._plc_ip = PLC_IP
+        super().__init__(self._plc_ip)
 
     # 二进制字符串转字节码
     def binary2bytes(self, BINARY_STR) -> bytes:
@@ -55,7 +57,7 @@ class PLCController(PLCConnectionBase):
     def lift_move(
             self,
             TASK_TYPE: int,
-            TASK_NUM: int,
+            TASK_NO: int,
             END_FLOOR: int
             ) -> None:
         """
@@ -63,11 +65,11 @@ class PLCController(PLCConnectionBase):
 
         ::: param :::
             TASK_TYPE: 任务类型
-            TASK_NUM: 任务号
+            TASK_NO: 任务号
             END_FLOOR: 目标层
         """
         task_type = struct.pack('!H', TASK_TYPE)
-        task_num = struct.pack('!H', TASK_NUM)
+        task_num = struct.pack('!H', TASK_NO)
         # start_floor = struct.pack('!H', start_floor)
         # start_floor = self.get_lift()
         end_floor = struct.pack('!H', END_FLOOR)
@@ -115,11 +117,17 @@ class PLCController(PLCConnectionBase):
         """
         # 目标层到达
         self.write_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 1)
+
+        # 写入出库指令
+        data = struct.pack('!H', FLOOR_CODE.GATE)
+        time.sleep(1)
+        self.write_db(12, PLCAddress.TARGET_1020.value, data)
+        time.sleep(1)
+        if self.read_db(12, PLCAddress.TARGET_1020.value, 2) == data:
+            self.write_db(12, PLCAddress.TARGET_1020.value, b'\x00\x00')
+        # 清除目标到达信号
         if self.read_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 1) == 1:
             self.write_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 0)
-
-        data = struct.pack('!H', FLOOR_CODE.GATE)
-        self.write_db(12, PLCAddress.TARGET_1020.value, data)
 
     def floor_to_lift(self, FLOOR_ID: int) -> None:
         """
@@ -391,3 +399,30 @@ class PLCController(PLCConnectionBase):
         else:
             self.logger.warning("[PLC] 无效的楼层")
             raise ValueError("[PLC] Invalid target floor")
+        
+    
+    ########################################################
+    ##################### 扫码相机函数 #######################
+    ########################################################
+    
+    def scan_qrcode(self) -> Union[bytes, bool]:
+        """
+        [获取二维码] - 入库口输送线扫码相机控制
+
+        ::: return :::
+            qrcode: 设备获取的二维码信息
+        """
+        is_qrcode = self.read_db(11, int(PLCAddress.SCAN_CODE_RD.value), 2)
+        self.logger.info(f"🙈 是否扫到码: {is_qrcode}")
+        if is_qrcode == b'\x00\x01':
+            qrcode = bytes()
+            # for code_db_addr in range(24, 29):
+            #     items = self.read_db(11, code_db_addr, 1)
+            #     qrcode += items
+            for code_db_addr in range(24, 44):
+                items = self.read_db(11, code_db_addr, 1)
+                if items != b'\x00':
+                    qrcode += items
+            return qrcode
+        else:
+            return False

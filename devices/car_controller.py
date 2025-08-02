@@ -32,7 +32,9 @@ class CarController(CarConnectionBase):
             CAR_IP: plc地址, 如 “192.168.3.30”
             CAR_PORT: plc端口, 如 2504
         """
-        super().__init__(CAR_IP, CAR_PORT)
+        self._car_ip = CAR_IP
+        self._car_port = CAR_PORT
+        super().__init__(self._car_ip, self._car_port)
         self._car_id = self.set_car_id()
         self.builder = PacketBuilder(self._car_id)
         self.parser = PacketParser()
@@ -216,16 +218,14 @@ class CarController(CarConnectionBase):
             await self.close()
             return False
 
-    async def car_move(self, TARGET_LOCATION: str) -> bool:
+    async def car_move(self, TASK_NO: int, TARGET_LOCATION: str) -> bool:
         """
         [穿梭车移动]
 
         ::: param :::
+            TASK_NO: 任务号(1-255)
             TARGET_LOCATION: 小车移动目标 如，"6,3,1"
         """
-        # 创建任务号
-        import random
-        task_no = random.randint(1, 255)
 
         # 获取小车当前坐标
         heartbeat_msg = await self.send_heartbeat(1)
@@ -248,13 +248,13 @@ class CarController(CarConnectionBase):
             return False
 
         # 发送任务报文
-        task_packet = self.builder.build_task(task_no, segments)
+        task_packet = self.builder.build_task(TASK_NO, segments)
         if await self.connect():
             await self.send_message(task_packet)
             response = await self.receive_message()
             if response:
                 # 发送任务确认执行报文
-                do_packet = self.builder.do_task(task_no, segments)
+                do_packet = self.builder.do_task(TASK_NO, segments)
                 await self.send_message(do_packet)
                 response = await self.receive_message()
                 if response:
@@ -301,16 +301,14 @@ class CarController(CarConnectionBase):
         return new_list
     
 
-    async def good_move(self, TARGET_LOCATION: str) -> bool:
+    async def good_move(self, TASK_NO: int, TARGET_LOCATION: str) -> bool:
         """
         [穿梭车带货移动] - 发送移动货物任务
         
-        :::: param :::
+        :::: param ::
+            TASK_NO: 任务号(1-255)
             TARGET_LOCATION: 小车移动目标 如 "1,1,1"
         """
-        # 创建任务号
-        import random
-        task_no = random.randint(1, 255)
 
         # 获取小车当前坐标
         heartbeat_msg = await self.send_heartbeat(1)
@@ -334,13 +332,13 @@ class CarController(CarConnectionBase):
             return False
 
         # 发送任务报文
-        task_packet = self.builder.build_task(task_no, segments)
+        task_packet = self.builder.build_task(TASK_NO, segments)
         if await self.connect():
             await self.send_message(task_packet)
             response = await self.receive_message()
             if response:
                 # 发送任务确认执行报文
-                do_packet = self.builder.do_task(task_no, segments)
+                do_packet = self.builder.do_task(TASK_NO, segments)
                 await self.send_message(do_packet)
                 response = await self.receive_message()
                 if response:

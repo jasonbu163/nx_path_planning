@@ -131,22 +131,26 @@ class PLCAddress(PLCAddressBase, Enum):
     ERROR_3 = 48.7, "错误3"
     H_DATA = 50, "高度数据"
     
-    STATUS_1010 = 52.0, "1010状态(1待机0工作中)"
+    # 状态
+    # 1: 无货, 没动
+    # 0: 有货, 没动
+    # 0: 无货, 移动中
+    # 0: 有货, 移动中
+    STATUS_1010 = 52.0, "1010状态"
     STATUS_1020 = 52.1, "1020状态"
     STATUS_1030 = 52.2, "1030状态"
     STATUS_1040 = 52.3, "1040状态"
     STATUS_1050 = 52.4, "1050状态"
     STATUS_1060 = 52.5, "1060状态"
     
-    PLATFORM_PALLET_READY_1020 = 52.6, "1020载物台托盘到位(1到位0无)"
-    
     INBAND_START = 52.7, "入库放料完成"
 
-    PLATFORM_PALLET_READY_MAN = 53.0, "1010载物台托盘到位(1到位0无) 出入口"
-    PLATFORM_PALLET_READY_1030 = 53.1, "1030载物台托盘到位(1到位0无)"
-    PLATFORM_PALLET_READY_1040 = 53.2, "1040载物台托盘到位(1到位0无)"
-    PLATFORM_PALLET_READY_1050 = 53.3, "1050载物台托盘到位(1到位0无)"
-    PLATFORM_PALLET_READY_1060 = 53.4, "1060载物台托盘到位(1到位0无)"
+    PLATFORM_PALLET_READY_MAN = 53.0, "1010载物台托盘到位(1到位0无), 出入口"
+    PLATFORM_PALLET_READY_1020 = 52.6, "1020载物台托盘到位(1到位0无),电梯"
+    PLATFORM_PALLET_READY_1030 = 53.1, "1030载物台托盘到位(1到位0无), 库内1层"
+    PLATFORM_PALLET_READY_1040 = 53.2, "1040载物台托盘到位(1到位0无), 库内2层"
+    PLATFORM_PALLET_READY_1050 = 53.3, "1050载物台托盘到位(1到位0无), 库内3层"
+    PLATFORM_PALLET_READY_1060 = 53.4, "1060载物台托盘到位(1到位0无), 库内4层"
 
 
     ################

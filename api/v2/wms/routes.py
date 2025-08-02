@@ -1,9 +1,7 @@
-# api/v1/wms/routes.py
+# api/v2/wms/routes.py
 from fastapi import APIRouter, HTTPException
-# from services.planner import AStarPlanner
-# from services.car_commander import CarCommander
-# from services.task_service import TaskService
 from sqlalchemy.orm import Session
+
 from api.v1.wms import schemas, services
 from api.v1.core.dependencies import get_database
 
