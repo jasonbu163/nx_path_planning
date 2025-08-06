@@ -3,8 +3,6 @@ import streamlit as st
 import requests
 from api_config import API_BASE
 
-st.title("⚙️ 校准小车位置")
-
 st.image("img/locations.png")
 
 # 统一设置任务层号

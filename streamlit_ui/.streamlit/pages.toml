@@ -1,0 +1,34 @@
+[[pages]]
+path = "tool_pages/main_page.py"
+name = "首页"
+icon = "🏠"
+
+[[pages]]
+path = "tool_pages/car_position_calibration.py"
+name = "穿梭车位置校准"
+icon = "⚙️"
+
+[[pages]]
+path = "tool_pages/car_move.py"
+name = "穿梭车移动操作"
+icon = "🚗" 
+
+[[pages]]
+path = "tool_pages/task_outband.py"
+name = "出库操作"
+icon = "📤"
+
+[[pages]]
+path = "tool_pages/task_inband.py"
+name = "入库操作"
+icon = "📥" 
+
+[[pages]]
+path = "tool_pages/good_move.py"
+name = "货物移动操作"
+icon = "📦" 
+
+[[pages]]
+path = "tool_pages/car_cross_layer.py"
+name = "穿梭车跨层操作"
+icon = "🚚" 

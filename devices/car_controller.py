@@ -1,9 +1,11 @@
 # devices/car_controller.py
 
 from typing import Union, Any
+import time
 import asyncio
 
-from .car_connection_module import CarConnectionBase
+from config import CAR_ACTION_TIMEOUT
+from .car_connection_module import CarConnectionBase, CarConnection
 from map_core import PathCustom
 from .car_enum import CarStatus
 from res_protocol_system import (
@@ -60,7 +62,7 @@ class CarController(CarConnectionBase):
     # 发送心跳包 - 读取穿梭车
     ########################################
 
-    async def send_heartbeat(self, TIMES: int) -> Any:
+    def send_heartbeat(self, TIMES: int=3) -> Any:
         """
         [发送心跳包] - 心跳报文可以获取穿梭车状态
 
@@ -72,30 +74,32 @@ class CarController(CarConnectionBase):
         """
         for i in range(TIMES):
             packet = self.builder.heartbeat()
-            if await self.connect():
-                await self.send_message(packet)
-                response = await self.receive_message()
+            self.connect()
+            if self.is_connected():
+                time.sleep(1)
+                self.send_message(packet)
+                response = self.receive_message()
                 if response:
+                    self.close()
                     msg = self.parser.parse_heartbeat_response(response)
                     self.logger.info(msg)
-                    await self.close()
                     return msg
                 else:
+                    self.close()
                     self.logger.error("[CAR] 📰 未收到 [心跳] 响应报文！")
-                    await self.close()
                     return {
                         "status": False,
                         "msg": "未收到 [心跳] 响应报文！"
                     }
             else:
+                self.close()
                 self.logger.error("[CAR] 🚗 穿梭车未连接！")
-                await self.close()
                 return {
                         "status": False,
                         "msg": "穿梭车未连接！"
                     }
 
-    async def car_power(self, TIMES: int) -> Any:
+    def car_power(self, TIMES: int=3) -> Any:
         """
         [获取穿梭车电量] - 发送电量心跳包，获取穿梭车电量
 
@@ -107,25 +111,26 @@ class CarController(CarConnectionBase):
         """
         for i in range(TIMES):
             packet = self.builder.build_heartbeat(FrameType.HEARTBEAT_WITH_BATTERY)
-            if await self.connect():
-                await self.send_message(packet)
-                response = await self.receive_message()
+            self.connect()
+            if self.is_connected():
+                self.send_message(packet)
+                response = self.receive_message()
                 if response:
+                    self.close()
                     msg = self.parser.parse_hb_power_response(response)
                     self.logger.info(msg)
-                    await self.close()
                     car_power_msg = msg['power']
                     return car_power_msg
                 else:
+                    self.close()
                     self.logger.error("[CAR] ⚡️ 未收到 [电量心跳] 响应报文！")
-                    await self.close()
                     return False
             else:
+                self.close()
                 self.logger.error("[CAR] 🚗 穿梭车未连接！")
-                await self.close()
                 return False
     
-    async def car_status(self, TIMES: int) -> dict:
+    def car_status(self, TIMES: int=3) -> dict:
         """
         [获取穿梭车状态] - 发送心跳报文，获取穿梭车状态信息
 
@@ -134,7 +139,7 @@ class CarController(CarConnectionBase):
         ::: return :::
             car_status: 穿梭车状态信息
         """
-        heartbeat_msg = await self.send_heartbeat(TIMES)
+        heartbeat_msg = self.send_heartbeat(TIMES)
         car_status = CarStatus.get_info_by_value(heartbeat_msg['car_status'])
         self.logger.info(f"[CAR] 穿梭车状态码: {heartbeat_msg['car_status']}时, 穿梭车状态: {car_status['name']}, 状态描述: {car_status['description']}")
         return {
@@ -143,7 +148,7 @@ class CarController(CarConnectionBase):
              'description': car_status['description']
              }
 
-    async def car_current_location(self, TIMES: int) -> str:
+    def car_current_location(self, TIMES: int=3) -> str:
         """
         [获取小车位置]
 
@@ -153,14 +158,19 @@ class CarController(CarConnectionBase):
         ::: return :::
             car_location: 小车当前位置, 例如: "6,3,1"
         """
-        heartbeat_msg = await self.send_heartbeat(TIMES)
+        heartbeat_msg = self.send_heartbeat(TIMES)
         location_info = heartbeat_msg['current_location']
         car_location = f"{location_info[0]},{location_info[1]},{location_info[2]}"
         return car_location
     
-    async def wait_car_move_complete_by_location(self, LOCATION: str) -> bool:
+
+    def wait_car_move_complete_by_location_sync(
+            self,
+            LOCATION: str,
+            TIMEOUT: float = CAR_ACTION_TIMEOUT
+            ) -> bool:
         """
-        [穿梭车等待器] - 等待穿梭车移动到指定位置
+        [同步 - 穿梭车等待器] 等待穿梭车移动到指定位置
 
         ::: param :::
             LOCATION: 目标位置 如 "6,3,1"
@@ -168,21 +178,72 @@ class CarController(CarConnectionBase):
         ::: return :::
             用于确认等到的标志 bool
         """
+        
         target_loc = list(map(int, LOCATION.split(',')))
         target_x, target_y, target_z = target_loc[0], target_loc[1], target_loc[2]
-        
         self.logger.info(f"[CAR] ⏳ 等待小车移动到位置: {LOCATION}")
+
+        time.sleep(2)
+        start_time = time.time()
         
         while True:
             # 获取小车当前位置
-            car_location = await self.car_current_location(1)
+            car_location = self.car_current_location(1)
             car_cur_loc = list(map(int, car_location.split(',')))
             car_x, car_y, car_z = car_cur_loc[0], car_cur_loc[1], car_cur_loc[2]
             
             if (car_x == target_x) and (car_y == target_y) and (car_z == target_z):
-                self.logger.info("[CAR] ✅ 小车已到达目标位置")
+                self.logger.info(f"[CAR] ✅ 小车已到达目标位置 {LOCATION}")
                 return True
             
+            # 检查超时
+            elapsed = asyncio.get_event_loop().time() - start_time
+            if elapsed > TIMEOUT:
+                self.logger.info(f"❌ 超时错误: 等待🚗动作超时 ({TIMEOUT}s)")
+                return False
+            
+            # 等待一段时间再次检查
+            time.sleep(1)
+
+    async def wait_car_move_complete_by_location(
+            self,
+            LOCATION: str,
+            TIMEOUT: float = CAR_ACTION_TIMEOUT
+            ) -> bool:
+        """
+        [异步 - 穿梭车等待器] 等待穿梭车移动到指定位置
+
+        ::: param :::
+            LOCATION: 目标位置 如 "6,3,1"
+
+        ::: return :::
+            用于确认等到的标志 bool
+        """
+        
+        target_loc = list(map(int, LOCATION.split(',')))
+        target_x, target_y, target_z = target_loc[0], target_loc[1], target_loc[2]
+        self.logger.info(f"[CAR] ⏳ 等待小车移动到位置: {LOCATION}")
+
+        await asyncio.sleep(2)
+        start_time = asyncio.get_event_loop().time()
+        
+        while True:
+            # 获取小车当前位置
+            car_location = await asyncio.to_thread(self.car_current_location)
+            car_cur_loc = list(map(int, car_location.split(',')))
+            car_x, car_y, car_z = car_cur_loc[0], car_cur_loc[1], car_cur_loc[2]
+            
+            if (car_x == target_x) and (car_y == target_y) and (car_z == target_z):
+                self.logger.info(f"[CAR] ✅ 小车已到达目标位置 {LOCATION}")
+                return True
+            
+            # 检查超时
+            elapsed = asyncio.get_event_loop().time() - start_time
+            if elapsed > TIMEOUT:
+                self.logger.info(f"❌ 超时错误: 等待🚗动作超时 ({TIMEOUT}s)")
+                return False
+            
+            # 等待一段时间再次检查
             await asyncio.sleep(1)
 
     
@@ -190,7 +251,7 @@ class CarController(CarConnectionBase):
     # 发送任务包 - 操作穿梭车
     ########################################
 
-    async def change_car_location(self, TASK_NO: int, CAR_LOCATION: str) -> bool:
+    def change_car_location(self, TASK_NO: int, CAR_LOCATION: str) -> bool:
         """
         [修改穿梭车位置] - 发送指令包, 修改穿梭车坐标
         
@@ -200,25 +261,25 @@ class CarController(CarConnectionBase):
         """
         packet = self.builder.location_change(TASK_NO, CAR_LOCATION)
         self.logger.info(packet)
-        if await self.connect():
-            await self.send_message(packet)
-            response = await self.receive_message()
+        if self.connect():
+            self.send_message(packet)
+            response = self.receive_message()
             self.logger.info(response)
             if response:
                 msg = self.parser.parse_command_response(response)
                 self.logger.info(msg)
-                await self.close()
+                self.close()
                 return True
             else:
                 self.logger.error("[CAR] 📰 未收到 [指令] 响应报文！")
-                await self.close()
+                self.close()
                 return False
         else:
             self.logger.error("[CAR] 位置修改失败")
-            await self.close()
+            self.close()
             return False
 
-    async def car_move(self, TASK_NO: int, TARGET_LOCATION: str) -> bool:
+    def car_move(self, TASK_NO: int, TARGET_LOCATION: str) -> bool:
         """
         [穿梭车移动]
 
@@ -228,7 +289,7 @@ class CarController(CarConnectionBase):
         """
 
         # 获取小车当前坐标
-        heartbeat_msg = await self.send_heartbeat(1)
+        heartbeat_msg = self.send_heartbeat(1)
         location_info = heartbeat_msg['current_location']
         car_current_location = f"{location_info[0]},{location_info[1]},{location_info[2]}"
         self.logger.info(f"[CAR] 穿梭车当前位置: {car_current_location}")
@@ -249,30 +310,30 @@ class CarController(CarConnectionBase):
 
         # 发送任务报文
         task_packet = self.builder.build_task(TASK_NO, segments)
-        if await self.connect():
-            await self.send_message(task_packet)
-            response = await self.receive_message()
-            if response:
+        if self.connect():
+            self.send_message(task_packet)
+            task_response = self.receive_message()
+            if task_response:
                 # 发送任务确认执行报文
                 do_packet = self.builder.do_task(TASK_NO, segments)
-                await self.send_message(do_packet)
-                response = await self.receive_message()
-                if response:
-                    msg = self.parser.parse_task_response(response)
+                self.send_message(do_packet)
+                do_response = self.receive_message()
+                if do_response:
+                    msg = self.parser.parse_task_response(do_response)
                     self.logger.info(msg)
-                    await self.close()
+                    self.close()
                     return True
                 else:
                     self.logger.error("[CAR] 📰 未收到 [指令] 响应报文！")
-                    await self.close()
+                    self.close()
                     return False
             else:
                 self.logger.error("[CAR] 📰 未收到 [任务] 响应报文！")
-                await self.close()
+                self.close()
                 return False
         else:
             self.logger.error("[CAR] 🚗 穿梭车未连接！")
-            await self.close()
+            self.close()
             return False
 
     def add_pick_drop_actions(self, POINT_LIST: list) -> list:
@@ -301,7 +362,7 @@ class CarController(CarConnectionBase):
         return new_list
     
 
-    async def good_move(self, TASK_NO: int, TARGET_LOCATION: str) -> bool:
+    def good_move(self, TASK_NO: int, TARGET_LOCATION: str) -> bool:
         """
         [穿梭车带货移动] - 发送移动货物任务
         
@@ -311,7 +372,7 @@ class CarController(CarConnectionBase):
         """
 
         # 获取小车当前坐标
-        heartbeat_msg = await self.send_heartbeat(1)
+        heartbeat_msg = self.send_heartbeat()
         location_info = heartbeat_msg['current_location']
         car_current_location = f"{location_info[0]},{location_info[1]},{location_info[2]}"
         self.logger.info(f"[CAR] 穿梭车当前位置: {car_current_location}")
@@ -331,30 +392,37 @@ class CarController(CarConnectionBase):
             self.logger.error(f"[CAR] 无法创建移动路径: {segments}")
             return False
 
-        # 发送任务报文
-        task_packet = self.builder.build_task(TASK_NO, segments)
-        if await self.connect():
-            await self.send_message(task_packet)
-            response = await self.receive_message()
-            if response:
+        # 开启连接
+        if self.connect():
+            # 发送整体任务报文
+            task_packet = self.builder.build_task(TASK_NO, segments)
+            self.send_message(task_packet)
+            # 接收整体任务报文
+            task_response = self.receive_message()
+            if task_response:
+                task_msg = self.parser.parse_task_response(task_response)
+                self.logger.info(f"[CAR] 解析整体任务响应结果: {task_msg}")
+                
                 # 发送任务确认执行报文
                 do_packet = self.builder.do_task(TASK_NO, segments)
-                await self.send_message(do_packet)
-                response = await self.receive_message()
-                if response:
-                    msg = self.parser.parse_task_response(response)
-                    self.logger.info(msg)
-                    await self.close()
+                self.send_message(do_packet)
+                # 接收任务确认执行报文
+                do_response = self.receive_message()
+                if do_response:
+                    do_msg = self.parser.parse_task_response(do_response)
+                    self.logger.info(f"[CAR] 解析任务执行指令响应结果: {do_msg}")
+                    # 关闭连接
+                    self.close()
                     return True
                 else:
                     self.logger.error("[CAR] 📰 未收到 [指令] 响应报文！")
-                    await self.close()
+                    self.close()
                     return False
             else:
                 self.logger.error("[CAR] 📰 未收到 [任务] 响应报文！")
-                await self.close()
+                self.close()
                 return False
         else:
             self.logger.error("[CAR] 🚗 穿梭车未连接！")
-            await self.close()
+            self.close()
             return False

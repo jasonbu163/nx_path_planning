@@ -6,9 +6,10 @@ sys_path.setup_path()
 from res_protocol_system import PacketBuilder, PacketParser
 from res_protocol_system.RESProtocol import RESProtocol, FrameType, WorkCommand, CarStatus
 from devices.car_controller import CarController
+from devices.service_asyncio import DevicesService
 
 
-builder = PacketBuilder(1)
+builder = PacketBuilder(2)
 
 # packet = builder.heartbeat()
 # packet = builder.build_heartbeat()

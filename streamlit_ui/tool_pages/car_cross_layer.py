@@ -3,8 +3,6 @@ import streamlit as st
 import requests
 from api_config import API_BASE
 
-st.title("🚚 小车跨层操作")
-
 st.image("img/locations.png")
 
 st.subheader("🚧 电梯先到需要跨层🚗小车楼层！！")

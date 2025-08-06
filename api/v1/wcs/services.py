@@ -8,7 +8,7 @@ from typing import Optional
 import time
 
 from map_core import PathCustom
-from devices.service_asyncio import DevicesService, PLCAddress
+from devices.service_asyncio import DevicesService, DB_11, DB_12
 from devices import plc_enum
 
 path_planner = PathCustom()
@@ -136,11 +136,11 @@ async def lift_by_id(location_id: int):
     await device_service.async_connect()
 
     # 任务识别
-    lift_running = device_service.read_bit(11, PLCAddress.RUNNING.value)
-    lift_idle = device_service.read_bit(11, PLCAddress.IDLE.value)
-    lift_no_cargo = device_service.read_bit(11, PLCAddress.NO_CARGO.value)
-    lift_has_car = device_service.read_bit(11, PLCAddress.HAS_CAR.value)
-    lift_has_cargo = device_service.read_bit(11, PLCAddress.HAS_CARGO.value)
+    lift_running = device_service.read_bit(11, DB_11.RUNNING.value)
+    lift_idle = device_service.read_bit(11, DB_11.IDLE.value)
+    lift_no_cargo = device_service.read_bit(11, DB_11.NO_CARGO.value)
+    lift_has_car = device_service.read_bit(11, DB_11.HAS_CAR.value)
+    lift_has_cargo = device_service.read_bit(11, DB_11.HAS_CARGO.value)
 
     print(f"0:{lift_running} 1:{lift_idle} 2:{lift_no_cargo} 3:{lift_has_car} 4:{lift_has_cargo}")
 
@@ -157,33 +157,33 @@ async def lift_by_id(location_id: int):
             device_service.lift_move(plc_enum.LIFT_TASK_TYPE.IDEL, task_num, location_id)
                 ######################## 电梯清零 #################################
             # 确认电梯到位后，清除到位状态
-            if device_service.read_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value) == 1:
-                device_service.write_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 0)
+            if device_service.read_bit(12, DB_12.TARGET_LAYER_ARRIVED.value) == 1:
+                device_service.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
             
             time.sleep(2)
-            await device_service.wait_for_bit_change(11, PLCAddress.RUNNING.value, 0)
+            await device_service.wait_for_bit_change(11, DB_11.RUNNING.value, 0)
             await device_service.disconnect()
             return True, "提升机运行结束"
         
         elif lift_running==0 and lift_idle==1 and lift_no_cargo==1 and lift_has_cargo==0 and lift_has_car==1:
             device_service.lift_move(plc_enum.LIFT_TASK_TYPE.CAR, task_num, location_id)
             # 确认电梯到位后，清除到位状态
-            if device_service.read_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value) == 1:
-                device_service.write_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 0)
+            if device_service.read_bit(12, DB_12.TARGET_LAYER_ARRIVED.value) == 1:
+                device_service.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
             
             time.sleep(2)
-            await device_service.wait_for_bit_change(11, PLCAddress.RUNNING.value, 0)
+            await device_service.wait_for_bit_change(11, DB_11.RUNNING.value, 0)
             await device_service.disconnect()
             return True, "提升机运行结束"
 
         elif lift_running==0 and lift_idle==1 and lift_no_cargo==0 and lift_has_cargo==1 and lift_has_car==0:
             device_service.lift_move(plc_enum.LIFT_TASK_TYPE.GOOD, task_num, location_id)
             # 确认电梯到位后，清除到位状态
-            if device_service.read_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value) == 1:
-                device_service.write_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 0)
+            if device_service.read_bit(12, DB_12.TARGET_LAYER_ARRIVED.value) == 1:
+                device_service.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
             
             time.sleep(2)
-            await device_service.wait_for_bit_change(11, PLCAddress.RUNNING.value, 0)
+            await device_service.wait_for_bit_change(11, DB_11.RUNNING.value, 0)
             await device_service.disconnect()
             return True, "提升机运行结束"
         
@@ -204,7 +204,7 @@ async def task_lift_inband():
     device_service.inband()
 
     # 等待PLC动作完成
-    await device_service.wait_for_bit_change(11, PLCAddress.PLATFORM_PALLET_READY_1020.value, 1)
+    await device_service.wait_for_bit_change(11, DB_11.PLATFORM_PALLET_READY_1020.value, 1)
 
     await device_service.disconnect()
 
@@ -221,7 +221,7 @@ async def task_lift_outband():
     device_service.outband()
 
     # 等待PLC动作完成
-    await device_service.wait_for_bit_change(11, PLCAddress.PLATFORM_PALLET_READY_MAN.value, 1)
+    await device_service.wait_for_bit_change(11, DB_11.PLATFORM_PALLET_READY_MAN.value, 1)
 
     await device_service.disconnect()
     return "输送线执行完成"
@@ -233,37 +233,37 @@ async def feed_complete(floor:int):
     await device_service.async_connect()
 
     if floor == 1:
-        device_service.write_bit(12, PLCAddress.FEED_COMPLETE_1030.value, 1)
+        device_service.write_bit(12, DB_12.FEED_COMPLETE_1030.value, 1)
         time.sleep(1)
-        if device_service.read_bit(12, PLCAddress.FEED_COMPLETE_1030.value, 1):
-            device_service.write_bit(12, PLCAddress.FEED_COMPLETE_1030.value, 0)
+        if device_service.read_bit(12, DB_12.FEED_COMPLETE_1030.value, 1):
+            device_service.write_bit(12, DB_12.FEED_COMPLETE_1030.value, 0)
         
         await device_service.disconnect()
         return f"🚚 {floor}楼 小车放料操作 完成"
 
     elif floor == 2:
-        device_service.write_bit(12, PLCAddress.FEED_COMPLETE_1040.value, 1)
+        device_service.write_bit(12, DB_12.FEED_COMPLETE_1040.value, 1)
         time.sleep(1)
-        if device_service.read_bit(12, PLCAddress.FEED_COMPLETE_1040.value, 1):
-            device_service.write_bit(12, PLCAddress.FEED_COMPLETE_1040.value, 0)
+        if device_service.read_bit(12, DB_12.FEED_COMPLETE_1040.value, 1):
+            device_service.write_bit(12, DB_12.FEED_COMPLETE_1040.value, 0)
         
         await device_service.disconnect()
         return f"🚚 {floor}楼 小车放料操作 完成"
     
     elif floor == 3:
-        device_service.write_bit(12, PLCAddress.FEED_COMPLETE_1050.value, 1)
+        device_service.write_bit(12, DB_12.FEED_COMPLETE_1050.value, 1)
         time.sleep(1)
-        if device_service.read_bit(12, PLCAddress.FEED_COMPLETE_1050.value, 1):
-            device_service.write_bit(12, PLCAddress.FEED_COMPLETE_1050.value, 0)
+        if device_service.read_bit(12, DB_12.FEED_COMPLETE_1050.value, 1):
+            device_service.write_bit(12, DB_12.FEED_COMPLETE_1050.value, 0)
     
         await device_service.disconnect()
         return f"🚚 {floor}楼 小车放料操作 完成"
     
     elif floor == 4:
-        device_service.write_bit(12, PLCAddress.FEED_COMPLETE_1060.value, 1)
+        device_service.write_bit(12, DB_12.FEED_COMPLETE_1060.value, 1)
         time.sleep(1)
-        if device_service.read_bit(12, PLCAddress.FEED_COMPLETE_1060.value, 1):
-            device_service.write_bit(12, PLCAddress.FEED_COMPLETE_1060.value, 0)
+        if device_service.read_bit(12, DB_12.FEED_COMPLETE_1060.value, 1):
+            device_service.write_bit(12, DB_12.FEED_COMPLETE_1060.value, 0)
 
         await device_service.disconnect()
         return f"🚚 {floor}楼 小车放料操作 完成"
@@ -281,25 +281,25 @@ async def in_lift(floor:int):
     await device_service.async_connect()
     
     if floor == 1:
-        device_service.write_bit(12, PLCAddress.FEED_IN_PROGRESS_1030.value, 1)
+        device_service.write_bit(12, DB_12.FEED_IN_PROGRESS_1030.value, 1)
         
         await device_service.disconnect()
         return "🚚 一楼 小车放料操作 完成"
     
     elif floor == 2:
-        device_service.write_bit(12, PLCAddress.FEED_IN_PROGRESS_1040.value, 1)
+        device_service.write_bit(12, DB_12.FEED_IN_PROGRESS_1040.value, 1)
         
         await device_service.disconnect()
         return "🚚 二楼 小车放料操作 完成"
     
     elif floor == 3:
-        device_service.write_bit(12, PLCAddress.FEED_IN_PROGRESS_1050.value, 1)
+        device_service.write_bit(12, DB_12.FEED_IN_PROGRESS_1050.value, 1)
         
         await device_service.disconnect()
         return "🚚 三楼 小车放料操作 完成"
     
     elif floor == 4:
-        device_service.write_bit(12, PLCAddress.FEED_IN_PROGRESS_1060.value, 1)
+        device_service.write_bit(12, DB_12.FEED_IN_PROGRESS_1060.value, 1)
         
         await device_service.disconnect()
         return "🚚 四楼 小车放料操作 完成"
@@ -315,33 +315,33 @@ async def pick_complete(floor:int):
     await device_service.async_connect()
 
     if floor == 1:
-        device_service.write_bit(12, PLCAddress.PICK_COMPLETE_1030.value, 1)
-        if device_service.read_bit(12, PLCAddress.PICK_COMPLETE_1030.value, 1) == 1:
-            device_service.write_bit(12, PLCAddress.PICK_COMPLETE_1030.value, 0)
+        device_service.write_bit(12, DB_12.PICK_COMPLETE_1030.value, 1)
+        if device_service.read_bit(12, DB_12.PICK_COMPLETE_1030.value, 1) == 1:
+            device_service.write_bit(12, DB_12.PICK_COMPLETE_1030.value, 0)
             
         await device_service.disconnect()
         return "信号发送完成！"
 
     elif floor == 2:
-        device_service.write_bit(12, PLCAddress.PICK_COMPLETE_1040.value, 1)
-        if device_service.read_bit(12, PLCAddress.PICK_COMPLETE_1040.value, 1) == 1:
-            device_service.write_bit(12, PLCAddress.PICK_COMPLETE_1040.value, 0)
+        device_service.write_bit(12, DB_12.PICK_COMPLETE_1040.value, 1)
+        if device_service.read_bit(12, DB_12.PICK_COMPLETE_1040.value, 1) == 1:
+            device_service.write_bit(12, DB_12.PICK_COMPLETE_1040.value, 0)
         
         await device_service.disconnect()
         return "信号发送完成！"
     
     elif floor == 3:
-        device_service.write_bit(12, PLCAddress.PICK_COMPLETE_1050.value, 1)
-        if device_service.read_bit(12, PLCAddress.PICK_COMPLETE_1050.value, 1) == 1:
-            device_service.write_bit(12, PLCAddress.PICK_COMPLETE_1050.value, 0)
+        device_service.write_bit(12, DB_12.PICK_COMPLETE_1050.value, 1)
+        if device_service.read_bit(12, DB_12.PICK_COMPLETE_1050.value, 1) == 1:
+            device_service.write_bit(12, DB_12.PICK_COMPLETE_1050.value, 0)
 
         await device_service.disconnect()
         return "信号发送完成！"
     
     elif floor == 4:
-        device_service.write_bit(12, PLCAddress.PICK_COMPLETE_1060.value, 1)
-        if device_service.read_bit(12, PLCAddress.PICK_COMPLETE_1060.value, 1) == 1:
-            device_service.write_bit(12, PLCAddress.PICK_COMPLETE_1060.value, 0)
+        device_service.write_bit(12, DB_12.PICK_COMPLETE_1060.value, 1)
+        if device_service.read_bit(12, DB_12.PICK_COMPLETE_1060.value, 1) == 1:
+            device_service.write_bit(12, DB_12.PICK_COMPLETE_1060.value, 0)
 
         await device_service.disconnect()
         return "信号发送完成！"
@@ -357,8 +357,8 @@ async def out_lift(floor:int):
     await device_service.async_connect()
 
     # 确认电梯到位后，清除到位状态
-    if device_service.read_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value) == 1:
-        device_service.write_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 0)
+    if device_service.read_bit(12, DB_12.TARGET_LAYER_ARRIVED.value) == 1:
+        device_service.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
     # 开始执行物料入库动作
     
     time.sleep(1)
@@ -368,11 +368,11 @@ async def out_lift(floor:int):
         
         # 等待plc动作完成
         print("⏳ 等待PLC动作完成...")
-        await device_service.wait_for_bit_change(11, PLCAddress.PLATFORM_PALLET_READY_1030.value, 1)
+        await device_service.wait_for_bit_change(11, DB_11.PLATFORM_PALLET_READY_1030.value, 1)
     
         # 发送小车 取料中信号
         time.sleep(1)
-        device_service.write_bit(12, PLCAddress.PICK_IN_PROGRESS_1030.value, 1)
+        device_service.write_bit(12, DB_12.PICK_IN_PROGRESS_1030.value, 1)
         
         await device_service.disconnect()
         return f"操作小车，前往 {floor} 楼提升机口（5，3，{floor}）处，取料！！！取料完成后，必须发送“取料完成指令”！！！"
@@ -382,11 +382,11 @@ async def out_lift(floor:int):
         
         # 等待plc动作完成
         print("⏳ 等待PLC动作完成...")
-        await device_service.wait_for_bit_change(11, PLCAddress.PLATFORM_PALLET_READY_1040.value, 1)
+        await device_service.wait_for_bit_change(11, DB_11.PLATFORM_PALLET_READY_1040.value, 1)
     
         # 发送小车 取料中信号
         time.sleep(1)
-        device_service.write_bit(12, PLCAddress.PICK_IN_PROGRESS_1040.value, 1)
+        device_service.write_bit(12, DB_12.PICK_IN_PROGRESS_1040.value, 1)
         
         await device_service.disconnect()
         return f"操作小车，前往 {floor} 楼提升机口（5，3，{floor}）处，取料！！！取料完成后，必须发送“取料完成指令”！！！"
@@ -396,11 +396,11 @@ async def out_lift(floor:int):
         
         # 等待plc动作完成
         print("⏳ 等待PLC动作完成...")
-        await device_service.wait_for_bit_change(11, PLCAddress.PLATFORM_PALLET_READY_1050.value, 1)
+        await device_service.wait_for_bit_change(11, DB_11.PLATFORM_PALLET_READY_1050.value, 1)
     
         # 发送小车 取料中信号
         time.sleep(1)
-        device_service.write_bit(12, PLCAddress.PICK_IN_PROGRESS_1050.value, 1)
+        device_service.write_bit(12, DB_12.PICK_IN_PROGRESS_1050.value, 1)
         
         await device_service.disconnect()
         return f"操作小车，前往 {floor} 楼提升机口（5，3，{floor}）处，取料！！！取料完成后，必须发送“取料完成指令”！！！"
@@ -410,11 +410,11 @@ async def out_lift(floor:int):
         
         # 等待plc动作完成
         print("⏳ 等待PLC动作完成...")
-        await device_service.wait_for_bit_change(11, PLCAddress.PLATFORM_PALLET_READY_1060.value, 1)
+        await device_service.wait_for_bit_change(11, DB_11.PLATFORM_PALLET_READY_1060.value, 1)
     
         # 发送小车 取料中信号
         time.sleep(1)
-        device_service.write_bit(12, PLCAddress.PICK_IN_PROGRESS_1060.value, 1)
+        device_service.write_bit(12, DB_12.PICK_IN_PROGRESS_1060.value, 1)
         
         await device_service.disconnect()        
         return f"操作小车，前往 2 楼提升机口（5，3，{floor}）处，取料！！！取料完成后，必须发送“取料完成指令”！！！"

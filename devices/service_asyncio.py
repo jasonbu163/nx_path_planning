@@ -7,7 +7,7 @@ import struct
 import time
 import random
 
-from .plc_enum import PLCAddress, FLOOR_CODE
+from .plc_enum import DB_11, DB_12, DB_5, FLOOR_CODE
 from res_protocol_system import PacketBuilder, PacketParser
 from res_protocol_system.RESProtocol import RESProtocol, FrameType
 from map_core import PathCustom
@@ -803,7 +803,7 @@ class DevicesService():
     # 获得提升机所在层
     def get_lift(self):
         # 读取提升机所在层
-        db = self.read_db(11, PLCAddress.CURRENT_LAYER.value, 2)
+        db = self.read_db(11, DB_11.CURRENT_LAYER.value, 2)
         return struct.unpack('!H', db)[0]
         # return db
     
@@ -816,51 +816,51 @@ class DevicesService():
         end_floor = struct.pack('!H', end_floor)
 
         # 任务类型
-        self.write_db(12, PLCAddress.TASK_TYPE.value, task_type)
+        self.write_db(12, DB_12.TASK_TYPE.value, task_type)
         # 任务号
-        self.write_db(12, PLCAddress.TASK_NUMBER.value, task_num)
+        self.write_db(12, DB_12.TASK_NUMBER.value, task_num)
         # 起始层 起始位被电气部份屏蔽 可以不输入
         # self.write_db(12, PLCAddress.START_LAYER.value, start_floor)
         # 目标层
-        self.write_db(12, PLCAddress.TARGET_LAYER.value, end_floor)
+        self.write_db(12, DB_12.TARGET_LAYER.value, end_floor)
         
         # 读取提升机是否空闲
-        if self.read_bit(11, PLCAddress.IDLE.value):
-            self.write_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 1)
+        if self.read_bit(11, DB_11.IDLE.value):
+            self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 1)
 
     
     # 入库到提升机
     def inband(self):
-        self.write_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 1)
+        self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 1)
 
         # 放料完成（启动）
-        self.write_bit(12, PLCAddress.FEED_COMPLETE_1010.value, 1)
-        if self.read_bit(12, PLCAddress.FEED_COMPLETE_1010.value) == 1:
-            self.write_bit(12, PLCAddress.FEED_COMPLETE_1010.value, 0)
+        self.write_bit(12, DB_12.FEED_COMPLETE_1010.value, 1)
+        if self.read_bit(12, DB_12.FEED_COMPLETE_1010.value) == 1:
+            self.write_bit(12, DB_12.FEED_COMPLETE_1010.value, 0)
 
         # 进入到提升机
         lift_code = struct.pack('!H', FLOOR_CODE.LIFT)
         time.sleep(1)
-        self.write_db(12, PLCAddress.TARGET_1010.value, lift_code)
-        if self.read_db(12, PLCAddress.TARGET_1010.value, 2) == lift_code:
-            self.write_db(12, PLCAddress.TARGET_1010.value, b'\x00\x00')
+        self.write_db(12, DB_12.TARGET_1010.value, lift_code)
+        if self.read_db(12, DB_12.TARGET_1010.value, 2) == lift_code:
+            self.write_db(12, DB_12.TARGET_1010.value, b'\x00\x00')
     
     # 从提升机出库
     def outband(self):
         # 告诉PLC目标层到达
-        self.write_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 1)
+        self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 1)
 
        # 写入出库
         data = struct.pack('!H', FLOOR_CODE.GATE)
         time.sleep(1)
-        self.write_db(12, PLCAddress.TARGET_1020.value, data)
+        self.write_db(12, DB_12.TARGET_1020.value, data)
         time.sleep(1)
-        if self.read_db(12, PLCAddress.TARGET_1020.value, 2) == data:
-            self.write_db(12, PLCAddress.TARGET_1020.value, b'\x00\x00')
+        if self.read_db(12, DB_12.TARGET_1020.value, 2) == data:
+            self.write_db(12, DB_12.TARGET_1020.value, b'\x00\x00')
 
         # 清除目标到达信号
-        if self.read_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 1) == 1:
-            self.write_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 0)
+        if self.read_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 1) == 1:
+            self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
 
     # 楼层进入提升机
     def floor_to_lift(self, floor):
@@ -870,13 +870,13 @@ class DevicesService():
         # 楼层1
         if floor == 1:
             # 放料进行中
-            self.write_bit(12, PLCAddress.FEED_IN_PROGRESS_1030.value, 1)
+            self.write_bit(12, DB_12.FEED_IN_PROGRESS_1030.value, 1)
             # 等待小车送货到提升机 -> 联动小车
             # time.sleep(30)
             # 放料完成
-            self.write_bit(12, PLCAddress.FEED_COMPLETE_1030.value, 1)
-            if self.read_bit(12, PLCAddress.FEED_COMPLETE_1030.value) == 1:
-                self.write_bit(12, PLCAddress.FEED_COMPLETE_1030.value, 0)
+            self.write_bit(12, DB_12.FEED_COMPLETE_1030.value, 1)
+            if self.read_bit(12, DB_12.FEED_COMPLETE_1030.value) == 1:
+                self.write_bit(12, DB_12.FEED_COMPLETE_1030.value, 0)
             # 货物送入提升机
             # data = struct.pack('!H', FLOOR.LIFT)
             # self.write_db(12, PLCAddress.TARGET_1030.value, data)
@@ -886,13 +886,13 @@ class DevicesService():
         # 楼层2
         elif floor == 2:
             # 放料进行中
-            self.write_bit(12, PLCAddress.FEED_IN_PROGRESS_1040.value, 1)
+            self.write_bit(12, DB_12.FEED_IN_PROGRESS_1040.value, 1)
             # # 等待小车送货到提升机 -> 联动小车
             # # time.sleep(30)
             # 放料完成
-            self.write_bit(12, PLCAddress.FEED_COMPLETE_1040.value, 1)
-            if self.read_bit(12, PLCAddress.FEED_COMPLETE_1040.value) == 1:
-                self.write_bit(12, PLCAddress.FEED_COMPLETE_1040.value, 0)
+            self.write_bit(12, DB_12.FEED_COMPLETE_1040.value, 1)
+            if self.read_bit(12, DB_12.FEED_COMPLETE_1040.value) == 1:
+                self.write_bit(12, DB_12.FEED_COMPLETE_1040.value, 0)
             # 货物送入提升机
             # data = struct.pack('!H', FLOOR.LIFT)
             # self.write_db(12, PLCAddress.TARGET_1040.value, data)
@@ -902,13 +902,13 @@ class DevicesService():
         # 楼层3
         elif floor == 3:
             # 放料进行中
-            self.write_bit(12, PLCAddress.FEED_IN_PROGRESS_1050.value, 1)
+            self.write_bit(12, DB_12.FEED_IN_PROGRESS_1050.value, 1)
             # # 等待小车送货到提升机 -> 联动小车
             # # time.sleep(30)
             # 放料完成
-            self.write_bit(12, PLCAddress.FEED_COMPLETE_1050.value, 1)
-            if self.read_bit(12, PLCAddress.FEED_COMPLETE_1050.value) == 1:
-                self.write_bit(12, PLCAddress.FEED_COMPLETE_1050.value, 0)
+            self.write_bit(12, DB_12.FEED_COMPLETE_1050.value, 1)
+            if self.read_bit(12, DB_12.FEED_COMPLETE_1050.value) == 1:
+                self.write_bit(12, DB_12.FEED_COMPLETE_1050.value, 0)
             # 货物送入提升机
             # data = struct.pack('!H', FLOOR.LIFT)
             # self.write_db(12, PLCAddress.TARGET_1050.value, data)
@@ -918,13 +918,13 @@ class DevicesService():
         # 楼层4
         elif floor == 4:
             # # 放料进行中
-            self.write_bit(12, PLCAddress.FEED_IN_PROGRESS_1060.value, 1)
+            self.write_bit(12, DB_12.FEED_IN_PROGRESS_1060.value, 1)
             # # 等待小车送货到提升机 -> 联动小车
             # # time.sleep(30)
             # # 放料完成
-            self.write_bit(12, PLCAddress.FEED_COMPLETE_1060.value, 1)
-            if self.read_bit(12, PLCAddress.FEED_COMPLETE_1060.value) == 1:
-                self.write_bit(12, PLCAddress.FEED_COMPLETE_1060.value, 0)
+            self.write_bit(12, DB_12.FEED_COMPLETE_1060.value, 1)
+            if self.read_bit(12, DB_12.FEED_COMPLETE_1060.value) == 1:
+                self.write_bit(12, DB_12.FEED_COMPLETE_1060.value, 0)
             # 货物送入提升机
             # data = struct.pack('!H', FLOOR.LIFT)
             # self.write_db(12, PLCAddress.TARGET_1060.value, data)
@@ -939,60 +939,60 @@ class DevicesService():
         :::param target_floor: 目标楼层
         """
         # 确认提升机
-        self.logger.info(f"确认提升机状态: {self.read_bit(11, PLCAddress.PLATFORM_PALLET_READY_1020.value)}")
+        self.logger.info(f"确认提升机状态: {self.read_bit(11, DB_11.PLATFORM_PALLET_READY_1020.value)}")
 
         # 确认目标层到达
         time.sleep(1)
-        self.write_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 1)
+        self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 1)
 
         time.sleep(0.5)
         # 移动到1层
         if target_floor == 1:
             data = struct.pack('!H', FLOOR_CODE.LAYER_1)
-            self.write_db(12, PLCAddress.TARGET_1020.value, data)
+            self.write_db(12, DB_12.TARGET_1020.value, data)
             time.sleep(2)
             # 清零
-            if self.read_db(12, PLCAddress.TARGET_1020.value, 2) == data:
-                self.write_db(12, PLCAddress.TARGET_1020.value, b'\x00\x00')
+            if self.read_db(12, DB_12.TARGET_1020.value, 2) == data:
+                self.write_db(12, DB_12.TARGET_1020.value, b'\x00\x00')
             # 到达目标层状态 清零
-            if self.read_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 1) == 1:
-                self.write_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 0)
+            if self.read_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 1) == 1:
+                self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
         
         # 移动到2层
         elif target_floor == 2:
             data = struct.pack('!H', FLOOR_CODE.LAYER_2)
-            self.write_db(12, PLCAddress.TARGET_1020.value, data)
+            self.write_db(12, DB_12.TARGET_1020.value, data)
             time.sleep(2)
             # 清零
-            if self.read_db(12, PLCAddress.TARGET_1020.value, 2) == data:
-                self.write_db(12, PLCAddress.TARGET_1020.value, b'\x00\x00')
+            if self.read_db(12, DB_12.TARGET_1020.value, 2) == data:
+                self.write_db(12, DB_12.TARGET_1020.value, b'\x00\x00')
             # 到达目标层状态 清零
-            if self.read_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 1) == 1:
-                self.write_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 0)
+            if self.read_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 1) == 1:
+                self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
         
         # 移动到3层
         elif target_floor == 3:
             data = struct.pack('!H', FLOOR_CODE.LAYER_3)
-            self.write_db(12, PLCAddress.TARGET_1020.value, data)
+            self.write_db(12, DB_12.TARGET_1020.value, data)
             time.sleep(2)
             # 清零
-            if self.read_db(12, PLCAddress.TARGET_1020.value, 2) == data:
-                self.write_db(12, PLCAddress.TARGET_1020.value, b'\x00\x00')
+            if self.read_db(12, DB_12.TARGET_1020.value, 2) == data:
+                self.write_db(12, DB_12.TARGET_1020.value, b'\x00\x00')
             # 到达目标层状态 清零
-            if self.read_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 1) == 1:
-                self.write_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 0)
+            if self.read_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 1) == 1:
+                self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
 
         # 移动到4层
         elif target_floor == 4:
             data = struct.pack('!H', FLOOR_CODE.LAYER_4)
-            self.write_db(12, PLCAddress.TARGET_1020.value, data)
+            self.write_db(12, DB_12.TARGET_1020.value, data)
             time.sleep(2)
             # 清零
-            if self.read_db(12, PLCAddress.TARGET_1020.value, 2) == data:
-                self.write_db(12, PLCAddress.TARGET_1020.value, b'\x00\x00')
+            if self.read_db(12, DB_12.TARGET_1020.value, 2) == data:
+                self.write_db(12, DB_12.TARGET_1020.value, b'\x00\x00')
             # 到达目标层状态 清零
-            if self.read_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 1) == 1:
-                self.write_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 0)
+            if self.read_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 1) == 1:
+                self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
 
         else:
             raise ValueError("Invalid target floor")

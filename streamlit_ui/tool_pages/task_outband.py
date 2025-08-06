@@ -3,12 +3,10 @@ import streamlit as st
 import requests
 from api_config import API_BASE
 
-st.title("📤 出库操作")
-
 st.subheader("⚠️ 确保小车在需要出库的楼层 ⚠️")
 st.subheader("⚠️ 如果小车不在任务楼层 ⚠️")
 st.subheader("⚠️ 先去把🚗小车移到出库楼层 ⚠️")
-st.link_button("🚗 前往小车跨层页面", url="/小车跨层")
+st.link_button("🚗 前往小车跨层页面", url="/car_cross_layer")
 st.subheader("⚠️ 小车在出库楼层，就不需要小车跨层了 ⚠️")
 
 st.image("img/locations.png")

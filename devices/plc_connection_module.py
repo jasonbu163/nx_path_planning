@@ -2,8 +2,10 @@
 from snap7.client import Client
 from typing import Union, Callable, Any
 import asyncio
+import time
 
 from .devices_logger import DevicesLogger
+from config import PLC_ACTION_TIMEOUT
 
 class PLCConnectionBase(DevicesLogger):
     """
@@ -47,20 +49,28 @@ class PLCConnectionBase(DevicesLogger):
             self._connected = False
             return False
     
-    def disconnect(self) -> None:
+    def disconnect(self) -> bool:
         """
         [断开PLC连接]
         """
-        if self._connected:
-            self.client.disconnect()
-            self._connected = False
-            self.logger.info("⛔ PLC连接已关闭")
+        try:
+            if self._connected:
+                self.client.disconnect()
+                self._connected = False
+                self.logger.info("⛔ PLC连接已关闭")
+                return True
+            else:
+                self.logger.error(f"❌ PLC断开连接失败")
+                return False
+        except Exception as e:
+            self.logger.error(f"[PLC] 断开连接时出错: {e}", exc_info=True)
+            return False
     
     def is_connected(self) -> bool:
         """
         [检查PLC是否已连接]
         """
-        return self.client.get_connected()
+        return self.client.get_connected() and self._connected
 
     def read_db(self, db_number: int, start: int, size: int) -> bytes:
         """
@@ -166,6 +176,43 @@ class PLCConnectionBase(DevicesLogger):
         self.write_db(db_number, byte_offset, bytes([new_value]))
         self.logger.info(f"🔧 位写入成功 DB{db_number}[{offset}]: 值={value}")
 
+
+    def wait_for_bit_change_sync(
+            self,
+            DB_NUMBER: int,
+            ADDRESS: float,
+            TRAGET_VALUE: int,
+            TIMEOUT: float = PLC_ACTION_TIMEOUT
+            ) -> bool:
+        """
+        [同步 - PLC等待器] 等待PLC指定的位状态变化为目标值
+        
+        ::: param :::
+            DB_NUMBER: DB块号 
+            ADDRESS: 位地址 
+            TRAGET_VALUE: 目标值 
+            TIMEOUT: 超时时间（秒）
+        """
+        time.sleep(2)
+        start_time = time.time()
+        
+        while True:
+            # 读取当前值
+            current_value = self.read_bit(DB_NUMBER, ADDRESS, 1)
+            
+            if current_value == TRAGET_VALUE:
+                self.logger.info(f"✅ PLC动作完成: DB{DB_NUMBER}[{ADDRESS}] == {TRAGET_VALUE}")
+                return True
+                
+            # 检查超时
+            elapsed = time.time() - start_time
+            if elapsed > TIMEOUT:
+                self.logger.info(f"❌ 超时错误: 等待PLC动作超时 ({TIMEOUT}s)")
+                return False
+                
+            # 等待一段时间再次检查
+            time.sleep(0.5)
+
     
     #####################################################
     ####################### 异步方法 #####################
@@ -190,13 +237,15 @@ class PLCConnectionBase(DevicesLogger):
 
     async def async_disconnect(self) -> bool:
         """
-        [断开PLC连接]
+        [异步断开PLC连接]
         """
-        if self._connected:
-            self.client.disconnect()
-            self._connected = False
-            self.logger.info("⛔ PLC连接已关闭")
-        return True
+        loop = asyncio.get_running_loop()
+        try:
+            # 使用异步执行器调用同步的断开连接方法
+            return await loop.run_in_executor(None, self.disconnect)
+        except Exception as e:
+            self.logger.error(f"异步断开连接失败: {e}")
+            return False
     
     async def monitor_condition(
         self,
@@ -305,19 +354,18 @@ class PLCConnectionBase(DevicesLogger):
                 pass
             finally:
                 self._monitor_task = None
+                self._stop_monitor.clear()
 
     
-    # 等待PLC动作完成的超时时间（秒）
-    ACTION_TIMEOUT = 30.0
     async def wait_for_bit_change(
             self,
             DB_NUMBER: int,
             ADDRESS: float,
             TRAGET_VALUE: int,
-            TIMEOUT: float = ACTION_TIMEOUT
+            TIMEOUT: float = PLC_ACTION_TIMEOUT
             ) -> bool:
         """
-        [等待PLC指定的位状态变化为目标值]
+        [异步 - PLC等待器] 等待PLC指定的位状态变化为目标值
         
         ::: param :::
             DB_NUMBER: DB块号 
@@ -325,6 +373,7 @@ class PLCConnectionBase(DevicesLogger):
             TRAGET_VALUE: 目标值 
             TIMEOUT: 超时时间（秒）
         """
+        await asyncio.sleep(2)
         start_time = asyncio.get_event_loop().time()
         
         while True:
@@ -345,3 +394,48 @@ class PLCConnectionBase(DevicesLogger):
                 
             # 等待一段时间再次检查
             await asyncio.sleep(0.5)
+
+
+###############################################################
+# 在FastAPI中这样使用：
+###############################################################
+
+# from fastapi import FastAPI
+# from .plc_connection_module import PLCConnectionBase
+
+# app = FastAPI()
+# plc = PLCConnectionBase("192.168.8.30")
+
+# @app.on_event("startup")
+# async def startup():
+#     # 异步连接PLC
+#     if not await plc.async_connect():
+#         raise RuntimeError("PLC连接失败")
+
+# @app.on_event("shutdown")
+# async def shutdown():
+#     # 异步断开PLC连接
+#     await plc.async_disconnect()
+
+# @app.post("/set-bit")
+# async def set_bit(db: int, address: float, value: int):
+#     """设置位值（同步操作）"""
+#     # 在异步环境中安全调用同步方法
+#     loop = asyncio.get_running_loop()
+#     await loop.run_in_executor(None, plc.write_bit, db, address, value)
+#     return {"status": "success"}
+
+# @app.get("/monitor-status")
+# async def monitor_status():
+#     """启动状态监控"""
+#     async def on_condition_met():
+#         print("条件满足！执行操作")
+    
+#     await plc.start_monitoring(
+#         MONITOR_DB=10,
+#         MONITOR_OFFSET=5.0,
+#         BITS=1,
+#         TARGET_VALUE=1,
+#         CALLBACK=on_condition_met
+#     )
+#     return {"status": "监控已启动"}

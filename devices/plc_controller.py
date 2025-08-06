@@ -5,7 +5,7 @@ import struct
 from typing import Union
 
 from .plc_connection_module import PLCConnectionBase
-from .plc_enum import PLCAddress, FLOOR_CODE
+from .plc_enum import DB_11, DB_12, FLOOR_CODE, LIFT_TASK_TYPE
 
 class PLCController(PLCConnectionBase):
     """
@@ -42,13 +42,13 @@ class PLCController(PLCConnectionBase):
 
     def get_lift(self) -> int:
         """
-        [获取电梯当前停在哪层]
+        [获取电梯当前停在哪层] - 无连接PLC
 
         ::: return :::
             层数, 如 1层为 1
         """
         # 读取提升机所在层
-        db = self.read_db(11, PLCAddress.CURRENT_LAYER.value, 2)
+        db = self.read_db(11, DB_11.CURRENT_LAYER.value, 2)
         # 返回解码的数据
         return struct.unpack('!H', db)[0]
         # 返回原数据
@@ -61,7 +61,7 @@ class PLCController(PLCConnectionBase):
             END_FLOOR: int
             ) -> None:
         """
-        [电梯操作] - 控制电梯到达目标楼层
+        [电梯操作] - 控制电梯到达目标楼层 - 无连接PLC
 
         ::: param :::
             TASK_TYPE: 任务类型
@@ -75,61 +75,155 @@ class PLCController(PLCConnectionBase):
         end_floor = struct.pack('!H', END_FLOOR)
 
         # 任务类型
-        self.write_db(12, PLCAddress.TASK_TYPE.value, task_type)
+        self.write_db(12, DB_12.TASK_TYPE.value, task_type)
         # 任务号
-        self.write_db(12, PLCAddress.TASK_NUMBER.value, task_num)
+        self.write_db(12, DB_12.TASK_NUMBER.value, task_num)
         # 起始层 起始位被电气部份屏蔽 可以不输入
         # self.write_db(12, PLCAddress.START_LAYER.value, start_floor)
         # 目标层
-        self.write_db(12, PLCAddress.TARGET_LAYER.value, end_floor)
+        self.write_db(12, DB_12.TARGET_LAYER.value, end_floor)
         
-        # 读取提升机是否空闲
-        if self.read_bit(11, PLCAddress.IDLE.value):
-            self.write_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 1)
+
+    def lift_move_by_layer(
+            self,
+            TASK_NO: int,
+            LAYER: int
+            ) -> bool:
+        """
+        [移动电梯] - 带PLC连接
+        """
+
+        # 任务识别
+        lift_running = self.read_bit(11, DB_11.RUNNING.value)
+        lift_idle = self.read_bit(11, DB_11.IDLE.value)
+        lift_no_cargo = self.read_bit(11, DB_11.NO_CARGO.value)
+        lift_has_cargo = self.read_bit(11, DB_11.HAS_CARGO.value)
+        lift_has_car = self.read_bit(11, DB_11.HAS_CAR.value)
+
+        self.logger.info(f"[LIFT] 电梯状态 - 电梯运行中:{lift_running} 电梯是否空闲:{lift_idle} 电梯是否无货:{lift_no_cargo} 电梯是否有货:{lift_has_cargo} 电梯是否有车:{lift_has_car} ")
+
+        if LAYER not in [1,2,3,4]:
+            self.logger.error("[PLC] 楼层错误")
+            return False
+        
+        else:
+            if lift_running==0 and lift_idle==1 and lift_no_cargo==1 and lift_has_cargo==0 and lift_has_car==0:
+                
+                self.logger.info("[LIFT] 电梯开始移动")
+                self.lift_move(LIFT_TASK_TYPE.IDEL, TASK_NO, LAYER)
+                
+                self.logger.info("[LIFT] 电梯移动中...")
+                self.wait_for_bit_change_sync(11, DB_11.RUNNING.value, 0)
+                
+                # 读取提升机是否空闲
+                if self.read_bit(11, DB_11.IDLE.value):
+                    self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 1)
+                time.sleep(1)
+                # 确认电梯到位后，清除到位状态
+                if self.read_bit(12, DB_12.TARGET_LAYER_ARRIVED.value) == 1:
+                    self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
+                self.logger.info(f"[LIFT] 电梯到达 {self.get_lift()} 层")
+                
+                return True
+            
+            elif lift_running==0 and lift_idle==1 and lift_no_cargo==1 and lift_has_cargo==0 and lift_has_car==1:
+                
+                self.logger.info("[LIFT] 电梯开始移动")
+                self.lift_move(LIFT_TASK_TYPE.CAR, TASK_NO, LAYER)
+                
+                self.logger.info("[LIFT] 电梯移动中...")
+                self.wait_for_bit_change_sync(11, DB_11.RUNNING.value, 0)
+                
+                # 读取提升机是否空闲
+                if self.read_bit(11, DB_11.IDLE.value):
+                    self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 1)
+                time.sleep(1)
+                # 确认电梯到位后，清除到位状态
+                if self.read_bit(12, DB_12.TARGET_LAYER_ARRIVED.value) == 1:
+                    self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
+                self.logger.info(f"[LIFT] 电梯到达 {self.get_lift()} 层")
+                
+                return True
+
+            elif lift_running==0 and lift_idle==1 and lift_no_cargo==0 and lift_has_cargo==1 and lift_has_car==0:
+                
+                self.logger.info("[LIFT] 电梯开始移动")
+                self.lift_move(LIFT_TASK_TYPE.GOOD, TASK_NO, LAYER)
+                
+                self.logger.info("[LIFT] 电梯移动中...")
+                self.wait_for_bit_change_sync(11, DB_11.RUNNING.value, 0)
+
+                # 读取提升机是否空闲
+                if self.read_bit(11, DB_11.IDLE.value):
+                    self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 1)
+                time.sleep(1)
+                # 确认电梯到位后，清除到位状态
+                if self.read_bit(12, DB_12.TARGET_LAYER_ARRIVED.value) == 1:
+                    self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
+                self.logger.info(f"[LIFT] 电梯到达 {self.get_lift()} 层")
+                
+                return True
+            
+            else:
+                self.logger.error("[LIFT] 未知状态")
+                return False
 
     ########################################################
     ##################### 输送线相关函数 #####################
     ########################################################
     
-    def inband_to_lift(self) -> None:
+    def inband_to_lift(self) -> bool:
         """
         [输送线操作] - 入库方向，从入口进入电梯
         """
-        # 确认提升机已到1层
-        self.write_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 1)
 
         # 放料完成（启动）
-        self.write_bit(12, PLCAddress.FEED_COMPLETE_1010.value, 1)
-        if self.read_bit(12, PLCAddress.FEED_COMPLETE_1010.value) == 1:
-            self.write_bit(12, PLCAddress.FEED_COMPLETE_1010.value, 0)
-
+        self.write_bit(12, DB_12.FEED_COMPLETE_1010.value, 1)
+        time.sleep(1)
+        if self.read_bit(12, DB_12.FEED_COMPLETE_1010.value) == 1:
+            self.write_bit(12, DB_12.FEED_COMPLETE_1010.value, 0)
+        else:
+            self.logger.error("清零失败")
+            return False
+    
+        time.sleep(1)
         # 移动到提升机
         lift_code = struct.pack('!H', FLOOR_CODE.LIFT)
+        self.write_db(12, DB_12.TARGET_1010.value, lift_code)
         time.sleep(1)
-        self.write_db(12, PLCAddress.TARGET_1010.value, lift_code)
-        if self.read_db(12, PLCAddress.TARGET_1010.value, 2) == lift_code:
-            self.write_db(12, PLCAddress.TARGET_1010.value, b'\x00\x00')
+        if self.read_db(12, DB_12.TARGET_1010.value, 2) == lift_code:
+            self.write_db(12, DB_12.TARGET_1010.value, b'\x00\x00')
+            return True
+        else:
+            self.logger.error("清零失败")
+            return False
+        
     
     
-    def lift_to_outband(self) -> None:
+    def lift_to_outband(self) -> bool:
         """
         [输送线操作] - 出库方向，从电梯出来到出货口
         """
-        # 目标层到达
-        self.write_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 1)
-
+        # 确认目标层到达
+        self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 1)
+        time.sleep(0.5)
+        
         # 写入出库指令
         data = struct.pack('!H', FLOOR_CODE.GATE)
-        time.sleep(1)
-        self.write_db(12, PLCAddress.TARGET_1020.value, data)
-        time.sleep(1)
-        if self.read_db(12, PLCAddress.TARGET_1020.value, 2) == data:
-            self.write_db(12, PLCAddress.TARGET_1020.value, b'\x00\x00')
-        # 清除目标到达信号
-        if self.read_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 1) == 1:
-            self.write_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 0)
 
-    def floor_to_lift(self, FLOOR_ID: int) -> None:
+        self.write_db(12, DB_12.TARGET_1020.value, data)
+        time.sleep(1)
+        if self.read_db(12, DB_12.TARGET_1020.value, 2) == data:
+            self.write_db(12, DB_12.TARGET_1020.value, b'\x00\x00')
+            self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
+            return True
+        else:
+            self.logger.error("清零失败")
+            return False
+            
+
+
+    def floor_to_lift(self, FLOOR_ID: int) -> bool:
         """
         !!! 现在这个函数弃用了 !!!
 
@@ -143,110 +237,143 @@ class PLCController(PLCConnectionBase):
         ::: param :::
             FLOOR_ID: 楼层 int
         """
+
         # 楼层1
         if FLOOR_ID == 1:
             # 货物送入提升机
             data = struct.pack('!H', FLOOR_CODE.LIFT)
-            self.write_db(12, PLCAddress.TARGET_1030.value, data)
-            if self.read_db(12, PLCAddress.TARGET_1030.value, 1) == data:
-                self.write_db(12, PLCAddress.TARGET_1030.value, b'\x00\x00')
+            self.write_db(12, DB_12.TARGET_1030.value, data)
+            time.sleep(1)
+            if self.read_db(12, DB_12.TARGET_1030.value, 2) == data:
+                self.write_db(12, DB_12.TARGET_1030.value, b'\x00\x00')
+                return True
+            else:
+                self.logger.error("清零失败")
+                return False
+                
 
         # 楼层2
         elif FLOOR_ID == 2:
             # 货物送入提升机
             data = struct.pack('!H', FLOOR_CODE.LIFT)
-            self.write_db(12, PLCAddress.TARGET_1040.value, data)
-            if self.read_db(12, PLCAddress.TARGET_1040.value, 1) == data:
-                self.write_db(12, PLCAddress.TARGET_1040.value, b'\x00\x00')
+            self.write_db(12, DB_12.TARGET_1040.value, data)
+            time.sleep(1)
+            if self.read_db(12, DB_12.TARGET_1040.value, 2) == data:
+                self.write_db(12, DB_12.TARGET_1040.value, b'\x00\x00')
+                return True
+            else:
+                self.logger.error("清零失败")
+                return False
         
         # 楼层3
         elif FLOOR_ID == 3:
             # 货物送入提升机
             data = struct.pack('!H', FLOOR_CODE.LIFT)
-            self.write_db(12, PLCAddress.TARGET_1050.value, data)
-            if self.read_db(12, PLCAddress.TARGET_1050.value, 1) == data:
-                self.write_db(12, PLCAddress.TARGET_1050.value, b'\x00\x00')
+            self.write_db(12, DB_12.TARGET_1050.value, data)
+            time.sleep(1)
+            if self.read_db(12, DB_12.TARGET_1050.value, 2) == data:
+                self.write_db(12, DB_12.TARGET_1050.value, b'\x00\x00')
+                return True
+            else:
+                self.logger.error("清零失败")
+                return False
+            
         
         # 楼层4
         elif FLOOR_ID == 4:
             # 货物送入提升机
             data = struct.pack('!H', FLOOR_CODE.LIFT)
-            self.write_db(12, PLCAddress.TARGET_1060.value, data)
-            if self.read_db(12, PLCAddress.TARGET_1060.value, 1) == data:
-                self.write_db(12, PLCAddress.TARGET_1060.value, b'\x00\x00')
+            self.write_db(12, DB_12.TARGET_1060.value, data)
+            time.sleep(1)
+            if self.read_db(12, DB_12.TARGET_1060.value, 2) == data:
+                self.write_db(12, DB_12.TARGET_1060.value, b'\x00\x00')
+                return True
+            else:
+                self.logger.error("清零失败")
+                return False
         
         # 无效楼层
         else:
             self.logger.warning("[PLC] 无效的楼层")
-            raise ValueError("[PLC] Invalid target floor")
+            return False
         
 
-    def lift_to_everylayer(self, FLOOR_ID: int) -> None:
+    def lift_to_everylayer(self, FLOOR_ID: int) -> bool:
         """
         [输送线操作] - 入库方向，货物从电梯内通过输送线，进入到楼层接驳位
 
         ::: param :::
             FLOOR_ID: 楼层 int
         """
-
         # 确认目标层到达
-        if self.read_bit(11, PLCAddress.RUNNING.value) == False and self.get_lift() == FLOOR_ID :
-            time.sleep(1)
-            self.write_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 1)
-
+        self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 1)
         time.sleep(0.5)
+
         # 移动到1层
         if FLOOR_ID == 1:
             data = struct.pack('!H', FLOOR_CODE.LAYER_1)
-            self.write_db(12, PLCAddress.TARGET_1020.value, data)
+            self.write_db(12, DB_12.TARGET_1020.value, data)
             time.sleep(2)
             # 清零
-            if self.read_db(12, PLCAddress.TARGET_1020.value, 2) == data:
-                self.write_db(12, PLCAddress.TARGET_1020.value, b'\x00\x00')
-            # 到达目标层状态 清零
-            if self.read_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 1) == 1:
-                self.write_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 0)
+            if self.read_db(12, DB_12.TARGET_1020.value, 2) == data:
+                self.write_db(12, DB_12.TARGET_1020.value, b'\x00\x00')
+                time.sleep(1)
+                self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
+                return True
+            else:
+                self.logger.error("清零失败")
+                return False
+
         
         # 移动到2层
         elif FLOOR_ID == 2:
             data = struct.pack('!H', FLOOR_CODE.LAYER_2)
-            self.write_db(12, PLCAddress.TARGET_1020.value, data)
+            self.write_db(12, DB_12.TARGET_1020.value, data)
             time.sleep(2)
             # 清零
-            if self.read_db(12, PLCAddress.TARGET_1020.value, 2) == data:
-                self.write_db(12, PLCAddress.TARGET_1020.value, b'\x00\x00')
-            # 到达目标层状态 清零
-            if self.read_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 1) == 1:
-                self.write_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 0)
+            if self.read_db(12, DB_12.TARGET_1020.value, 2) == data:
+                self.write_db(12, DB_12.TARGET_1020.value, b'\x00\x00')
+                time.sleep(1)
+                self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
+                return True
+            else:
+                self.logger.error("清零失败")
+                return False
         
         # 移动到3层
         elif FLOOR_ID == 3:
             data = struct.pack('!H', FLOOR_CODE.LAYER_3)
-            self.write_db(12, PLCAddress.TARGET_1020.value, data)
+            self.write_db(12, DB_12.TARGET_1020.value, data)
             time.sleep(2)
             # 清零
-            if self.read_db(12, PLCAddress.TARGET_1020.value, 2) == data:
-                self.write_db(12, PLCAddress.TARGET_1020.value, b'\x00\x00')
-            # 到达目标层状态 清零
-            if self.read_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 1) == 1:
-                self.write_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 0)
+            if self.read_db(12, DB_12.TARGET_1020.value, 2) == data:
+                self.write_db(12, DB_12.TARGET_1020.value, b'\x00\x00')
+                time.sleep(1)
+                self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
+                return True
+            else:
+                self.logger.error("清零失败")
+                return False
 
         # 移动到4层
         elif FLOOR_ID == 4:
             data = struct.pack('!H', FLOOR_CODE.LAYER_4)
-            self.write_db(12, PLCAddress.TARGET_1020.value, data)
+            self.write_db(12, DB_12.TARGET_1020.value, data)
             time.sleep(2)
             # 清零
-            if self.read_db(12, PLCAddress.TARGET_1020.value, 2) == data:
-                self.write_db(12, PLCAddress.TARGET_1020.value, b'\x00\x00')
-            # 到达目标层状态 清零
-            if self.read_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 1) == 1:
-                self.write_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 0)
+            if self.read_db(12, DB_12.TARGET_1020.value, 2) == data:
+                self.write_db(12, DB_12.TARGET_1020.value, b'\x00\x00')
+                time.sleep(1)
+                self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
+                return True
+            else:
+                self.logger.error("清零失败")
+                return False
 
         # 无效楼层
         else:
             self.logger.warning("[PLC] 无效的楼层")
-            raise ValueError("[PLC] Invalid target floor")
+            return False
         
     
     ########################################################
@@ -262,26 +389,26 @@ class PLCController(PLCConnectionBase):
         """
         # 楼层1
         if FLOOR_ID == 1:
-            self.write_bit(12, PLCAddress.FEED_IN_PROGRESS_1030.value, 1)
+            self.write_bit(12, DB_12.FEED_IN_PROGRESS_1030.value, 1)
             return True
         # 楼层2
         elif FLOOR_ID == 2:
-            self.write_bit(12, PLCAddress.FEED_IN_PROGRESS_1040.value, 1)
+            self.write_bit(12, DB_12.FEED_IN_PROGRESS_1040.value, 1)
             return True
         # 楼层3
         elif FLOOR_ID == 3:
-            self.write_bit(12, PLCAddress.FEED_IN_PROGRESS_1050.value, 1)
+            self.write_bit(12, DB_12.FEED_IN_PROGRESS_1050.value, 1)
             return True
         # 楼层4
         elif FLOOR_ID == 4:
-            self.write_bit(12, PLCAddress.FEED_IN_PROGRESS_1060.value, 1)
+            self.write_bit(12, DB_12.FEED_IN_PROGRESS_1060.value, 1)
             return True
         # 无效楼层
         else:
             self.logger.info("[PLC] 无效的楼层")
             return False
         
-    def feed_complete(self, FLOOR_ID:int) -> None:
+    def feed_complete(self, FLOOR_ID:int) -> bool:
         """
         [放货完成] & [输送线操作] - 出库方向，货物从楼层内的接驳位输送线进入电梯
         
@@ -297,35 +424,54 @@ class PLCController(PLCConnectionBase):
         # 楼层1
         if FLOOR_ID == 1:
             # 放料完成
-            self.write_bit(12, PLCAddress.FEED_COMPLETE_1030.value, 1)
-            if self.read_bit(12, PLCAddress.FEED_COMPLETE_1030.value) == 1:
-                self.write_bit(12, PLCAddress.FEED_COMPLETE_1030.value, 0)
+            self.write_bit(12, DB_12.FEED_COMPLETE_1030.value, 1)
+            time.sleep(1)
+            if self.read_bit(12, DB_12.FEED_COMPLETE_1030.value) == 1:
+                self.write_bit(12, DB_12.FEED_COMPLETE_1030.value, 0)
+                return True
+            else:
+                self.logger.error("清零失败")
+                return False
 
         # 楼层2
         elif FLOOR_ID == 2:
             # 放料完成
-            self.write_bit(12, PLCAddress.FEED_COMPLETE_1040.value, 1)
-            if self.read_bit(12, PLCAddress.FEED_COMPLETE_1040.value) == 1:
-                self.write_bit(12, PLCAddress.FEED_COMPLETE_1040.value, 0)
+            self.write_bit(12, DB_12.FEED_COMPLETE_1040.value, 1)
+            time.sleep(1)
+            if self.read_bit(12, DB_12.FEED_COMPLETE_1040.value) == 1:
+                self.write_bit(12, DB_12.FEED_COMPLETE_1040.value, 0)
+                return True
+            else:
+                self.logger.error("清零失败")
+                return False
         
         # 楼层3
         elif FLOOR_ID == 3:
             # 放料完成
-            self.write_bit(12, PLCAddress.FEED_COMPLETE_1050.value, 1)
-            if self.read_bit(12, PLCAddress.FEED_COMPLETE_1050.value) == 1:
-                self.write_bit(12, PLCAddress.FEED_COMPLETE_1050.value, 0)
+            self.write_bit(12, DB_12.FEED_COMPLETE_1050.value, 1)
+            time.sleep(1)
+            if self.read_bit(12, DB_12.FEED_COMPLETE_1050.value) == 1:
+                self.write_bit(12, DB_12.FEED_COMPLETE_1050.value, 0)
+                return True
+            else:
+                self.logger.error("清零失败")
+                return False
         
         # 楼层4
         elif FLOOR_ID == 4:
             # 放料完成
-            self.write_bit(12, PLCAddress.FEED_COMPLETE_1060.value, 1)
-            if self.read_bit(12, PLCAddress.FEED_COMPLETE_1060.value) == 1:
-                self.write_bit(12, PLCAddress.FEED_COMPLETE_1060.value, 0)
-        
+            self.write_bit(12, DB_12.FEED_COMPLETE_1060.value, 1)
+            time.sleep(1)
+            if self.read_bit(12, DB_12.FEED_COMPLETE_1060.value) == 1:
+                self.write_bit(12, DB_12.FEED_COMPLETE_1060.value, 0)
+                return True
+            else:
+                self.logger.error("清零失败")
+                return False
         # 无效楼层
         else:
             self.logger.warning("[PLC] 无效的楼层")
-            raise ValueError("[PLC] Invalid target floor")
+            return False
         
     def pick_in_process(self, FLOOR_ID: int) -> bool:
         """
@@ -336,26 +482,26 @@ class PLCController(PLCConnectionBase):
         """
         # 楼层1
         if FLOOR_ID == 1:
-            self.write_bit(12, PLCAddress.PICK_IN_PROGRESS_1030.value, 1)
+            self.write_bit(12, DB_12.PICK_IN_PROGRESS_1030.value, 1)
             return True
         # 楼层2
         elif FLOOR_ID == 2:
-            self.write_bit(12, PLCAddress.PICK_IN_PROGRESS_1040.value, 1)
+            self.write_bit(12, DB_12.PICK_IN_PROGRESS_1040.value, 1)
             return True
         # 楼层3
         elif FLOOR_ID == 3:
-            self.write_bit(12, PLCAddress.PICK_IN_PROGRESS_1050.value, 1)
+            self.write_bit(12, DB_12.PICK_IN_PROGRESS_1050.value, 1)
             return True
         # 楼层4
         elif FLOOR_ID == 4:
-            self.write_bit(12, PLCAddress.PICK_IN_PROGRESS_1060.value, 1)
+            self.write_bit(12, DB_12.PICK_IN_PROGRESS_1060.value, 1)
             return True
         # 无效楼层
         else:
             self.logger.info("[PLC] 无效的楼层")
             return False
         
-    def pick_complete(self, FLOOR_ID:int) -> None:
+    def pick_complete(self, FLOOR_ID:int) -> bool:
         """
         [取货完成] - 入库方向，告知PLC穿梭车已将货物取走至库内
 
@@ -370,35 +516,55 @@ class PLCController(PLCConnectionBase):
         # 楼层1
         if FLOOR_ID == 1:
             # 放料完成
-            self.write_bit(12, PLCAddress.PICK_COMPLETE_1030.value, 1)
-            if self.read_bit(12, PLCAddress.PICK_COMPLETE_1030.value) == 1:
-                self.write_bit(12, PLCAddress.PICK_COMPLETE_1030.value, 0)
+            self.write_bit(12, DB_12.PICK_COMPLETE_1030.value, 1)
+            time.sleep(1)
+            if self.read_bit(12, DB_12.PICK_COMPLETE_1030.value) == 1:
+                self.write_bit(12, DB_12.PICK_COMPLETE_1030.value, 0)
+                return True
+            else:
+                self.logger.error("清零失败")
+                return False
 
         # 楼层2
         elif FLOOR_ID == 2:
             # 放料完成
-            self.write_bit(12, PLCAddress.PICK_COMPLETE_1040.value, 1)
-            if self.read_bit(12, PLCAddress.PICK_COMPLETE_1040.value) == 1:
-                self.write_bit(12, PLCAddress.PICK_COMPLETE_1040.value, 0)
+            self.write_bit(12, DB_12.PICK_COMPLETE_1040.value, 1)
+            time.sleep(1)
+            if self.read_bit(12, DB_12.PICK_COMPLETE_1040.value) == 1:
+                self.write_bit(12, DB_12.PICK_COMPLETE_1040.value, 0)
+                return True
+            else:
+                self.logger.error("清零失败")
+                return False
         
         # 楼层3
         elif FLOOR_ID == 3:
             # 放料完成
-            self.write_bit(12, PLCAddress.PICK_COMPLETE_1050.value, 1)
-            if self.read_bit(12, PLCAddress.PICK_COMPLETE_1050.value) == 1:
-                self.write_bit(12, PLCAddress.PICK_COMPLETE_1050.value, 0)
+            self.write_bit(12, DB_12.PICK_COMPLETE_1050.value, 1)
+            time.sleep(1)
+            if self.read_bit(12, DB_12.PICK_COMPLETE_1050.value) == 1:
+                self.write_bit(12, DB_12.PICK_COMPLETE_1050.value, 0)
+                return True
+            else:
+                self.logger.error("清零失败")
+                return False
         
         # 楼层4
         elif FLOOR_ID == 4:
             # 放料完成
-            self.write_bit(12, PLCAddress.PICK_COMPLETE_1060.value, 1)
-            if self.read_bit(12, PLCAddress.PICK_COMPLETE_1060.value) == 1:
-                self.write_bit(12, PLCAddress.PICK_COMPLETE_1060.value, 0)
+            self.write_bit(12, DB_12.PICK_COMPLETE_1060.value, 1)
+            time.sleep(1)
+            if self.read_bit(12, DB_12.PICK_COMPLETE_1060.value) == 1:
+                self.write_bit(12, DB_12.PICK_COMPLETE_1060.value, 0)
+                return True
+            else:
+                self.logger.error("清零失败")
+                return False
         
         # 无效楼层
         else:
             self.logger.warning("[PLC] 无效的楼层")
-            raise ValueError("[PLC] Invalid target floor")
+            return False
         
     
     ########################################################
@@ -412,7 +578,7 @@ class PLCController(PLCConnectionBase):
         ::: return :::
             qrcode: 设备获取的二维码信息
         """
-        is_qrcode = self.read_db(11, int(PLCAddress.SCAN_CODE_RD.value), 2)
+        is_qrcode = self.read_db(11, DB_11.SCAN_CODE_RD.value, 2)
         self.logger.info(f"🙈 是否扫到码: {is_qrcode}")
         if is_qrcode == b'\x00\x01':
             qrcode = bytes()

@@ -17,9 +17,9 @@ class PLCAddressBase:
         value = self.value
         return isinstance(value, float) or (isinstance(value, str) and '.' in value)
 
-class PLCAddress(PLCAddressBase, Enum):
+class DB_12(PLCAddressBase, Enum):
     """
-    [PLC点位地址枚举] - 根据EXCEL点位表生成
+    [DB 12] - PLC点位地址枚举, 根据EXCEL点位表生成
     """
     def __init__(self, address, description):
         # 这里可以添加额外的初始化代码，例如验证地址格式
@@ -40,10 +40,7 @@ class PLCAddress(PLCAddressBase, Enum):
         """
         return self._description
     
-    #################
-    ###### DB12 #####
-    #################
-    
+
     TASK_TYPE = 0, "任务类型: 1载货 2载车 3载货和车 4空载"
     START_LAYER = 2, "起始层"
     TARGET_LAYER = 4, "目标层"
@@ -82,9 +79,30 @@ class PLCAddress(PLCAddressBase, Enum):
     TARGET_LAYER_ARRIVED = 24.1, "目标层到达"
     
 
-    #################
-    ###### DB11 #####
-    #################
+class DB_11(PLCAddressBase, Enum):
+    """
+    [DB 11] - PLC点位地址枚举, 根据EXCEL点位表生成
+    """
+    def __init__(self, address, description):
+        # 这里可以添加额外的初始化代码，例如验证地址格式
+        self._value_ = address
+        self._description = description # 自定义属性
+    
+    @property
+    def value(self):
+        """
+        [显式操作] - 覆盖默认的value属性获取方式
+        """
+        return self._value_
+    
+    @property
+    def description(self):
+        """
+        [获取枚举的描述信息] - 符合WCS/WMS系统交互需求的描述信息
+        """
+        return self._description
+    
+
     FREQ_CONVERTER_ALARM = 10.0, "变频报警"
     RUN_TIMEOUT = 10.1, "运行超时"
     FRONT_CAR_OVERLIMIT = 10.2, "前车超限"
@@ -116,7 +134,7 @@ class PLCAddress(PLCAddressBase, Enum):
     COMPLETED_RWH = 20, "提升机完成RWH"
     
     # 条码区域
-    SCAN_CODE_RD = 22, "扫码"
+    SCAN_CODE_RD = 22, "扫描二维码"
     
     # 重量和外形检测区域
     WEIGHT = 44, "Weight"
@@ -153,6 +171,29 @@ class PLCAddress(PLCAddressBase, Enum):
     PLATFORM_PALLET_READY_1060 = 53.4, "1060载物台托盘到位(1到位0无), 库内4层"
 
 
+class DB_5(PLCAddressBase, Enum):
+    """
+    [DB 5] - PLC点位地址枚举, 根据EXCEL点位表生成
+    """
+    def __init__(self, address, description):
+        # 这里可以添加额外的初始化代码，例如验证地址格式
+        self._value_ = address
+        self._description = description # 自定义属性
+    
+    @property
+    def value(self):
+        """
+        [显式操作] - 覆盖默认的value属性获取方式
+        """
+        return self._value_
+    
+    @property
+    def description(self):
+        """
+        [获取枚举的描述信息] - 符合WCS/WMS系统交互需求的描述信息
+        """
+        return self._description
+    
     ################
     ###### DB5 #####
     ################
@@ -207,13 +248,13 @@ class FLOOR_CODE:
 # 使用示例
 if __name__ == "__main__":
     # 访问整型点位
-    print(f"{PLCAddress.START_LAYER.name} - {PLCAddress.START_LAYER.value} - {PLCAddress.START_LAYER.description}")  # 输出: 2 (int类型)
+    print(f"{DB_11.SCAN_CODE_RD.name} - {DB_11.SCAN_CODE_RD.value} - {DB_11.SCAN_CODE_RD.description}")  # 输出: 2 (int类型)
     
     # 访问浮点型点位
-    print(f"{PLCAddress.FEED_COMPLETE_1010.name} - {PLCAddress.FEED_COMPLETE_1010.value} - {PLCAddress.FEED_COMPLETE_1010.description}")  # 输出: 22.0 (float类型)
+    print(f"{DB_12.FEED_COMPLETE_1010.name} - {DB_12.FEED_COMPLETE_1010.value} - {DB_12.FEED_COMPLETE_1010.description}")  # 输出: 22.0 (float类型)
     
     # 检查点位类型
-    address = PLCAddress.STATUS_1010
+    address = DB_11.STATUS_1010
     if address.is_float_address():
         print(f"{address.name} 是布尔点位")
     else:

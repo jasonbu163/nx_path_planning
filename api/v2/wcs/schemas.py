@@ -47,6 +47,11 @@ class LocationID(BaseModel):
     """库位ID"""
     id: Optional[int] = Field(default=1, examples=[1, 2, 3], description="库位ID")
 
+class Locations(BaseModel):
+    """库位列表"""
+    start_id: int = Field(default=1, examples=[1, 2, 3], description="起始库位ID")
+    end_id: int = Field(default=100, examples=[1, 2, 3], description="结束库位ID")
+
 class LocationPosition(BaseModel):
     """库位坐标"""
     location: Optional[str] = Field(default="1,1,4", examples=["1,1,4"], description="库位坐标")
@@ -97,3 +102,7 @@ class LiftBase(BaseModel):
     """WCS电梯基础模型"""
     layer: int = Field(..., examples=[1, 2, 3], description="电梯楼层")
 
+class DevicesTaskBase(BaseModel):
+    """设备任务基础模型"""
+    task_no: int = Field(..., examples=[1, 2, 3], description="任务号(1-255)")
+    target_layer: int = Field(..., examples=[1, 2, 3, 4], description="任务目标楼层(1-4)")
