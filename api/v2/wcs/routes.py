@@ -381,7 +381,8 @@ async def get_car_location(
         # 获取任务
         msg = services.get_car_current_location()
 
-        # 返回执行路径
+        if msg == "error":
+            return StandardResponse.isError(message="操作失败，穿梭车可能未连接")
         return StandardResponse.isSuccess(data=msg)
 
     except Exception as e:
@@ -405,7 +406,8 @@ async def change_car_location(
         # 获取任务
         msg = services.change_car_location_by_target(request.target)
 
-        # 返回执行路径
+        if msg == False:
+            return StandardResponse.isError(message="操作失败，穿梭车可能未连接")
         return StandardResponse.isSuccess(data=msg)
 
     except Exception as e:
@@ -422,10 +424,9 @@ async def car_move_control(
     """
     try:
         # 获取任务
-        msg = services.car_move_by_target(request.target)
-
-        # 返回执行路径
-        return StandardResponse.isSuccess(data=msg)
+        if services.car_move_by_target(request.target):
+            return StandardResponse.isSuccess(data="发送指令成功")
+        return StandardResponse.isError(message="发送指令失败")
 
     except Exception as e:
         return StandardResponse.isError(message=str(e))
@@ -467,10 +468,10 @@ async def lift_control(
         # 获取任务
         msg = await services.lift_by_id(request.layer)
 
-        if msg[0] == True:
-            return StandardResponse.isSuccess(message=msg[1])
+        if msg == True:
+            return StandardResponse.isSuccess(message="移动成功")
         else:
-            return StandardResponse.isError(message=msg[1])
+            return StandardResponse.isError(message="找不到该楼层")
 
     except Exception as e:
         return StandardResponse.isError(message=str(e))

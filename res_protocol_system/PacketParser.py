@@ -119,15 +119,19 @@ class PacketParser:
             dict: 解析后的报文数据
         """
         if len(DATA) < 5:  # 检查最小数据长度
-            raise ValueError(f"数据长度不足，需至少5字节，实际收到{len(DATA)}字节")
-            
-        header_fields = struct.unpack_from('!2sBBB', DATA, 0)
-        return {
-            'first_frame': header_fields[0],
-            'device_id': header_fields[1],
-            'life': header_fields[2],
-            'head_info': header_fields[3]
-        }
+            print(f"数据长度不足，需至少5字节，实际收到{len(DATA)}字节")
+            return {
+                "car_status": "error",
+                "message": "数据长度不足"
+            }
+        else:
+            header_fields = struct.unpack_from('!2sBBB', DATA, 0)
+            return {
+                'first_frame': header_fields[0],
+                'device_id': header_fields[1],
+                'life': header_fields[2],
+                'head_info': header_fields[3]
+            }
     
 
     ########################################
@@ -157,6 +161,10 @@ class PacketParser:
             print(f"[CAR] 心跳响应报文: {DATA}")
         else:
             print("[CAR] 错误: 无数据")
+            return {
+                "car_status": "error",
+                "message": "无数据"
+            }
 
         print(f"[CAR] 包长: {len(DATA)}")
         
@@ -213,6 +221,10 @@ class PacketParser:
             print(f"[CAR] 心跳响应报文: {DATA}")
         else:
             print("[CAR] 错误: 无数据")
+            return {
+                "car_status": "error",
+                "message": "无数据"
+            }
         
         print(f"[CAR] 包长: {len(DATA)}")
 
@@ -266,9 +278,10 @@ class PacketParser:
         """
         if not self.validate_packet(DATA):
             return {
-                'is_true': False,
-                'msg': "非法报文"
-                }
+                "car_status": "error",
+                "message": "非法数据"
+            }
+        
         print(f"[CAR] 包长: {len(DATA)}")
 
         # 头(5)
@@ -324,9 +337,9 @@ class PacketParser:
         """
         if not self.validate_packet(DATA):
             return {
-                'is_true': False,
-                'msg': "非法报文"
-                }
+                "car_status": "error",
+                "message": "无数据"
+            }
         print(f"[CAR] 包长: {len(DATA)}")
 
         # 头(5)
@@ -348,14 +361,15 @@ class PacketParser:
     # DEBUG包解析
     ########################################
 
-    def parse_debug_response(self, data: bytes) -> Union[dict, None]:
+    def parse_debug_response(self, data: bytes) -> dict:
         """解析调试命令响应报文"""
         if not self.validate_packet(data):
-            return None
+            return {
+                "car_status": "error",
+                "message": "无数据"
+            }
             
         header = self.parse_header(data)
-        if not header:
-            return None
             
         # 调试响应数据部分从第7字节开始
         payload_start = 7
@@ -363,7 +377,10 @@ class PacketParser:
         
         if payload_end - payload_start < 8:
             print("调试响应报文数据部分不足8字节")
-            return None
+            return {
+                "car_status": "error",
+                "message": "调试响应报文数据部分不足8字节"
+            }
             
         payload = data[payload_start:payload_end]
         
@@ -392,11 +409,12 @@ class PacketParser:
         [通用解析方法] - 用于分类报文, 心跳报文除外
         """
         if not self.validate_packet(DATA):
-            return {'error': 'Invalid packet'}
+            return {
+                "car_status": "error",
+                "message": "无数据"
+            }
             
         header = self.parse_header(DATA)
-        if not header:
-            return {'error': 'Header parse failed'}
             
         frame_type = header['head_info']
         

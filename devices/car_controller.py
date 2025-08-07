@@ -62,7 +62,7 @@ class CarController(CarConnectionBase):
     # 发送心跳包 - 读取穿梭车
     ########################################
 
-    def send_heartbeat(self, TIMES: int=3) -> Any:
+    def send_heartbeat(self, TIMES: int=3) -> dict:
         """
         [发送心跳包] - 心跳报文可以获取穿梭车状态
 
@@ -79,7 +79,7 @@ class CarController(CarConnectionBase):
                 time.sleep(1)
                 self.send_message(packet)
                 response = self.receive_message()
-                if response:
+                if response != b'\x00':
                     self.close()
                     msg = self.parser.parse_heartbeat_response(response)
                     self.logger.info(msg)
@@ -88,16 +88,23 @@ class CarController(CarConnectionBase):
                     self.close()
                     self.logger.error("[CAR] 📰 未收到 [心跳] 响应报文！")
                     return {
-                        "status": False,
-                        "msg": "未收到 [心跳] 响应报文！"
+                        "car_status": "error",
+                        "message": "未收到 [心跳] 响应报文！"
                     }
             else:
                 self.close()
                 self.logger.error("[CAR] 🚗 穿梭车未连接！")
                 return {
-                        "status": False,
-                        "msg": "穿梭车未连接！"
+                        "car_status": "error",
+                        "message": "穿梭车未连接！"
                     }
+        
+        # 如果循环没有执行（例如 TIMES <= 0），返回默认错误信息
+        self.logger.error("[CAR] ⚠️  心跳发送次数设置错误或未发送心跳！")
+        return {
+            "car_status": "error",
+            "message": "心跳发送次数设置错误或未发送心跳！"
+        }
 
     def car_power(self, TIMES: int=3) -> Any:
         """
@@ -124,11 +131,11 @@ class CarController(CarConnectionBase):
                 else:
                     self.close()
                     self.logger.error("[CAR] ⚡️ 未收到 [电量心跳] 响应报文！")
-                    return False
+                    return None
             else:
                 self.close()
                 self.logger.error("[CAR] 🚗 穿梭车未连接！")
-                return False
+                return None
     
     def car_status(self, TIMES: int=3) -> dict:
         """
@@ -140,13 +147,20 @@ class CarController(CarConnectionBase):
             car_status: 穿梭车状态信息
         """
         heartbeat_msg = self.send_heartbeat(TIMES)
-        car_status = CarStatus.get_info_by_value(heartbeat_msg['car_status'])
-        self.logger.info(f"[CAR] 穿梭车状态码: {heartbeat_msg['car_status']}时, 穿梭车状态: {car_status['name']}, 状态描述: {car_status['description']}")
-        return {
-             'status': heartbeat_msg['car_status'],
-             'name': car_status['name'],
-             'description': car_status['description']
-             }
+        if heartbeat_msg:
+            car_status = CarStatus.get_info_by_value(heartbeat_msg['car_status'])
+            self.logger.info(f"[CAR] 穿梭车状态码: {heartbeat_msg['car_status']}时, 穿梭车状态: {car_status['name']}, 状态描述: {car_status['description']}")
+            return {
+                'car_status': heartbeat_msg['car_status'],
+                'name': car_status['name'],
+                'description': car_status['description']
+                }
+        else:
+            return {
+                'car_status': "error",
+                'name': "未知",
+                'description': "未知"
+                }
 
     def car_current_location(self, TIMES: int=3) -> str:
         """
@@ -159,9 +173,12 @@ class CarController(CarConnectionBase):
             car_location: 小车当前位置, 例如: "6,3,1"
         """
         heartbeat_msg = self.send_heartbeat(TIMES)
-        location_info = heartbeat_msg['current_location']
-        car_location = f"{location_info[0]},{location_info[1]},{location_info[2]}"
-        return car_location
+        if heartbeat_msg["car_status"] == "error":
+            return "error"
+        else:
+            location_info = heartbeat_msg['current_location']
+            car_location = f"{location_info[0]},{location_info[1]},{location_info[2]}"
+            return car_location
     
 
     def wait_car_move_complete_by_location_sync(

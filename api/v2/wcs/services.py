@@ -303,17 +303,15 @@ class Services:
         """
         获取穿梭车当前位置信息服务
         """
-        msg = self.device_service.car.car_current_location()
-
-        return msg
+        return self.device_service.car.car_current_location()
 
     def change_car_location_by_target(self, target: str):
         """
         改变穿梭车位置服务
         """
         task_no = randint(1, 255)
-        self.device_service.car.change_car_location(task_no, target)
-        return "指令发送成功！"
+        return self.device_service.car.change_car_location(task_no, target)
+        
 
     def car_move_by_target(self, target: str):
         """
@@ -357,7 +355,7 @@ class Services:
         
         if LAYER not in [1,2,3,4]:
 
-            return False, "非法输入！！！"
+            return False
         
         else:
             if lift_running==0 and lift_idle==1 and lift_no_cargo==1 and lift_has_cargo==0 and lift_has_car==0:
@@ -375,7 +373,7 @@ class Services:
                     self.device_service.plc.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
                 
                 self.device_service.plc.disconnect()
-                return True, "提升机运行结束"
+                return True
             
             elif lift_running==0 and lift_idle==1 and lift_no_cargo==1 and lift_has_cargo==0 and lift_has_car==1:
                 
@@ -392,7 +390,7 @@ class Services:
                     self.device_service.plc.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
                 
                 self.device_service.plc.disconnect()
-                return True, "提升机运行结束"
+                return True
 
             elif lift_running==0 and lift_idle==1 and lift_no_cargo==0 and lift_has_cargo==1 and lift_has_car==0:
                 
@@ -409,11 +407,11 @@ class Services:
                     self.device_service.plc.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
                 
                 self.device_service.plc.disconnect()
-                return True, "提升机运行结束"
+                return True
             
             else:
                 self.device_service.plc.disconnect()
-                return False, "非法操作"
+                return False
             
 
 

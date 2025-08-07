@@ -83,7 +83,7 @@ class CarConnection(DevicesLogger):
             self._connected = False
             return False
     
-    async def receive_message(self, timeout: float = 10.0) -> Optional[bytes]:
+    async def receive_message(self, timeout: float = 10.0) -> bytes:
     # async def receive_message(self, decode: bool = False, timeout: float = 10.0) -> Optional[bytes]:
         """
         [数据接收器] 接收服务器响应
@@ -91,18 +91,18 @@ class CarConnection(DevicesLogger):
         """
         if not self.is_connected():
             self.logger.warning("[CAR] 接收失败：连接未建立")
-            return None
+            return b'\x00'
         
         if self.reader is None:
             self.logger.warning("[CAR] 读取器未初始化")
-            return None
+            return b'\x00'
 
         try:
             data = await asyncio.wait_for(self.reader.read(1024), timeout=timeout)
             if not data:
                 self.logger.warning("[CAR] 连接被远程关闭")
                 self._connected = False
-                return None
+                return b'\x00'
             
             # 返回解码的数据 (使用请解除注释)
             # response = data.decode() if decode else data
@@ -117,7 +117,7 @@ class CarConnection(DevicesLogger):
             error_type = type(e).__name__
             self.logger.error(f"[CAR] 接收错误 {error_type}: {e}")
             self._connected = False
-            return None
+            return b'\x00'
 
     async def close(self) -> bool:
         """
@@ -232,13 +232,13 @@ class CarConnectionBase(DevicesLogger):
             self.close()
             return False
     
-    def receive_message(self, timeout: float = 10.0, max_bytes: int = 4096) -> Optional[bytes]:
+    def receive_message(self, timeout: float = 10.0, max_bytes: int = 4096) -> bytes:
         """
         [数据接收器] 接收服务器响应
         """
         if not self.is_connected() or self._socket is None:
             self.logger.error("[CAR] 接收失败：未建立有效连接")
-            return None
+            return b'\x00'
             
         try:
             self._socket.settimeout(timeout)
@@ -247,7 +247,7 @@ class CarConnectionBase(DevicesLogger):
             if not data:
                 self.logger.warning("[CAR] 连接已由服务端关闭")
                 self.close()
-                return None
+                return b'\x00'
                 
             # 注意：当前项目直接返回原始字节数据
             # 如果未来需要字符串，可取消以下注释：
@@ -257,11 +257,11 @@ class CarConnectionBase(DevicesLogger):
             
         except socket.timeout:
             self.logger.warning("[CAR] 接收超时，未接收到数据")
-            return None
+            return b'\x00'
         except (socket.error, OSError) as e:
             self.logger.error(f"[CAR] 接收错误: {str(e)}")
             self.close()
-            return None
+            return b'\x00'
     
     def close(self) -> bool:
         """
