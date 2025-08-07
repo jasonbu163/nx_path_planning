@@ -32,3 +32,8 @@ icon = "📦"
 path = "tool_pages/car_cross_layer.py"
 name = "穿梭车跨层操作"
 icon = "🚚" 
+
+[[pages]]
+path = "test_bar.py"
+name = "进度条测试"
+icon = "🧭" 

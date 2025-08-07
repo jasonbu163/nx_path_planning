@@ -563,7 +563,7 @@ class PLCController(PLCConnectionBase):
         
         # 无效楼层
         else:
-            self.logger.warning("[PLC] 无效的楼层")
+            self.logger.error("[PLC] 无效的楼层")
             return False
         
     

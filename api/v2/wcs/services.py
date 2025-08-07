@@ -677,11 +677,18 @@ class Services:
             self,
             TASK_NO: int,
             TARGET_LAYER: int
-            ) -> str:
+            ) -> str|int:
         """
         操作穿梭车联动电梯跨层
         """
 
-        car_last_location = self.device_service.car_cross_layer(TASK_NO, TARGET_LAYER)
-
-        return car_last_location
+        car_last_location = await self.loop.run_in_executor(
+            self.thread_pool,
+            self.device_service.car_cross_layer,
+            TASK_NO, TARGET_LAYER
+            )
+        
+        if car_last_location == "'current_location'":
+            return 400
+        else:
+            return car_last_location

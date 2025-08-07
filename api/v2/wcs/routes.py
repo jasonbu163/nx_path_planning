@@ -627,7 +627,10 @@ async def control_car_cross_layer(
             request.task_no,
             request.target_layer
             )
-        return  StandardResponse.isSuccess(data=car_last_location)
+        if car_last_location == 400:
+            return StandardResponse.isError(message="操作失败", data=car_last_location)
+        else:
+            return StandardResponse.isSuccess(message="操作失败", data=car_last_location)
     
     except Exception as e:
         return StandardResponse.isError(message=str(e))

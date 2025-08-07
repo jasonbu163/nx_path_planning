@@ -5,6 +5,7 @@ sys_path.setup_path()
 
 import asyncio
 import time
+import random
 
 import config
 from devices.devices_controller import DevicesController
@@ -31,19 +32,14 @@ def test_plc_controller(PLC_IP):
         plc.disconnect()
         return False
     
+    task_no = random.randint(1, 100)
     plc.logger.info("🚧 电梯开始移动")
-    plc.lift_move(LIFT_TASK_TYPE.GOOD, 1, 2)
-    plc.logger.info("🚧 电梯移动中...")
-    plc.wait_for_bit_change_sync(11, DB_11.RUNNING.value, 0)
-    plc.logger.info("🚧 电梯到达")
+    plc.lift_move_by_layer(task_no, 2)
 
     time.sleep(2)
 
     plc.logger.info("🚧 电梯开始移动")
-    plc.lift_move(LIFT_TASK_TYPE.GOOD, 2, 1)
-    plc.logger.info("🚧 电梯移动中...")
-    plc.wait_for_bit_change_sync(11, DB_11.RUNNING.value, 0)
-    plc.logger.info("🚧 电梯到达")
+    plc.lift_move_by_layer(task_no+1, 1)
 
     plc.logger.info("🚧 开始出库")
     plc.lift_to_outband()
@@ -63,7 +59,7 @@ def test_car_controller(CAR_IP, CAR_PORT):
     car.logger.info(f"🔋 车辆电量: {power_msg}")
 
     car.logger.info("🚗 车辆开始移动")
-    task_no = 12
+    task_no = random.randint(1, 100)
     car_target = '1,4,1'
     car.car_move(task_no, car_target)
     car.logger.info("⌛️ 车辆移动中...")

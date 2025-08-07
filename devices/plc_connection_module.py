@@ -30,41 +30,87 @@ class PLCConnectionBase(DevicesLogger):
     ####################### 同步方法 #####################
     #####################################################
 
-    def connect(self) -> bool:
+    def connect(self, retry_count: int = 3, retry_interval: float = 2.0) -> bool:
         """
         [同步连接PLC]
         """
-        try:
-            self.logger.info(f"🔌 正在连接到 PLC: {self._ip} (rack=0, slot=1)")
-            self.client.connect(self._ip, 0, 1)  # 默认 rack=0, slot=1
-            self._connected = self.client.get_connected()
-            if self._connected:
-                self.logger.info(f"✅ 成功连接 PLC：{self._ip}")
+        # 双重检查连接状态
+        if self._connected and self.client.get_connected():
+            self.logger.info("[PLC] 连接已存在，无需重新连接")
+            return True
+        
+        # 如果已有连接但状态不一致，先断开
+        if self._connected or self.client.get_connected():
+            self.logger.warning("[PLC] 连接状态不一致，先关闭现有连接")
+            self.disconnect()
+
+        for attempt in range(1, retry_count + 1):
+            try:
+                self.logger.info(f"🔌 正在连接到 PLC: {self._ip} (rack=0, slot=1)")
+                self.logger.info(f"[PLC] 尝试连接 {attempt}/{retry_count} {self._ip}")
+                
+                # 创建新的Client实例（避免重用问题连接）
+                self.client = Client()
+                
+                # 尝试连接
+                self.client.connect(self._ip, 0, 1)  # 默认 rack=0, slot=1
+                self._connected = self.client.get_connected()
+
+                if not self._connected:
+                    self.logger.error("❌ PLC返回连接失败")
+                    continue
+
+                # 简单验证连接（可选）
+                try:
+                    # 读取一个测试值验证连接
+                    self.client.db_read(11, 44, 1)
+                except Exception as test_e:
+                    self.logger.error(f"连接验证失败: {test_e}")
+                    self._connected = False
+                    continue
+                
+                self.logger.info(f"✅ 成功连接 PLC: {self._ip}")
                 return True
-            else:
-                self.logger.error("❌ PLC返回连接失败")
-                return False
-        except Exception as e:
-            self.logger.error(f"❌ 连接失败：{e}", exc_info=True)
-            self._connected = False
-            return False
+            
+            except Exception as e:
+                self.logger.error(f"❌ PLC连接失败{attempt}/{retry_count}:{str(e)}", exc_info=True)
+                self._connected = False
+
+                # 清理（如果连接部分成功）
+                try:
+                    self.client.disconnect()
+                except:
+                    pass
+                
+                # 等待（最后一次尝试不等待）
+                if attempt < retry_count:
+                    time.sleep(retry_interval)
+
+        self._connected = False
+        return False
     
     def disconnect(self) -> bool:
         """
         [断开PLC连接]
         """
+        # 如果未连接，直接返回成功
+        if not self._connected and not self.client.get_connected():        
+            self.logger.info(f"⚠️ PLC连接已断开, 无需操作")
+            return True
+        
         try:
-            if self._connected:
-                self.client.disconnect()
-                self._connected = False
-                self.logger.info("⛔ PLC连接已关闭")
-                return True
-            else:
-                self.logger.error(f"❌ PLC断开连接失败")
-                return False
+            # 尝试断开连接
+            self.client.disconnect()
+            self.logger.info(f"⛓️‍💥 PLC已断开连接")
+            return True
         except Exception as e:
-            self.logger.error(f"[PLC] 断开连接时出错: {e}", exc_info=True)
+            self.logger.error(f"❌ 断开连接失败: {e}", exc_info=True)
             return False
+        finally:
+            # 无论成功与否，更新状态
+            self._connected = False
+            # 重置客户端实例
+            self.client = Client()
     
     def is_connected(self) -> bool:
         """
