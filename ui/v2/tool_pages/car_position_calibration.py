@@ -10,14 +10,13 @@ st.subheader("📌 小车启动或者重启后，请来这里校准小车位置"
 with st.expander("📋 楼层选择", expanded=True):
     location_id = st.selectbox("请选择小车所在层 (z)", list(range(1, 5)), index=0)
 
-# 出库任务步骤配置
 steps = [
     {
         "step": 1,
         "title": "⚙️ 更改小车位置",
         "api": "/control/change_car_location",
         "method": "POST",
-        "params": {"target": f"1,1,1"}
+        "params": {"target": "1,1,1"}
     },
     {
         "step": 2,

@@ -215,6 +215,33 @@ class DB_5(PLCAddressBase, Enum):
     TARGET_LAYER_T = 12, "目标层"
     FAULT_T = 14, "故障"
 
+class DB_2(PLCAddressBase, Enum):
+    """
+    [DB 2] - PLC点位地址枚举, 根据EXCEL点位表生成
+    """
+    def __init__(self, address, description):
+        # 这里可以添加额外的初始化代码，例如验证地址格式
+        self._value_ = address
+        self._description = description # 自定义属性
+    
+    @property
+    def value(self):
+        """
+        [显式操作] - 覆盖默认的value属性获取方式
+        """
+        return self._value_
+    
+    @property
+    def description(self):
+        """
+        [获取枚举的描述信息] - 符合WCS/WMS系统交互需求的描述信息
+        """
+        return self._description
+    
+    REMOTE_ONLINE = 0.2, "远程联机"
+    CONVEYOR_ONLINE = 148.1, "输送线自动"
+
+
 class LIFT_TASK_TYPE:
     """
     [电梯操作所需的任务类型]

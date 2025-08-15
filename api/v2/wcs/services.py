@@ -14,7 +14,9 @@ from . import schemas
 
 from map_core import PathCustom
 # from devices.service_asyncio import DevicesService, DB_12
-from devices.devices_controller import DevicesController
+from devices.devices_controller import DevicesController, AsyncDevicesController
+from devices.car_controller import AsyncCarController, AsyncSocketCarController
+from devices.plc_controller import PLCController
 from devices.plc_enum import (
     DB_12,
     DB_11,
@@ -37,7 +39,9 @@ class Services:
         self.thread_pool = thread_pool
         self._loop = None # 延迟初始化的事件循环引用
         self.path_planner = PathCustom()
-        self.device_service = DevicesController(config.PLC_IP, config.CAR_IP, config.CAR_PORT)
+        self.plc_service = PLCController(config.PLC_IP)
+        self.car_service = AsyncSocketCarController(config.CAR_IP, config.CAR_PORT)
+        self.device_service = AsyncDevicesController(config.PLC_IP, config.CAR_IP, config.CAR_PORT)
 
     @property
     def loop(self):
@@ -83,9 +87,11 @@ class Services:
         db.refresh(task)
         return task
 
+
     #################################################
     # 库位服务
     #################################################
+
     def get_locations(self, db: Session):
         """
         获取所有库位信息服务
@@ -299,373 +305,261 @@ class Services:
     # 穿梭车服务
     #################################################
 
-    def get_car_current_location(self):
+    async def get_car_current_location(self) -> bool | str | None:
         """
         获取穿梭车当前位置信息服务
         """
-        return self.device_service.car.car_current_location()
+        msg = await self.car_service.car_current_location()
+        # if msg == "error":
+        #     return False
+        return msg
 
-    def change_car_location_by_target(self, target: str):
+    async def change_car_location_by_target(self, target: str) -> bool:
         """
         改变穿梭车位置服务
         """
         task_no = randint(1, 255)
-        return self.device_service.car.change_car_location(task_no, target)
+        return await self.car_service.change_car_location(task_no, target)
         
 
-    def car_move_by_target(self, target: str):
+    async def car_move_by_target(self, target: str) -> bool:
         """
         移动穿梭车服务
         """
         task_no = randint(1, 255)
-        self.device_service.car.car_move(task_no, target)
-        return "指令发送成功！"
+        # return await self.car_service.car_move(task_no, target)
 
-    def good_move_by_target(self, target: str):
+        await self.car_service.car_move(task_no, target)
+        return await self.car_service.wait_car_move_complete_by_location(target)
+
+    async def good_move_by_target(self, target: str) -> bool:
         """
         移动货物服务
         """
         task_no = randint(1, 255)
-        self.device_service.car.good_move(task_no, target)
-        return "指令发送成功！"
+        # return await self.car_service.good_move(task_no, target)
+
+        await self.car_service.good_move(task_no, target)
+        return await self.car_service.wait_car_move_complete_by_location(target)
 
 
     #################################################
     # 电梯服务
     #################################################
 
-    async def lift_by_id(self, LAYER: int):
+    def _lift_by_id(self, TASK_NO: int, LAYER: int) -> bool:
         """
-        移动电梯服务
+        [同步] 移动电梯服务
         """
-
-        self.device_service.plc.connect()
-
-        # 任务识别
-        lift_running = self.device_service.plc.read_bit(11, DB_11.RUNNING.value)
-        lift_idle = self.device_service.plc.read_bit(11, DB_11.IDLE.value)
-        lift_no_cargo = self.device_service.plc.read_bit(11, DB_11.NO_CARGO.value)
-        lift_has_cargo = self.device_service.plc.read_bit(11, DB_11.HAS_CARGO.value)
-        lift_has_car = self.device_service.plc.read_bit(11, DB_11.HAS_CAR.value)
-
-        print(f"[LIFT] 电梯状态 - 电梯运行中:{lift_running} 电梯是否空闲:{lift_idle} 电梯是否无货:{lift_no_cargo} 电梯是否有货:{lift_has_cargo} 电梯是否有车:{lift_has_car} ")
-
-        # 任务号
-        task_no = randint(1, 255)
-        
-        if LAYER not in [1,2,3,4]:
-
-            return False
-        
-        else:
-            if lift_running==0 and lift_idle==1 and lift_no_cargo==1 and lift_has_cargo==0 and lift_has_car==0:
-                
-                self.device_service.plc.lift_move(LIFT_TASK_TYPE.IDEL, task_no, LAYER)
-
-                await self.device_service.plc.wait_for_bit_change(11, DB_11.RUNNING.value, 0)
-                
-                # 读取提升机是否空闲
-                if self.device_service.plc.read_bit(11, DB_11.IDLE.value):
-                    self.device_service.plc.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 1)
-                time.sleep(1)
-                # 确认电梯到位后，清除到位状态
-                if self.device_service.plc.read_bit(12, DB_12.TARGET_LAYER_ARRIVED.value) == 1:
-                    self.device_service.plc.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
-                
-                self.device_service.plc.disconnect()
+        if self.plc_service.connect() and self.plc_service.plc_checker():
+            self.plc_service.logger.info("🚧 电梯操作")
+            if self.plc_service._lift_move_by_layer(TASK_NO, LAYER):
+                self.plc_service.disconnect()
                 return True
-            
-            elif lift_running==0 and lift_idle==1 and lift_no_cargo==1 and lift_has_cargo==0 and lift_has_car==1:
-                
-                self.device_service.plc.lift_move(LIFT_TASK_TYPE.CAR, task_no, LAYER)
-                
-                await self.device_service.plc.wait_for_bit_change(11, DB_11.RUNNING.value, 0)
-                
-                # 读取提升机是否空闲
-                if self.device_service.plc.read_bit(11, DB_11.IDLE.value):
-                    self.device_service.plc.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 1)
-                time.sleep(1)
-                # 确认电梯到位后，清除到位状态
-                if self.device_service.plc.read_bit(12, DB_12.TARGET_LAYER_ARRIVED.value) == 1:
-                    self.device_service.plc.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
-                
-                self.device_service.plc.disconnect()
-                return True
-
-            elif lift_running==0 and lift_idle==1 and lift_no_cargo==0 and lift_has_cargo==1 and lift_has_car==0:
-                
-                self.device_service.plc.lift_move(LIFT_TASK_TYPE.GOOD, task_no, LAYER)
-                
-                await self.device_service.plc.wait_for_bit_change(11, DB_11.RUNNING.value, 0)
-                                
-                # 读取提升机是否空闲
-                if self.device_service.plc.read_bit(11, DB_11.IDLE.value):
-                    self.device_service.plc.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 1)
-                time.sleep(1)
-                # 确认电梯到位后，清除到位状态
-                if self.device_service.plc.read_bit(12, DB_12.TARGET_LAYER_ARRIVED.value) == 1:
-                    self.device_service.plc.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
-                
-                self.device_service.plc.disconnect()
-                return True
-            
             else:
-                self.device_service.plc.disconnect()
+                self.plc_service.disconnect()
                 return False
-            
+        else:
+            self.plc_service.disconnect()
+            self.plc_service.logger.error("❌ PLC运行错误")
+            return False
+    
+    async def lift_by_id(self, TASK_NO: int, LAYER: int) -> bool:
+        """
+        [异步] 移动电梯服务
+        """
+        if await self.plc_service.async_connect() and self.plc_service.plc_checker():
+            self.plc_service.logger.info("🚧 电梯操作")
+            if await self.plc_service.lift_move_by_layer(TASK_NO, LAYER):
+                await self.plc_service.async_disconnect()
+                return True
+            else:
+                await self.plc_service.async_disconnect()
+                return False
+        else:
+            await self.plc_service.async_disconnect()
+            self.plc_service.logger.error("❌ PLC运行错误")
+            return False
 
 
     #################################################
     # 输送线服务
     #################################################
 
-    async def task_lift_inband(self):
+    async def task_lift_inband(self) -> bool:
         """
-        货物： 入口 --》 电梯， 入库！！！
+        [货物 - 入库方向] 入口 -> 电梯
         """
-        self.device_service.plc.connect()
+        if await self.plc_service.async_connect() and self.plc_service.plc_checker():
+            self.plc_service.logger.info("📦 货物开始进入电梯...")
+            self.plc_service.inband_to_lift()
 
-        # 执行指令
-        self.device_service.plc.inband_to_lift()
+            self.plc_service.logger.info("⏳ 输送线移动中...")
+            await self.plc_service.wait_for_bit_change(11, DB_11.PLATFORM_PALLET_READY_1020.value, 1)
 
-        # 等待PLC动作完成
-        await self.device_service.plc.wait_for_bit_change(11, DB_11.PLATFORM_PALLET_READY_1020.value, 1)
+            self.plc_service.logger.info("✅ 货物到达电梯")
+            await self.plc_service.async_disconnect()
+            return True
+        else:
+            await self.plc_service.async_disconnect()
+            self.plc_service.logger.error("❌ PLC运行错误")
+            return False
 
-        self.device_service.plc.disconnect()
 
-        return "输送线执行完成"
-
-
-    async def task_lift_outband(self):
+    async def task_lift_outband(self) -> bool:
         """
-        货物：电梯 --》 出口， 出库！！！
+        [货物 - 出库方向] 电梯 -> 出口
         """
-        self.device_service.plc.connect()
+        if await self.plc_service.async_connect() and self.plc_service.plc_checker():
+            self.plc_service.logger.info("📦 货物开始离开电梯...")
+            self.plc_service.lift_to_outband()
 
-        # 执行指令
-        self.device_service.plc.lift_to_outband()
+            self.plc_service.logger.info("⏳ 输送线移动中...")
+            await self.plc_service.wait_for_bit_change(11, DB_11.PLATFORM_PALLET_READY_MAN.value, 1)
 
-        # 等待PLC动作完成
-        await self.device_service.plc.wait_for_bit_change(11, DB_11.PLATFORM_PALLET_READY_MAN.value, 1)
+            self.plc_service.logger.info("✅ 货物到达出口")
+            await self.plc_service.async_disconnect()
+            return True
+        else:
+            await self.plc_service.async_disconnect()
+            self.plc_service.logger.error("❌ PLC运行错误")
+            return False
 
-        self.device_service.plc.disconnect()
-        return "输送线执行完成"
-
-    def feed_complete(self, LAYER:int):
+    async def feed_in_progress(self, LAYER:int) -> bool:
         """
-        库内 放料 完成信号
+        [货物 - 出库方向] 货物进入电梯
         """
-        self.device_service.plc.connect()
-
-        if LAYER == 1:
-            self.device_service.plc.write_bit(12, DB_12.FEED_COMPLETE_1030.value, 1)
-            time.sleep(1)
-            if self.device_service.plc.read_bit(12, DB_12.FEED_COMPLETE_1030.value, 1):
-                self.device_service.plc.write_bit(12, DB_12.FEED_COMPLETE_1030.value, 0)
-            
-            self.device_service.plc.disconnect()
-            return f"🚚 {LAYER}楼 小车放料操作 完成"
-
-        elif LAYER == 2:
-            self.device_service.plc.write_bit(12, DB_12.FEED_COMPLETE_1040.value, 1)
-            time.sleep(1)
-            if self.device_service.plc.read_bit(12, DB_12.FEED_COMPLETE_1040.value, 1):
-                self.device_service.plc.write_bit(12, DB_12.FEED_COMPLETE_1040.value, 0)
-            
-            self.device_service.plc.disconnect()
-            return f"🚚 {LAYER}楼 小车放料操作 完成"
-        
-        elif LAYER == 3:
-            self.device_service.plc.write_bit(12, DB_12.FEED_COMPLETE_1050.value, 1)
-            time.sleep(1)
-            if self.device_service.plc.read_bit(12, DB_12.FEED_COMPLETE_1050.value, 1):
-                self.device_service.plc.write_bit(12, DB_12.FEED_COMPLETE_1050.value, 0)
-        
-            self.device_service.plc.disconnect()
-            return f"🚚 {LAYER}楼 小车放料操作 完成"
-        
-        elif LAYER == 4:
-            self.device_service.plc.write_bit(12, DB_12.FEED_COMPLETE_1060.value, 1)
-            time.sleep(1)
-            if self.device_service.plc.read_bit(12, DB_12.FEED_COMPLETE_1060.value, 1):
-                self.device_service.plc.write_bit(12, DB_12.FEED_COMPLETE_1060.value, 0)
-
-            self.device_service.plc.disconnect()
-            return f"🚚 {LAYER}楼 小车放料操作 完成"
+        if await self.plc_service.async_connect() and self.plc_service.plc_checker():
+            self.plc_service.logger.info(f"📦 开始移动 {LAYER}层 货物到电梯前")
+            self.plc_service.feed_in_process(LAYER)
+            await self.plc_service.async_disconnect()
+            return True
         
         else:
-            self.device_service.plc.disconnect()
-            return "非法输入！！！"
-        
-        
-    def in_lift(self, LAYER:int):
+            await self.plc_service.async_disconnect()
+            self.plc_service.logger.error("❌ PLC运行错误")
+            return False
+
+    async def feed_complete(self, LAYER:int) -> bool:
         """
-        货物进入电梯
+        [货物 - 出库方向] 库内放货完成信号
+
         """
-        print("🚚 小车开始执行放料操作")
-        self.device_service.plc.connect()
-        
-        if LAYER == 1:
-            self.device_service.plc.write_bit(12, DB_12.FEED_IN_PROGRESS_1030.value, 1)
+        if await self.plc_service.async_connect() and self.plc_service.plc_checker():
+            self.plc_service.logger.info(f"✅ 货物放置完成")
+            self.plc_service.feed_complete(LAYER)
+
+            self.plc_service.logger.info(f"🚧 货物进入电梯")
+            self.plc_service.logger.info("📦 货物开始进入电梯...")
             
-            self.device_service.plc.disconnect()
-            return "🚚 一楼 小车放料操作 完成"
-        
-        elif LAYER == 2:
-            self.device_service.plc.write_bit(12, DB_12.FEED_IN_PROGRESS_1040.value, 1)
+            # time.sleep(1)
+            await asyncio.sleep(1)
+            self.plc_service.logger.info("⏳ 输送线移动中...")
+            await self.plc_service.wait_for_bit_change(11, DB_11.PLATFORM_PALLET_READY_1020.value, 1)
             
-            self.device_service.plc.disconnect()
-            return "🚚 二楼 小车放料操作 完成"
-        
-        elif LAYER == 3:
-            self.device_service.plc.write_bit(12, DB_12.FEED_IN_PROGRESS_1050.value, 1)
-            
-            self.device_service.plc.disconnect()
-            return "🚚 三楼 小车放料操作 完成"
-        
-        elif LAYER == 4:
-            self.device_service.plc.write_bit(12, DB_12.FEED_IN_PROGRESS_1060.value, 1)
-            
-            self.device_service.plc.disconnect()
-            return "🚚 四楼 小车放料操作 完成"
+            self.plc_service.logger.info("✅ 货物到达电梯")
+            await self.plc_service.async_disconnect()
+            return True
         
         else:
-            self.device_service.plc.disconnect()
-            return "非法输入！！！"
+            await self.plc_service.async_disconnect()
+            self.plc_service.logger.error("❌ PLC运行错误")
+            return False
         
-    def pick_complete(self, LAYER:int):
-        """
-        库内 取料 完成信号
-        """
-        self.device_service.plc.connect()
 
-        if LAYER == 1:
-            self.device_service.plc.write_bit(12, DB_12.PICK_COMPLETE_1030.value, 1)
-            if self.device_service.plc.read_bit(12, DB_12.PICK_COMPLETE_1030.value, 1) == 1:
-                self.device_service.plc.write_bit(12, DB_12.PICK_COMPLETE_1030.value, 0)
+    async def out_lift(self, LAYER:int) -> bool:
+
+        """
+        [货物 - 入库方向] 货物离开电梯, 进入库内接驳位 (最后附带取货进行中信号发送)
+        """
+        if await self.plc_service.async_connect() and self.plc_service.plc_checker():
+            
+            # 确认电梯到位后，清除到位状态
+            self.plc_service.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 1)
+            if self.plc_service.read_bit(12, DB_12.TARGET_LAYER_ARRIVED.value) == 1:
+                self.plc_service.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
+            else:
+                await self.plc_service.async_disconnect()
+                self.plc_service.logger.error("❌ PLC运行错误")
+                return False
+            
+            # time.sleep(1)
+            await asyncio.sleep(1)
+            self.plc_service.logger.info("📦 货物开始进入楼层...")
+            self.plc_service.lift_to_everylayer(LAYER)
                 
-            self.device_service.plc.disconnect()
-            return "信号发送完成！"
-
-        elif LAYER == 2:
-            self.device_service.plc.write_bit(12, DB_12.PICK_COMPLETE_1040.value, 1)
-            if self.device_service.plc.read_bit(12, DB_12.PICK_COMPLETE_1040.value, 1) == 1:
-                self.device_service.plc.write_bit(12, DB_12.PICK_COMPLETE_1040.value, 0)
+            self.plc_service.logger.info("⏳ 等待输送线动作完成...")
+            # 等待电梯输送线工作结束
+            if LAYER == 1:
+                await self.plc_service.wait_for_bit_change(11, DB_11.PLATFORM_PALLET_READY_1030.value, 1)
+            elif LAYER == 2:
+                await self.plc_service.wait_for_bit_change(11, DB_11.PLATFORM_PALLET_READY_1040.value, 1)
+            elif LAYER == 3:
+                await self.plc_service.wait_for_bit_change(11, DB_11.PLATFORM_PALLET_READY_1050.value, 1)
+            elif LAYER == 4:
+                await self.plc_service.wait_for_bit_change(11, DB_11.PLATFORM_PALLET_READY_1060.value, 1)
             
-            self.device_service.plc.disconnect()
-            return "信号发送完成！"
+            # time.sleep(1)
+            await asyncio.sleep(1)
+            self.plc_service.logger.info(f"✅ 货物到达 {LAYER} 层接驳位")
+            self.plc_service.logger.info("⌛️ 可以开始取货...")
+            await asyncio.sleep(1)
+            self.plc_service.pick_in_process(LAYER)
+                
+            await self.plc_service.async_disconnect()
+            return True
+            
+        else:
+            await self.plc_service.async_disconnect()
+            self.plc_service.logger.error("❌ PLC连接失败")
+            return False
         
-        elif LAYER == 3:
-            self.device_service.plc.write_bit(12, DB_12.PICK_COMPLETE_1050.value, 1)
-            if self.device_service.plc.read_bit(12, DB_12.PICK_COMPLETE_1050.value, 1) == 1:
-                self.device_service.plc.write_bit(12, DB_12.PICK_COMPLETE_1050.value, 0)
-
-            self.device_service.plc.disconnect()
-            return "信号发送完成！"
-        
-        elif LAYER == 4:
-            self.device_service.plc.write_bit(12, DB_12.PICK_COMPLETE_1060.value, 1)
-            if self.device_service.plc.read_bit(12, DB_12.PICK_COMPLETE_1060.value, 1) == 1:
-                self.device_service.plc.write_bit(12, DB_12.PICK_COMPLETE_1060.value, 0)
-
-            self.device_service.plc.disconnect()
-            return "信号发送完成！"
+    async def pick_complete(self, LAYER:int) -> bool:
+        """
+        [货物 - 入库方向] 库内取货完成信号
+        """
+        if await self.plc_service.async_connect() and self.plc_service.plc_checker():
+            self.plc_service.logger.info(f"✅ 货物取货完成")
+            self.plc_service.pick_complete(LAYER)
+            await self.plc_service.async_disconnect()
+            return True
 
         else:
-            return "非法输入！！！"
+            await self.plc_service.async_disconnect()
+            self.plc_service.logger.error("❌ PLC运行错误")
+            return False
         
-    async def out_lift(self, LAYER:int):
+    #################################################
+    # 设备运行监控服务
+    #################################################
 
+    async def wait_car_by_target(self, target: str) -> bool:
         """
-        货物离开电梯， 进入库内
+        等待穿梭车到达指定位置
         """
-        self.device_service.plc.connect()
-
-        # 确认电梯到位后，清除到位状态
-        if self.device_service.plc.read_bit(12, DB_12.TARGET_LAYER_ARRIVED.value) == 1:
-            self.device_service.plc.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
-        # 开始执行物料入库动作
-        
-        time.sleep(1)
-
-        if LAYER == 1:
-            self.device_service.plc.lift_to_everylayer(1)
-            
-            # 等待plc动作完成
-            print("⏳ 等待PLC动作完成...")
-            await self.device_service.plc.wait_for_bit_change(11, DB_11.PLATFORM_PALLET_READY_1030.value, 1)
-        
-            # 发送小车 取料中信号
-            time.sleep(1)
-            self.device_service.plc.write_bit(12, DB_12.PICK_IN_PROGRESS_1030.value, 1)
-            
-            self.device_service.plc.disconnect()
-            return f"操作小车，前往 {LAYER} 楼提升机口（5，3，{LAYER}）处，取料！！！取料完成后，必须发送“取料完成指令”！！！"
-        
-        elif LAYER == 2:
-            self.device_service.plc.lift_to_everylayer(2)
-            
-            # 等待plc动作完成
-            print("⏳ 等待PLC动作完成...")
-            await self.device_service.plc.wait_for_bit_change(11, DB_11.PLATFORM_PALLET_READY_1040.value, 1)
-        
-            # 发送小车 取料中信号
-            time.sleep(1)
-            self.device_service.plc.write_bit(12, DB_12.PICK_IN_PROGRESS_1040.value, 1)
-            
-            self.device_service.plc.disconnect()
-            return f"操作小车，前往 {LAYER} 楼提升机口（5，3，{LAYER}）处，取料！！！取料完成后，必须发送“取料完成指令”！！！"
-        
-        elif LAYER == 3:
-            self.device_service.plc.lift_to_everylayer(3)
-            
-            # 等待plc动作完成
-            print("⏳ 等待PLC动作完成...")
-            await self.device_service.plc.wait_for_bit_change(11, DB_11.PLATFORM_PALLET_READY_1050.value, 1)
-        
-            # 发送小车 取料中信号
-            time.sleep(1)
-            self.device_service.plc.write_bit(12, DB_12.PICK_IN_PROGRESS_1050.value, 1)
-            
-            self.device_service.plc.disconnect()
-            return f"操作小车，前往 {LAYER} 楼提升机口（5，3，{LAYER}）处，取料！！！取料完成后，必须发送“取料完成指令”！！！"
-        
-        elif LAYER == 4:
-            self.device_service.plc.lift_to_everylayer(4)
-            
-            # 等待plc动作完成
-            print("⏳ 等待PLC动作完成...")
-            await self.device_service.plc.wait_for_bit_change(11, DB_11.PLATFORM_PALLET_READY_1060.value, 1)
-        
-            # 发送小车 取料中信号
-            time.sleep(1)
-            self.device_service.plc.write_bit(12, DB_12.PICK_IN_PROGRESS_1060.value, 1)
-            
-            self.device_service.plc.disconnect()        
-            return f"操作小车，前往 2 楼提升机口（5，3，{LAYER}）处，取料！！！取料完成后，必须发送“取料完成指令”！！！"
-        
-        else:
-            self.device_service.plc.disconnect()
-            return "非法输入！！！"
+        return await self.car_service.wait_car_move_complete_by_location(target)
         
 
     #################################################
     # 出入口二维码服务
     #################################################
 
-    def get_qrcode(self):
+    async def get_qrcode(self):
         """
         获取入库口二维码
         """
-        self.device_service.plc.connect()
+        if await self.plc_service.async_connect() and self.plc_service.async_disconnect():
+            QRcode = self.plc_service.scan_qrcode()
+            if QRcode is None:
+                await self.plc_service.async_disconnect()
+                return False
 
-        QRcode = self.device_service.plc.scan_qrcode()
-        if QRcode is None:
-            self.device_service.plc.disconnect()
+            await self.plc_service.async_disconnect()
+            return QRcode
+        else:
+            await self.plc_service.async_disconnect()
+            self.plc_service.logger.error("❌ PLC运行错误")
             return False
-
-        self.device_service.plc.disconnect()
-        return QRcode
 
     #################################################
     # 设备联动服务
@@ -675,18 +569,56 @@ class Services:
             self,
             TASK_NO: int,
             TARGET_LAYER: int
-            ) -> str|int:
+            ) -> list:
         """
         操作穿梭车联动电梯跨层
         """
 
-        car_last_location = await self.loop.run_in_executor(
-            self.thread_pool,
-            self.device_service.car_cross_layer,
-            TASK_NO, TARGET_LAYER
+        car_last_location = await self.device_service.car_cross_layer(
+            TASK_NO,
+            TARGET_LAYER
             )
         
-        if car_last_location == "'current_location'":
-            return 400
+        if car_last_location[0]:
+            return car_last_location[1]
+        else:
+            return car_last_location
+        
+    async def do_task_inband(
+            self,
+            TASK_NO: int,
+            TARGET_LOCATION: str
+            ) -> list:
+        """
+        操作穿梭车联动PLC系统入库
+        """
+
+        car_last_location = await self.device_service.task_inband(
+            TASK_NO,
+            TARGET_LOCATION
+            )
+        
+        if car_last_location[0]:
+            return car_last_location[1]
+        else:
+            return car_last_location
+        
+    
+    async def do_task_outband(
+            self,
+            TASK_NO: int,
+            TARGET_LOCATION: str
+            ) -> list:
+        """
+        操作穿梭车联动PLC系统出库
+        """
+
+        car_last_location = await self.device_service.task_outband(
+            TASK_NO,
+            TARGET_LOCATION
+            )
+        
+        if car_last_location[0]:
+            return car_last_location[1]
         else:
             return car_last_location

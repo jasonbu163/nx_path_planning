@@ -32,3 +32,18 @@ icon = "📥"
 path = "tool_pages/car_cross_layer_by_step.py"
 name = "单步 - 穿梭车跨层操作"
 icon = "🚚" 
+
+[[pages]]
+path = "tool_pages/car_cross_layer.py"
+name = "beta - 穿梭车跨层操作"
+icon = "🚚" 
+
+[[pages]]
+path = "tool_pages/task_inband.py"
+name = "beta - 入库操作"
+icon = "📥" 
+
+[[pages]]
+path = "tool_pages/task_outband.py"
+name = "beta - 出库操作"
+icon = "📤"

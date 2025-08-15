@@ -6,7 +6,7 @@ from api_config import API_BASE
 st.subheader("⚠️ 确保小车在需要出库的楼层 ⚠️")
 st.subheader("⚠️ 如果小车不在任务楼层 ⚠️")
 st.subheader("⚠️ 先去把🚗小车移到出库楼层 ⚠️")
-st.link_button("🚗 前往小车跨层页面", url="/car_cross_layer")
+st.link_button("🚗 前往小车跨层页面", url="/car_cross_layer_by_step")
 st.subheader("⚠️ 小车在出库楼层，就不需要小车跨层了 ⚠️")
 
 st.image("img/locations.png")
@@ -23,21 +23,22 @@ with st.expander("📋 电梯到位操作", expanded=True):
 
     if st.button(f"🚀 [执行] 操作电梯到物料层"):
         try:
-            body = {"location_id": location_id}
+            body = {"layer": location_id}
             url = API_BASE + "/control/lift"
             # st.write(f"请求：{url}")
             resp = requests.post(url, json=body)
 
             if resp.status_code == 200:
-                st.success(f"✅ 动作发送成功")
+                try:
+                    if resp.json()["code"] == 404:
+                        st.error(f"{resp.json()['message']}")
+                    else:
+                        st.success(f"✅ 动作发送成功")
+                except:
+                    st.text(resp.text)
             else:
                 st.error(f"请求失败，状态码：{resp.status_code}")
                 st.text(resp.text)
-            
-            # try:
-            #     st.json(resp.json())
-            # except:
-            #     st.text(resp.text)
 
         except Exception as e:
             st.error(f"请求失败：{e}")
@@ -67,15 +68,16 @@ with st.expander("🚗 到达货物位置操作", expanded=True):
             resp = requests.post(url, json=body)
 
             if resp.status_code == 200:
-                st.success(f"✅ 动作发送成功")
+                try:
+                    if resp.json()["code"] == 404:
+                        st.error(f"{resp.json()['message']}")
+                    else:
+                        st.success(f"✅ 动作发送成功")
+                except:
+                    st.text(resp.text)
             else:
                 st.error(f"请求失败，状态码：{resp.status_code}")
                 st.text(resp.text)
-            
-            # try:
-            #     st.json(resp.json())
-            # except:
-            #     st.text(resp.text)
 
         except Exception as e:
             st.error(f"请求失败：{e}")
@@ -89,7 +91,7 @@ steps = [
         "title": "步骤 1：启动输送线确认",
         "api": "/control/task_in_lift",
         "method": "POST",
-        "params": {"location_id": location_id}
+        "params": {"layer": location_id}
     },
     {
         "step": 2,
@@ -105,14 +107,14 @@ steps = [
         "title": "步骤 3：确认在对应楼层，小车放料完成✅",
         "api": "/control/task_feed_complete",
         "method": "POST",
-        "params": {"location_id": location_id}
+        "params": {"layer": location_id}
     },
     {
         "step": 4,
         "title": "步骤 4：电梯移动到1楼",
         "api": "/control/lift",
         "method": "POST",
-        "params": {"location_id": 1}
+        "params": {"layer": 1}
     },
     {
         "step": 5,
@@ -129,16 +131,16 @@ for i, step in enumerate(steps):
         user_inputs = {}
 
         if step["step"] == 1:
-            user_inputs["location_id"] = location_id
+            user_inputs["layer"] = location_id
                     
         elif step["step"] == 2:
             user_inputs["target"] = f"5,3,{location_id}"
 
         elif step["step"] == 3:
-            user_inputs["location_id"] = location_id
+            user_inputs["layer"] = location_id
                     
         elif step["step"] == 4:
-            user_inputs["location_id"] = 1
+            user_inputs["layer"] = 1
                     
         elif step["step"] == 5:
             user_inputs = {}
@@ -163,15 +165,16 @@ for i, step in enumerate(steps):
                 # st.success(f"✅ 状态码：{resp.status_code}")
 
                 if resp.status_code == 200:
-                    st.success(f"✅ 动作发送成功")
+                    try:
+                        if resp.json()["code"] == 404:
+                            st.error(f"{resp.json()['message']}")
+                        else:
+                            st.success(f"✅ 动作发送成功")
+                    except:
+                        st.text(resp.text)
                 else:
                     st.error(f"请求失败，状态码：{resp.status_code}")
                     st.text(resp.text)
-
-                # try:
-                #     st.json(resp.json())
-                # except:
-                #     st.text(resp.text)
                 
             except Exception as e:
                 st.error(f"请求失败：{e}")

@@ -54,15 +54,16 @@ for i, step in enumerate(steps):
                 )
 
                 if resp.status_code == 200:
-                    st.success(f"✅ 动作发送成功")
+                    try:
+                        if resp.json()["code"] == 404:
+                            st.error(f"{resp.json()['message']}")
+                        else:
+                            st.success(f"✅ 动作发送成功")
+                    except:
+                        st.text(resp.text)
                 else:
                     st.error(f"请求失败，状态码：{resp.status_code}")
                     st.text(resp.text)
-
-                # try:
-                #     st.json(resp.json())
-                # except:
-                #     st.text(resp.text)
                 
             except Exception as e:
                 st.error(f"请求失败：{e}")

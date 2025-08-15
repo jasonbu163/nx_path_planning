@@ -11,21 +11,23 @@ with st.expander("📋 电梯到达🚗层操作", expanded=True):
 
     if st.button(f"🚀 [执行] 操作电梯"):
         try:
-            body = {"location_id": f"{floor_id}"}
+            body = {"layer": floor_id}
             url = API_BASE + "/control/lift"
             # st.write(f"请求：{url}")
             resp = requests.post(url, json=body)
 
             if resp.status_code == 200:
-                st.success(f"✅ 动作发送成功")
+                try:
+                    if resp.json()["code"] == 404:
+                        st.error(f"{resp.json()['message']}")
+                    else:
+                        st.success(f"✅ 动作发送成功")
+                except:
+                    st.text(resp.text)
             else:
                 st.error(f"请求失败，状态码：{resp.status_code}")
                 st.text(resp.text)
 
-            # try:
-            #     st.json(resp.json())
-            # except:
-            #     st.text(resp.text)
         except Exception as e:
             st.error(f"请求失败：{e}")
 
@@ -45,7 +47,7 @@ steps = [
         "api": "/control/car_move",
         "method": "POST",
         "params": {
-            "target": "5,3,1",
+            "target": "6,3,1",
         },
     },
     {
@@ -53,14 +55,18 @@ steps = [
         "title": "步骤 3：🚀 电梯移动",
         "api": "/control/lift",
         "method": "POST",
-        "params": {"location_id": 1},
+        "params": {
+            "layer": 1
+            },
     },
     {
         "step": 4,
         "title": "步骤 4：🚚 确认小车到位",
         "api": "/control/change_car_location",
         "method": "POST",
-        "params": {"target": "5,3,1"},
+        "params": {
+            "target": "6,3,1"
+            },
     },
     {
         "step": 5,
@@ -76,7 +82,9 @@ steps = [
         "title": "步骤 6：🚚 确认完成小车跨层所有操作",
         "api": "/control/lift",
         "method": "POST",
-        "params": {"location_id": 1},
+        "params": {
+            "layer": 1
+            },
     },
 ]
 
@@ -109,7 +117,7 @@ for i, step in enumerate(steps):
         elif step["step"] == 3 and "lift" in step["api"]:
             st.markdown("**操作电梯载车**")
             z = floor_b  # 跨层操作的电梯移动目标一定是楼层 B
-            body["location_id"] = z
+            body["layer"] = z
 
         elif step["step"] == 4:
             st.markdown("**确认电梯载车到达目标楼层**")
@@ -124,7 +132,7 @@ for i, step in enumerate(steps):
         elif step["step"] == 6 and "lift" in step["api"]:
             st.markdown("**必须确认整个流程结束**")
             z = floor_b  # 跨层操作的电梯移动目标一定是楼层 B
-            body["location_id"] = z
+            body["layer"] = z
 
 
         if st.button(f"🚀 [执行] {step['title']}", key=f"btn_{i}"):
@@ -136,15 +144,16 @@ for i, step in enumerate(steps):
                     else requests.get(url, params=body)
                 )
                 if resp.status_code == 200:
-                        st.success(f"✅ 动作发送成功")
+                    try:
+                        if resp.json()["code"] == 404:
+                            st.error(f"{resp.json()['message']}")
+                        else:
+                            st.success(f"✅ 动作发送成功")
+                    except:
+                        st.text(resp.text)
                 else:
                     st.error(f"请求失败，状态码：{resp.status_code}")
                     st.text(resp.text)
-
-                # try:
-                #     st.json(resp.json())
-                # except:
-                #     st.text(resp.text)
                 
             except Exception as e:
                 st.error(f"请求失败：{e}")

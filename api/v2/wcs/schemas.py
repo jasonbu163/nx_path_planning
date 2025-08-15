@@ -97,6 +97,8 @@ class PathBase(BaseModel):
 class CarMoveBase(BaseModel):
     """WCS穿梭车基础模型"""
     target: str = Field(..., examples=["6,3,1"], description="目标点")
+class CarMove(CarMoveBase):
+    task_no: int = Field(..., examples=[1, 2, 3], description="任务号(1-255)")
 
 class LiftBase(BaseModel):
     """WCS电梯基础模型"""
