@@ -12,6 +12,10 @@ from .car_enum import CarStatus
 class DevicesController(DevicesLogger):
     """
     [同步 - 设备控制器] - 联合PLC控制系统和穿梭车控制系统, 实现立体仓库设备自动化控制
+    
+    !!! 注意：此为设备安全与人生安全操作首要原则，必须遵守 !!!
+
+    所有穿梭车的操作都要确保电梯在穿梭车所在楼层（因为只有电梯有对穿梭车的防飞出限位保险结构），避免穿梭车到达电梯口发生冲击力过大造成飞出“跳楼”危险。
     """
     
     def __init__(self, PLC_IP: str, CAR_IP: str, CAR_PORT: int):
@@ -59,6 +63,7 @@ class DevicesController(DevicesLogger):
         # 获取穿梭车位置 -> 坐标: 如, "6,3,2" 楼层: 如, 2
         car_location = self.car.car_current_location()
         self.logger.info(f"🚗 穿梭车当前坐标: {car_location}")
+        
         car_cur_loc = list(map(int, car_location.split(',')))
         car_current_floor = car_cur_loc[2]
         self.logger.info(f"🚗 穿梭车当前楼层: {car_current_floor} 层")
@@ -94,15 +99,16 @@ class DevicesController(DevicesLogger):
         car_current_lift_pre_location = f"5,3,{car_current_floor}"
         if self.car.car_current_location() != car_current_lift_pre_location:
             self.logger.info("⏳ 穿梭车开始移动...")
-            self.car.car_move(TASK_NO+1, car_current_lift_pre_location)
-            
-            # 等待穿梭车移动到位
-            self.logger.info(f"⏳ 等待穿梭车前往 5,3,{car_current_floor} 位置...")
-            self.car.wait_car_move_complete_by_location_sync(car_current_lift_pre_location)
-            time.sleep(2)
-
-            if self.car.car_current_location() == car_current_lift_pre_location and self.car.car_status()['car_status'] == CarStatus.READY.value:
-                self.logger.info(f"✅ 穿梭车已到达 {car_current_lift_pre_location} 位置")
+            if self.car.car_move(TASK_NO+1, car_current_lift_pre_location):
+                # 等待穿梭车移动到位
+                self.logger.info(f"⏳ 等待穿梭车前往 5,3,{car_current_floor} 位置...")
+                self.car.wait_car_move_complete_by_location_sync(car_current_lift_pre_location)
+                time.sleep(2)
+                if self.car.car_current_location() == car_current_lift_pre_location and self.car.car_status()['car_status'] == CarStatus.READY.value:
+                    self.logger.info(f"✅ 穿梭车已到达 {car_current_lift_pre_location} 位置")
+                else:
+                    self.logger.warning(f"❌ 穿梭车未到达 {car_current_lift_pre_location} 位置")
+                    return [False, "❌ 穿梭车运行错误"]
             else:
                 self.logger.warning(f"❌ 穿梭车未到达 {car_current_lift_pre_location} 位置")
                 return [False, "❌ 穿梭车运行错误"]
@@ -114,19 +120,22 @@ class DevicesController(DevicesLogger):
         # 穿梭车进入电机
         self.logger.info("🚧 穿梭车进入电梯")
         car_current_lift_location = f"6,3,{car_current_floor}"
-        self.logger.info("⏳ 穿梭车开始移动...")
-        self.car.car_move(TASK_NO+2, car_current_lift_location)
         
-        # 等待穿梭车进入电梯
-        self.logger.info(f"⏳ 等待穿梭车前往 电梯内 6,3,{car_current_floor} 位置...")
-        self.car.wait_car_move_complete_by_location_sync(car_current_lift_location)
-        time.sleep(2)
-
-        if self.car.car_current_location() == car_current_lift_location and self.car.car_status()['car_status'] == CarStatus.READY.value:
-            self.logger.info(f"✅ 穿梭车已到达 电梯内 {car_current_lift_location} 位置")
-        else:
-            self.logger.error(f"❌ 穿梭车未到达 电梯内 {car_current_lift_location} 位置")
-            return [False, "❌ 穿梭车运行错误"]
+        if self.car.car_current_location() != car_current_lift_location:
+            self.logger.info("⏳ 穿梭车开始移动...")
+            if self.car.car_move(TASK_NO+2, car_current_lift_location):
+                # 等待穿梭车进入电梯
+                self.logger.info(f"⏳ 等待穿梭车前往 电梯内 6,3,{car_current_floor} 位置...")
+                self.car.wait_car_move_complete_by_location_sync(car_current_lift_location)
+                time.sleep(2)
+                if self.car.car_current_location() == car_current_lift_location and self.car.car_status()['car_status'] == CarStatus.READY.value:
+                    self.logger.info(f"✅ 穿梭车已到达 电梯内 {car_current_lift_location} 位置")
+                else:
+                    self.logger.error(f"❌ 穿梭车未到达 电梯内 {car_current_lift_location} 位置")
+                    return [False, "❌ 穿梭车运行错误"]
+            else:
+                self.logger.error(f"❌ 穿梭车未到达 电梯内 {car_current_lift_location} 位置")
+                return [False, "❌ 穿梭车运行错误"]
 
         
         ############################################################
@@ -152,7 +161,7 @@ class DevicesController(DevicesLogger):
 
         time.sleep(1)
         if self.plc.connect() and self.plc.plc_checker():
-            time.sleep(1)
+            time.sleep(2)
             if self.plc.get_lift() == TARGET_LAYER and self.plc.read_bit(11, DB_11.IDLE.value) == 1:
                 self.plc.disconnect()
                 self.logger.info("🚧 更新穿梭车楼层")
@@ -176,6 +185,7 @@ class DevicesController(DevicesLogger):
         # 穿梭车离开提升机进入接驳位
         target_lift_pre_location = f"5,3,{TARGET_LAYER}"
         self.logger.info(f"🚧 穿梭车开始离开电梯进入接驳位 {target_lift_pre_location}")
+        
         self.logger.info("⏳ 穿梭车开始移动...")
         self.car.car_move(TASK_NO+5, target_lift_pre_location)
         
@@ -602,6 +612,10 @@ class DevicesController(DevicesLogger):
 class AsyncDevicesController(DevicesLogger):
     """
     [异步 - 设备控制器] - 联合PLC控制系统和穿梭车控制系统, 实现立体仓库设备自动化控制
+    
+    !!! 注意：此为设备安全与人生安全操作首要原则，必须遵守 !!!
+
+    所有穿梭车的操作都要确保电梯在穿梭车所在楼层（因为只有电梯有对穿梭车的防飞出限位保险结构），避免穿梭车到达电梯口发生冲击力过大造成飞出“跳楼”危险。
     """
     
     def __init__(self, PLC_IP: str, CAR_IP: str, CAR_PORT: int):
@@ -649,6 +663,7 @@ class AsyncDevicesController(DevicesLogger):
         # 获取穿梭车位置 -> 坐标: 如, "6,3,2" 楼层: 如, 2
         car_location = await self.car.car_current_location()
         self.logger.info(f"🚗 穿梭车当前坐标: {car_location}")
+        
         car_cur_loc = list(map(int, car_location.split(',')))
         car_current_floor = car_cur_loc[2]
         self.logger.info(f"🚗 穿梭车当前楼层: {car_current_floor} 层")
@@ -684,17 +699,17 @@ class AsyncDevicesController(DevicesLogger):
         car_current_lift_pre_location = f"5,3,{car_current_floor}"
         if await self.car.car_current_location() != car_current_lift_pre_location:
             self.logger.info("⏳ 穿梭车开始移动...")
-            await self.car.car_move(TASK_NO+1, car_current_lift_pre_location)
-            
-            # 等待穿梭车移动到位
-            self.logger.info(f"⏳ 等待穿梭车前往 5,3,{car_current_floor} 位置...")
-            await self.car.wait_car_move_complete_by_location(car_current_lift_pre_location)
-            # time.sleep(2)
-            await asyncio.sleep(2)
-
-            car_status = await self.car.car_status()
-            if await self.car.car_current_location() == car_current_lift_pre_location and car_status['car_status'] == CarStatus.READY.value:
-                self.logger.info(f"✅ 穿梭车已到达 {car_current_lift_pre_location} 位置")
+            if await self.car.car_move(TASK_NO+1, car_current_lift_pre_location):
+                # 等待穿梭车移动到位
+                self.logger.info(f"⏳ 等待穿梭车前往 5,3,{car_current_floor} 位置...")
+                await self.car.wait_car_move_complete_by_location(car_current_lift_pre_location)
+                await asyncio.sleep(2)
+                car_status = await self.car.car_status()
+                if await self.car.car_current_location() == car_current_lift_pre_location and car_status['car_status'] == CarStatus.READY.value:
+                    self.logger.info(f"✅ 穿梭车已到达 {car_current_lift_pre_location} 位置")
+                else:
+                    self.logger.warning(f"❌ 穿梭车未到达 {car_current_lift_pre_location} 位置")
+                    return [False, "❌ 穿梭车运行错误"]
             else:
                 self.logger.warning(f"❌ 穿梭车未到达 {car_current_lift_pre_location} 位置")
                 return [False, "❌ 穿梭车运行错误"]
@@ -706,21 +721,23 @@ class AsyncDevicesController(DevicesLogger):
         # 穿梭车进入电机
         self.logger.info("🚧 穿梭车进入电梯")
         car_current_lift_location = f"6,3,{car_current_floor}"
-        self.logger.info("⏳ 穿梭车开始移动...")
-        await self.car.car_move(TASK_NO+2, car_current_lift_location)
         
-        # 等待穿梭车进入电梯
-        self.logger.info(f"⏳ 等待穿梭车前往 电梯内 6,3,{car_current_floor} 位置...")
-        await self.car.wait_car_move_complete_by_location(car_current_lift_location)
-        # time.sleep(2)
-        await asyncio.sleep(2)
-
-        car_status = await self.car.car_status()
-        if await self.car.car_current_location() == car_current_lift_location and car_status['car_status'] == CarStatus.READY.value:
-            self.logger.info(f"✅ 穿梭车已到达 电梯内 {car_current_lift_location} 位置")
-        else:
-            self.logger.error(f"❌ 穿梭车未到达 电梯内 {car_current_lift_location} 位置")
-            return [False, "❌ 穿梭车运行错误"]
+        if await self.car.car_current_location() != car_current_lift_location:
+            self.logger.info("⏳ 穿梭车开始移动...")
+            if await self.car.car_move(TASK_NO+2, car_current_lift_location):
+                # 等待穿梭车进入电梯
+                self.logger.info(f"⏳ 等待穿梭车前往 电梯内 6,3,{car_current_floor} 位置...")
+                await self.car.wait_car_move_complete_by_location(car_current_lift_location)
+                await asyncio.sleep(2)
+                car_status = await self.car.car_status()
+                if await self.car.car_current_location() == car_current_lift_location and car_status['car_status'] == CarStatus.READY.value:
+                    self.logger.info(f"✅ 穿梭车已到达 电梯内 {car_current_lift_location} 位置")
+                else:
+                    self.logger.error(f"❌ 穿梭车未到达 电梯内 {car_current_lift_location} 位置")
+                    return [False, "❌ 穿梭车运行错误"]
+            else:
+                self.logger.error(f"❌ 穿梭车未到达 电梯内 {car_current_lift_location} 位置")
+                return [False, "❌ 穿梭车运行错误"]
 
         
         ############################################################
@@ -746,7 +763,7 @@ class AsyncDevicesController(DevicesLogger):
 
         await asyncio.sleep(1)
         if await self.plc.async_connect() and self.plc.plc_checker():
-            await asyncio.sleep(1)
+            await asyncio.sleep(2)
             if self.plc.get_lift() == TARGET_LAYER and self.plc.read_bit(11, DB_11.IDLE.value) == 1:
                 await self.plc.async_disconnect()
                 self.logger.info("🚧 更新穿梭车楼层")
@@ -777,8 +794,9 @@ class AsyncDevicesController(DevicesLogger):
         self.logger.info(f"⏳ 等待穿梭车前往 接驳位 {target_lift_pre_location} 位置...")
         await self.car.wait_car_move_complete_by_location(target_lift_pre_location)
         
-        car_status = await self.car.car_status()
-        if await self.car.car_current_location() == target_lift_pre_location and car_status['car_status'] == CarStatus.READY.value:
+        # car_status = await self.car.car_status()
+        # if await self.car.car_current_location() == target_lift_pre_location and car_status['car_status'] == CarStatus.READY.value:
+        if await self.car.car_current_location() == target_lift_pre_location:
             self.logger.info(f"✅ 穿梭车已到达 指定楼层 {TARGET_LAYER} 层")
         else:
             self.logger.info(f"❌ 穿梭车未到达 指定楼层 {TARGET_LAYER} 层")
@@ -951,8 +969,9 @@ class AsyncDevicesController(DevicesLogger):
             # time.sleep(2)
             await asyncio.sleep(2)
 
-            car_status = await self.car.car_status()
-            if await self.car.car_current_location() == car_current_lift_pre_location and car_status['car_status'] == CarStatus.READY.value:
+            # car_status = await self.car.car_status()
+            # if await self.car.car_current_location() == car_current_lift_pre_location and car_status['car_status'] == CarStatus.READY.value:
+            if await self.car.car_current_location() == car_current_lift_pre_location:
                 self.logger.info(f"✅ 穿梭车已到达 {car_current_lift_pre_location} 位置")
             else:
                 self.logger.warning(f"❌ 穿梭车未到达 {car_current_lift_pre_location} 位置")
@@ -986,8 +1005,9 @@ class AsyncDevicesController(DevicesLogger):
         # time.sleep(2)
         await asyncio.sleep(2)
         
-        car_status = await self.car.car_status()
-        if await self.car.car_current_location() == TARGET_LOCATION and car_status['car_status'] == CarStatus.READY.value:
+        # car_status = await self.car.car_status()
+        # if await self.car.car_current_location() == TARGET_LOCATION and car_status['car_status'] == CarStatus.READY.value:
+        if await self.car.car_current_location() == TARGET_LOCATION:
             self.logger.info(f"✅ 货物已到达 目标位置 {TARGET_LOCATION}")
         else:
             self.logger.error(f"❌ 货物未到达 目标位置 {TARGET_LOCATION}")
@@ -1045,13 +1065,14 @@ class AsyncDevicesController(DevicesLogger):
         car_loc = list(map(int, car_location.split(',')))
         car_layer = car_loc[2]
         self.logger.info(f"🚗 穿梭车当前楼层: {car_layer}")
+        
         # 拆解目标位置 -> 坐标: 如, "1,3,1" 楼层: 如, 1
         self.logger.info(f"📦 目标货物坐标: {TARGET_LOCATION}")
         target_loc = list(map(int, TARGET_LOCATION.split(',')))
         target_layer = target_loc[2]
         self.logger.info(f"📦 目标货物楼层: {target_layer}")
 
-        # 穿梭车不在任务层, 操作穿梭车到达任务入库楼层等待
+        # # 穿梭车不在任务层, 操作穿梭车到达任务入库楼层等待
         if car_layer != target_layer:
             car_location = await self.car_cross_layer(TASK_NO, target_layer)
             self.logger.info(f"🚗 穿梭车当前坐标: {car_location}")
@@ -1082,11 +1103,11 @@ class AsyncDevicesController(DevicesLogger):
             # 等待穿梭车进入接驳位
             self.logger.info(f"⏳ 等待穿梭车前往 {TARGET_LOCATION} 位置...")
             await self.car.wait_car_move_complete_by_location(TARGET_LOCATION)
-            # time.sleep(2)
             await asyncio.sleep(2)
             
-            car_status = await self.car.car_status()
-            if await self.car.car_current_location() == TARGET_LOCATION and car_status['car_status'] == CarStatus.READY.value:
+            # car_status = await self.car.car_status()
+            # if await self.car.car_current_location() == TARGET_LOCATION and car_status['car_status'] == CarStatus.READY.value:
+            if await self.car.car_current_location() == TARGET_LOCATION:
                 self.logger.info(f"✅ 穿梭车已到达 货物位置 {TARGET_LOCATION}")
             else:
                 self.logger.error(f"❌ 穿梭车未到达 货物位置 {TARGET_LOCATION}")
@@ -1094,6 +1115,7 @@ class AsyncDevicesController(DevicesLogger):
 
         # 发送放货进行中信号给PLC
         if await self.plc.async_connect() and self.plc.plc_checker():
+            await asyncio.sleep(0.5)
             self.logger.info(f"🚧 穿梭车开始取货...")
             self.plc.feed_in_process(target_layer)
             await self.plc.async_disconnect()
@@ -1114,8 +1136,10 @@ class AsyncDevicesController(DevicesLogger):
         # time.sleep(2)
         await asyncio.sleep(2)
         
-        car_status = await self.car.car_status()
-        if await self.car.car_current_location() == target_lift_pre_location and car_status['car_status'] == CarStatus.READY.value:
+        # car_status = await self.car.car_status()
+        await asyncio.sleep(1)
+        # if await self.car.car_current_location() == target_lift_pre_location and car_status['car_status'] == CarStatus.READY.value:
+        if await self.car.car_current_location() == target_lift_pre_location:
             self.logger.info(f"✅ 货物已到达 楼层接驳输送线位置 {target_lift_pre_location}")
         else:
             self.logger.error(f"❌ 货物未到达 楼层接驳输送线位置 {target_lift_pre_location}")

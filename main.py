@@ -12,7 +12,7 @@ from api.v2.wms import routes as wms_v2_routes
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 启动时创建线程池
-    app.state.thread_pool = ThreadPoolExecutor(max_workers=10)
+    app.state.thread_pool = ThreadPoolExecutor(max_workers=3)
     print("✅ 线程池已创建")
 
     # 这里可以添加其他启动逻辑

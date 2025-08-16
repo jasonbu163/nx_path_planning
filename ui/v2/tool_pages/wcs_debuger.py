@@ -16,14 +16,14 @@ page_steps = {
             "title": "步骤 2：电梯移动",
             "api": "/control/lift",
             "method": "POST",
-            "params": {"location_id": 1}
+            "params": {"layer": 1}
         },
         {
             "title": "步骤 3：提升机物料 ➡️ 库内",
             "api": "/control/task_out_lift",
             "method": "POST",
             "params": {
-                "location_id": 1
+                "layer": 1
             }
         },
         {
@@ -41,7 +41,7 @@ page_steps = {
             "api": "/control/task_pick_complete",
             "method": "POST",
             "params": {
-                "location_id": 1
+                "layer": 1
             }
         }
     ],
@@ -50,7 +50,7 @@ page_steps = {
             "title": "步骤 1：启动PLC确认，小车去放料",
             "api":"/control/task_in_lift",
             "method": "POST",
-            "params": {"location_id": 1}
+            "params": {"layer": 1}
         },
         {
             "title": "步骤 2：操作小车放料，移动货物",
@@ -66,13 +66,13 @@ page_steps = {
             "title": "步骤 3：确认在对应楼层，小车放料完成✅",
             "api":  "/control/task_feed_complete",
             "method": "POST",
-            "params": {"location_id": 1}
+            "params": {"layer": 1}
         },
         {
             "title": "步骤 4：电梯移动",
             "api": "/control/lift",
             "method": "POST",
-            "params": {"location_id": 1}
+            "params": {"layer": 1}
         },
         {
             "title": "步骤 5：提升机物料 ➡️ 库口 出库",
@@ -96,7 +96,7 @@ page_steps = {
             "title": "步骤 2：电梯移动",
             "api": "/control/lift",
             "method": "POST",
-            "params": {"location_id": 1}
+            "params": {"layer": 1}
         },
         {
             "title": "步骤 1：操作小车移动",
@@ -114,7 +114,7 @@ page_steps = {
             "title": "步骤 1：启动PLC确认，小车去放料",
             "api":"/control/task_in_lift",
             "method": "POST",
-            "params": {"location_id": 1}
+            "params": {"layer": 1}
         },
         {
             "title": "步骤 2：操作小车放货",
@@ -130,20 +130,20 @@ page_steps = {
             "title": "步骤 3：确认在对应楼层，小车放料完成✅",
             "api":  "/control/task_feed_complete",
             "method": "POST",
-            "params": {"location_id": 1}
+            "params": {"layer": 1}
         },
         {
             "title": "步骤 4：电梯移动",
             "api": "/control/lift",
             "method": "POST",
-            "params": {"location_id": 1}
+            "params": {"layer": 1}
         },
         {
             "title": "步骤 5：提升机物料 ➡️ 库内",
             "api": "/control/task_out_lift",
             "method": "POST",
             "params": {
-                "location_id": 1
+                "layer": 1
             }
         },
         {
@@ -161,7 +161,7 @@ page_steps = {
             "api": "/control/task_pick_complete",
             "method": "POST",
             "params": {
-                "location_id": 1
+                "layer": 1
             }
         }
     ]

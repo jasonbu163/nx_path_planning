@@ -78,17 +78,11 @@ def test_devices_controller(PLC_IP, CAR_IP, CAR_PORT):
     
     # 创建设备控制器
     d_c = DevicesController(PLC_IP, CAR_IP, CAR_PORT)
-    
-    # 开启PlC连接
-    d_c.plc.connect()
 
     # 开始测试
     # d_c.car_cross_layer(TASK_NO=1, TARGET_LAYER=1)
     d_c.task_inband(TASK_NO=2, TARGET_LOCATION="5,1,2")
     # d_c.task_outband(TASK_NO=3, TARGET_LOCATION="5,4,1")
-    
-    # 关闭PlC连接
-    d_c.plc.disconnect()
 
 
 def main():

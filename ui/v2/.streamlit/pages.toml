@@ -34,6 +34,11 @@ name = "单步 - 穿梭车跨层操作"
 icon = "🚚" 
 
 [[pages]]
+path = "tool_pages/task_auto.py"
+name = "beta - 自动化操作"
+icon = "🚦" 
+
+[[pages]]
 path = "tool_pages/car_cross_layer.py"
 name = "beta - 穿梭车跨层操作"
 icon = "🚚" 

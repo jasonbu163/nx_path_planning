@@ -329,8 +329,8 @@ class Services:
         task_no = randint(1, 255)
         # return await self.car_service.car_move(task_no, target)
 
-        await self.car_service.car_move(task_no, target)
-        return await self.car_service.wait_car_move_complete_by_location(target)
+        return await self.car_service.car_move(task_no, target)
+        # return await self.car_service.wait_car_move_complete_by_location(target)
 
     async def good_move_by_target(self, target: str) -> bool:
         """
@@ -339,8 +339,8 @@ class Services:
         task_no = randint(1, 255)
         # return await self.car_service.good_move(task_no, target)
 
-        await self.car_service.good_move(task_no, target)
-        return await self.car_service.wait_car_move_complete_by_location(target)
+        return await self.car_service.good_move(task_no, target)
+        # return await self.car_service.wait_car_move_complete_by_location(target)
 
 
     #################################################
