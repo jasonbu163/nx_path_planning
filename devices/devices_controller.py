@@ -206,6 +206,7 @@ class DevicesController(DevicesLogger):
         # step 7: 校准电梯水平操作
         ############################################################
 
+        time.sleep(1)
         if self.plc.connect() and self.plc.plc_checker():
             self.logger.info("🚧 空载校准电梯楼层")
             time.sleep(1)
@@ -270,6 +271,7 @@ class DevicesController(DevicesLogger):
             self.logger.info(f"🚗 穿梭车当前坐标: {car_location}")
 
         # 电梯初始化: 移动到1层
+        time.sleep(1)
         if self.plc.connect() and self.plc.plc_checker():
             self.logger.info("🚧 移动空载电梯到1层")
             time.sleep(1)
@@ -480,6 +482,7 @@ class DevicesController(DevicesLogger):
             self.logger.info(f"🚗 穿梭车当前坐标: {car_location}")
 
         # 电梯初始化: 移动到目标货物层
+        time.sleep(1)
         if self.plc.connect() and self.plc.plc_checker():
             self.logger.info(f"🚧 移动空载电梯到 {target_layer} 层")
             time.sleep(1)
@@ -822,6 +825,7 @@ class AsyncDevicesController(DevicesLogger):
         # step 7: 校准电梯水平操作
         ############################################################
 
+        await asyncio.sleep(1)
         if await self.plc.async_connect() and self.plc.plc_checker():
             self.logger.info("🚧 空载校准电梯楼层")
             await asyncio.sleep(1)
@@ -886,6 +890,7 @@ class AsyncDevicesController(DevicesLogger):
             self.logger.info(f"🚗 穿梭车当前坐标: {car_location}")
 
         # 电梯初始化: 移动到1层
+        await asyncio.sleep(1)
         if await self.plc.async_connect() and self.plc.plc_checker():
             self.logger.info("🚧 移动空载电梯到1层")
             await asyncio.sleep(1)
@@ -1100,6 +1105,7 @@ class AsyncDevicesController(DevicesLogger):
             self.logger.info(f"🚗 穿梭车当前坐标: {car_location}")
 
         # 电梯初始化: 移动到目标货物层
+        await asyncio.sleep(1)
         if await self.plc.async_connect() and self.plc.plc_checker():
             self.logger.info(f"🚧 移动空载电梯到 {target_layer} 层")
             await asyncio.sleep(1)
