@@ -78,6 +78,7 @@ class DevicesController(DevicesLogger):
 
         if self.plc.connect() and self.plc.plc_checker():
             self.logger.info("🚧 电梯移动到穿梭车楼层")
+            time.sleep(1)
             if self.plc._lift_move_by_layer(TASK_NO, car_current_floor):
                 self.plc.disconnect()
             else:
@@ -144,6 +145,7 @@ class DevicesController(DevicesLogger):
 
         if self.plc.connect() and self.plc.plc_checker():
             self.logger.info("🚧 移动电梯载车到目标楼层")
+            time.sleep(1)
             if self.plc._lift_move_by_layer(TASK_NO+3, TARGET_LAYER):
                 self.plc.disconnect()
             else:
@@ -206,6 +208,7 @@ class DevicesController(DevicesLogger):
 
         if self.plc.connect() and self.plc.plc_checker():
             self.logger.info("🚧 空载校准电梯楼层")
+            time.sleep(1)
             if self.plc._lift_move_by_layer(TASK_NO+6, TARGET_LAYER):
                 self.plc.disconnect()
             else:
@@ -269,6 +272,7 @@ class DevicesController(DevicesLogger):
         # 电梯初始化: 移动到1层
         if self.plc.connect() and self.plc.plc_checker():
             self.logger.info("🚧 移动空载电梯到1层")
+            time.sleep(1)
             if self.plc._lift_move_by_layer(TASK_NO+1, 1):
                 self.plc.disconnect()
             else:
@@ -333,11 +337,12 @@ class DevicesController(DevicesLogger):
         self.logger.info("▶️ 货物进入楼层")
         time.sleep(1)
         if self.plc.connect() and self.plc.plc_checker():
-
+            time.sleep(1)
             self.logger.info("📦 货物开始进入楼层...")
             self.plc.lift_to_everylayer(target_layer)
 
             self.logger.info("⏳ 输送线移动中...")
+            time.sleep(0.5)
             # 等待电梯输送线工作结束
             if target_layer == 1:
                 self.plc.wait_for_bit_change_sync(11, DB_11.PLATFORM_PALLET_READY_1030.value, 1)
@@ -384,8 +389,8 @@ class DevicesController(DevicesLogger):
         # 发送取货进行中信号给PLC
         time.sleep(1)
         if self.plc.connect() and self.plc.plc_checker():
-            time.sleep(1)
             self.logger.info(f"🚧 穿梭车开始取货...")
+            time.sleep(1)
             self.plc.pick_in_process(target_layer)
             self.plc.disconnect()
         else:
@@ -415,6 +420,7 @@ class DevicesController(DevicesLogger):
 
         # 发送取货完成信号给PLC
         if self.plc.connect() and self.plc.plc_checker():
+            time.sleep(1)
             self.plc.pick_complete(target_layer)
             self.logger.info(f"✅ 入库完成")
             self.plc.disconnect()
@@ -461,6 +467,7 @@ class DevicesController(DevicesLogger):
         car_loc = list(map(int, car_location.split(',')))
         car_layer = car_loc[2]
         self.logger.info(f"🚗 穿梭车当前楼层: {car_layer}")
+        
         # 拆解目标位置 -> 坐标: 如, "1,3,1" 楼层: 如, 1
         self.logger.info(f"📦 目标货物坐标: {TARGET_LOCATION}")
         target_loc = list(map(int, TARGET_LOCATION.split(',')))
@@ -475,6 +482,7 @@ class DevicesController(DevicesLogger):
         # 电梯初始化: 移动到目标货物层
         if self.plc.connect() and self.plc.plc_checker():
             self.logger.info(f"🚧 移动空载电梯到 {target_layer} 层")
+            time.sleep(1)
             if self.plc._lift_move_by_layer(TASK_NO+1, target_layer):
                 self.plc.disconnect()
             else:
@@ -514,6 +522,7 @@ class DevicesController(DevicesLogger):
         # 发送放货进行中信号给PLC
         if self.plc.connect() and self.plc.plc_checker():
             self.logger.info(f"🚧 穿梭车开始取货...")
+            time.sleep(1)
             self.plc.feed_in_process(target_layer)
             self.plc.disconnect()
         else:
@@ -546,6 +555,7 @@ class DevicesController(DevicesLogger):
         # 发送放货完成信号给PLC
         if self.plc.connect() and self.plc.plc_checker():
             self.logger.info(f"✅ 货物放置完成")
+            time.sleep(1)
             self.plc.feed_complete(target_layer)
 
             self.logger.info(f"🚧 货物进入电梯")
@@ -570,6 +580,7 @@ class DevicesController(DevicesLogger):
         time.sleep(1)
         if self.plc.connect() and self.plc.plc_checker():
             self.logger.info(f"🚧 移动电梯载货到1层")
+            time.sleep(1)
             if self.plc._lift_move_by_layer(TASK_NO+4, 1):
                 self.plc.disconnect()
             else:
@@ -589,6 +600,7 @@ class DevicesController(DevicesLogger):
         time.sleep(1)
         if self.plc.connect() and self.plc.plc_checker():
             self.logger.info("🚧 货物离开电梯出库")
+            time.sleep(1)
             self.logger.info("📦 货物开始离开电梯...")
             self.plc.lift_to_outband()
             self.logger.info("⏳ 输送线移动中...")
@@ -678,6 +690,7 @@ class AsyncDevicesController(DevicesLogger):
 
         if await self.plc.async_connect() and self.plc.plc_checker():
             self.logger.info("🚧 电梯移动到穿梭车楼层")
+            await asyncio.sleep(1)
             if await self.plc.lift_move_by_layer(TASK_NO, car_current_floor):
                 await self.plc.async_disconnect()
             else:
@@ -746,6 +759,7 @@ class AsyncDevicesController(DevicesLogger):
 
         if await self.plc.async_connect() and self.plc.plc_checker():
             self.logger.info("🚧 移动电梯载车到目标楼层")
+            await asyncio.sleep(1)
             if await self.plc.lift_move_by_layer(TASK_NO+3, TARGET_LAYER):
                 await self.plc.async_disconnect()
             else:
@@ -787,6 +801,7 @@ class AsyncDevicesController(DevicesLogger):
         # 穿梭车离开提升机进入接驳位
         target_lift_pre_location = f"5,3,{TARGET_LAYER}"
         self.logger.info(f"🚧 穿梭车开始离开电梯进入接驳位 {target_lift_pre_location}")
+        
         self.logger.info("⏳ 穿梭车开始移动...")
         await self.car.car_move(TASK_NO+5, target_lift_pre_location)
         
@@ -809,6 +824,7 @@ class AsyncDevicesController(DevicesLogger):
 
         if await self.plc.async_connect() and self.plc.plc_checker():
             self.logger.info("🚧 空载校准电梯楼层")
+            await asyncio.sleep(1)
             if await self.plc.lift_move_by_layer(TASK_NO+6, TARGET_LAYER):
                 await self.plc.async_disconnect()
             else:
@@ -872,6 +888,7 @@ class AsyncDevicesController(DevicesLogger):
         # 电梯初始化: 移动到1层
         if await self.plc.async_connect() and self.plc.plc_checker():
             self.logger.info("🚧 移动空载电梯到1层")
+            await asyncio.sleep(1)
             if await self.plc.lift_move_by_layer(TASK_NO+1, 1):
                 await self.plc.async_disconnect()
             else:
@@ -894,6 +911,7 @@ class AsyncDevicesController(DevicesLogger):
         await asyncio.sleep(1)
         if await self.plc.async_connect() and self.plc.plc_checker():
             self.logger.info("📦 货物开始进入电梯...")
+            await asyncio.sleep(1)
             self.plc.inband_to_lift()
 
             self.logger.info("⏳ 输送线移动中...")
@@ -914,12 +932,17 @@ class AsyncDevicesController(DevicesLogger):
         await asyncio.sleep(1)
         if await self.plc.async_connect() and self.plc.plc_checker():
             self.logger.info(f"🚧 移动电梯载货到目标楼层 {target_layer}层")
-            self.plc.lift_move(LIFT_TASK_TYPE.GOOD, TASK_NO+2, target_layer)
-            await self.plc.async_disconnect()
+            await asyncio.sleep(1)
+            if await self.plc.lift_move_by_layer(TASK_NO+2, target_layer):
+                await self.plc.async_disconnect()
+            else:
+                await self.plc.async_disconnect()
+                self.logger.error("❌ 电梯运行错误")
+                return [False, "❌ 电梯运行错误"]
         else:
             await self.plc.async_disconnect()
-            self.logger.error("❌ 电梯运行错误")
-            return [False, "❌ 电梯运行错误"]
+            self.logger.error("❌ PLC错误")
+            return [False ,"❌ PLC错误"]
 
         
         ############################################################
@@ -928,13 +951,14 @@ class AsyncDevicesController(DevicesLogger):
 
         # 电梯载货到到目标楼层, 电梯输送线将货物送入目标楼层
         self.logger.info("▶️ 货物进入楼层")
-        time.sleep(1)
+        await asyncio.sleep(1)
         if await self.plc.async_connect() and self.plc.plc_checker():
-
             self.logger.info("📦 货物开始进入楼层...")
+            await asyncio.sleep(1)
             self.plc.lift_to_everylayer(target_layer)
 
             self.logger.info("⏳ 输送线移动中...")
+            await asyncio.sleep(0.5)
             # 等待电梯输送线工作结束
             if target_layer == 1:
                 self.plc.wait_for_bit_change_sync(11, DB_11.PLATFORM_PALLET_READY_1030.value, 1)
@@ -966,7 +990,6 @@ class AsyncDevicesController(DevicesLogger):
             # 等待穿梭车移动到位
             self.logger.info(f"⏳ 等待穿梭车前往 5,3,{target_layer} 位置...")
             await self.car.wait_car_move_complete_by_location(car_current_lift_pre_location)
-            # time.sleep(2)
             await asyncio.sleep(2)
 
             # car_status = await self.car.car_status()
@@ -982,11 +1005,10 @@ class AsyncDevicesController(DevicesLogger):
         ############################################################
         
         # 发送取货进行中信号给PLC
-        # time.sleep(1)
         await asyncio.sleep(1)
         if await self.plc.async_connect() and self.plc.plc_checker():
-            await asyncio.sleep(1)
             self.logger.info(f"🚧 穿梭车开始取货...")
+            await asyncio.sleep(1)
             self.plc.pick_in_process(target_layer)
             await self.plc.async_disconnect()
         else:
@@ -1002,7 +1024,6 @@ class AsyncDevicesController(DevicesLogger):
         # 等待穿梭车进入接驳位
         self.logger.info(f"⏳ 等待穿梭车前往 {TARGET_LOCATION} 位置...")
         await self.car.wait_car_move_complete_by_location(TARGET_LOCATION)
-        # time.sleep(2)
         await asyncio.sleep(2)
         
         # car_status = await self.car.car_status()
@@ -1019,6 +1040,7 @@ class AsyncDevicesController(DevicesLogger):
 
         # 发送取货完成信号给PLC
         if await self.plc.async_connect() and self.plc.plc_checker():
+            await asyncio.sleep(1)
             self.plc.pick_complete(target_layer)
             self.logger.info(f"✅ 入库完成")
             await self.plc.async_disconnect()
@@ -1080,12 +1102,17 @@ class AsyncDevicesController(DevicesLogger):
         # 电梯初始化: 移动到目标货物层
         if await self.plc.async_connect() and self.plc.plc_checker():
             self.logger.info(f"🚧 移动空载电梯到 {target_layer} 层")
-            await self.plc.lift_move_by_layer(TASK_NO+1, target_layer)
-            await self.plc.async_disconnect()
+            await asyncio.sleep(1)
+            if await self.plc.lift_move_by_layer(TASK_NO+1, target_layer):
+                await self.plc.async_disconnect()
+            else:
+                await self.plc.async_disconnect()
+                self.logger.error("❌ 电梯运行错误")
+                return [False, "❌ 电梯运行错误"]
         else:
             await self.plc.async_disconnect()
-            self.logger.error("❌ 电梯运行错误")
-            return [False, "❌ 电梯运行错误"]
+            self.logger.error("❌ PLC 运行错误")
+            return [False, "❌ PLC 运行错误"]
             
         
         ############################################################
@@ -1115,8 +1142,8 @@ class AsyncDevicesController(DevicesLogger):
 
         # 发送放货进行中信号给PLC
         if await self.plc.async_connect() and self.plc.plc_checker():
-            await asyncio.sleep(0.5)
             self.logger.info(f"🚧 穿梭车开始取货...")
+            await asyncio.sleep(1)
             self.plc.feed_in_process(target_layer)
             await self.plc.async_disconnect()
         else:
@@ -1133,11 +1160,9 @@ class AsyncDevicesController(DevicesLogger):
         # 等待穿梭车进入接驳位
         self.logger.info(f"⏳ 等待穿梭车前往 {target_lift_pre_location} 位置...")
         await self.car.wait_car_move_complete_by_location(target_lift_pre_location)
-        # time.sleep(2)
         await asyncio.sleep(2)
         
         # car_status = await self.car.car_status()
-        await asyncio.sleep(1)
         # if await self.car.car_current_location() == target_lift_pre_location and car_status['car_status'] == CarStatus.READY.value:
         if await self.car.car_current_location() == target_lift_pre_location:
             self.logger.info(f"✅ 货物已到达 楼层接驳输送线位置 {target_lift_pre_location}")
@@ -1153,11 +1178,11 @@ class AsyncDevicesController(DevicesLogger):
         # 发送放货完成信号给PLC
         if await self.plc.async_connect() and self.plc.plc_checker():
             self.logger.info(f"✅ 货物放置完成")
+            await asyncio.sleep(1)
             self.plc.feed_complete(target_layer)
 
             self.logger.info(f"🚧 货物进入电梯")
             self.logger.info("📦 货物开始进入电梯...")
-            # time.sleep(1)
             await asyncio.sleep(1)
             self.logger.info("⏳ 输送线移动中...")
             # 等待电梯输送线工作结束
@@ -1175,33 +1200,36 @@ class AsyncDevicesController(DevicesLogger):
         ############################################################
 
         # 电梯带货移动到1楼
-        # time.sleep(1)
         await asyncio.sleep(1)
         if await self.plc.async_connect():
             self.logger.info(f"🚧 移动电梯载货到1层")
-            await self.plc.lift_move_by_layer(TASK_NO+4, 1)
-            await self.plc.async_disconnect()
+            await asyncio.sleep(1)
+            if await self.plc.lift_move_by_layer(TASK_NO+4, 1):
+                await self.plc.async_disconnect()
+            else:
+                await self.plc.async_disconnect()
+                self.logger.error("❌ 电梯运行错误")
+                return [False, "❌ 电梯运行错误"]
         else:
             await self.plc.async_disconnect()
-            self.logger.error("❌ 电梯运行错误")
-            return [False, "❌ 电梯运行错误"]
+            self.logger.error("❌ PLC 运行错误")
+            return [False, "❌ PLC 运行错误"]
 
         
         ############################################################
         # step 4: 
         ############################################################
 
-        # time.sleep(1)
         await asyncio.sleep(1)
         if await self.plc.async_connect() and self.plc.plc_checker():
             self.logger.info("🚧 货物离开电梯出库")
+            await asyncio.sleep(1)
             self.logger.info("📦 货物开始离开电梯...")
             self.plc.lift_to_outband()
             self.logger.info("⏳ 输送线移动中...")
             # 等待电梯输送线工作结束
             await self.plc.wait_for_bit_change(11, DB_11.PLATFORM_PALLET_READY_MAN.value, 1)
             self.logger.info("✅ 货物到达出口")
-            # time.sleep(1)
             await asyncio.sleep(1)
             self.logger.info("✅ 出库完成")
             await self.plc.async_disconnect()
