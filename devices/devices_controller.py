@@ -297,7 +297,7 @@ class DevicesController(DevicesLogger):
         time.sleep(1)
         if self.plc.connect() and self.plc.plc_checker():
             self.logger.info("📦 货物开始进入电梯...")
-            time.sleep(1)
+            time.sleep(2)
             self.plc.inband_to_lift()
 
             self.logger.info("⏳ 输送线移动中...")
@@ -916,7 +916,7 @@ class AsyncDevicesController(DevicesLogger):
         await asyncio.sleep(1)
         if await self.plc.async_connect() and self.plc.plc_checker():
             self.logger.info("📦 货物开始进入电梯...")
-            await asyncio.sleep(1)
+            await asyncio.sleep(2)
             self.plc.inband_to_lift()
 
             self.logger.info("⏳ 输送线移动中...")
