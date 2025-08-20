@@ -209,7 +209,7 @@ class DevicesController(DevicesLogger):
         time.sleep(1)
         if self.plc.connect() and self.plc.plc_checker():
             self.logger.info("🚧 空载校准电梯楼层")
-            time.sleep(1)
+            time.sleep(2)
             if self.plc._lift_move_by_layer(TASK_NO+6, TARGET_LAYER):
                 self.plc.disconnect()
             else:
@@ -829,7 +829,7 @@ class AsyncDevicesController(DevicesLogger):
         await asyncio.sleep(1)
         if await self.plc.async_connect() and self.plc.plc_checker():
             self.logger.info("🚧 空载校准电梯楼层")
-            await asyncio.sleep(1)
+            await asyncio.sleep(2)
             if await self.plc.lift_move_by_layer(TASK_NO+6, TARGET_LAYER):
                 await self.plc.async_disconnect()
             else:
