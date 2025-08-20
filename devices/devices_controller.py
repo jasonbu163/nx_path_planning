@@ -556,9 +556,10 @@ class DevicesController(DevicesLogger):
         ############################################################
 
         # 发送放货完成信号给PLC
+        time.sleep(1)
         if self.plc.connect() and self.plc.plc_checker():
             self.logger.info(f"✅ 货物放置完成")
-            time.sleep(1)
+            time.sleep(2)
             self.plc.feed_complete(target_layer)
 
             self.logger.info(f"🚧 货物进入电梯")
@@ -1182,9 +1183,10 @@ class AsyncDevicesController(DevicesLogger):
         ############################################################
 
         # 发送放货完成信号给PLC
+        await asyncio.sleep(1)
         if await self.plc.async_connect() and self.plc.plc_checker():
             self.logger.info(f"✅ 货物放置完成")
-            await asyncio.sleep(1)
+            await asyncio.sleep(2)
             self.plc.feed_complete(target_layer)
 
             self.logger.info(f"🚧 货物进入电梯")
