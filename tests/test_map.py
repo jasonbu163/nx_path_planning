@@ -17,25 +17,7 @@ def main():
     G = my_path.G
     pos = my_path.pos
     assert nx.is_tree(G), "图不是树结构，无法进行路径规划"
-        
-    # 设置起点和终点
-    source = "5,3,1"
-    target = "2,1,1"
     
-    # found_path = my_path.find_path(source, target)
-    # print(f"路径: {found_path}")
-    
-    # cuted_path = my_path.cut_path(found_path)
-    # print(f"切分之后的路径: {cuted_path}")
-
-    # task_path = my_path.task_path(cuted_path)
-    # print(f"任务路径: {task_path}")
-
-    # task_segments = my_path.generate_point_list(task_path)
-    # print(f"任务分段: {task_segments}")
-
-    # my_path.draw_path(found_path)
-
     # 模拟节点状态，后续会使用sqlite来存储和更新节点状态
     # 这里的节点状态可以是从数据库中查询得到的
     node_status = {
@@ -87,51 +69,76 @@ def main():
         "7,7,1": "occupied",
         "8,7,1": "free",
         }
+    
+    ####################################
+    # 模拟出入库任务 "5,3,z" 是出入口
+    ####################################
+    # step 0 (初始化)
+    # 穿梭车跨层等步骤
 
+    # step 1 (穿梭车完成跨层后，剩下就是单层的移动任务)
+    # 设置起点和终点
+    car_location = "4,3,1"
+    source = "3,1,1"
+    target = "5,3,1"
+    
+    # step 2 判断阻塞节点，并处理阻塞
+    # step 2.1 找到阻塞节点
     blocking_nodes = my_path.find_blocking_nodes(source, target, node_status)
     if blocking_nodes:
         print(f"路径上的阻塞点: {blocking_nodes}")
-    free_nodes_excluding_path = my_path.find_free_nodes_excluding_path(source, target, node_status)
-    print(f"不在路径上的空闲点: {free_nodes_excluding_path}")
-
-    if blocking_nodes is None:
-        print("没有找到可访问的点")
-        return None
     
+        # step 2.2 找到最接近 highway 的阻塞节点
+        nearest_highway_node = my_path.find_nearest_highway_node(blocking_nodes)
+        print(f"最近的高速公路点: {nearest_highway_node}")
         
-    nearest_highway_node = my_path.find_nearest_highway_node(blocking_nodes)
-    print(f"最近的高速公路点: {nearest_highway_node}")
+        # step 2.3 找到最接近higihway阻塞点的free节点
+        nearest_free_node = my_path.find_nearest_free_node(
+            source,
+            target,
+            nearest_highway_node,
+            node_status
+            )
+        print(f"{nearest_highway_node} 最接近空闲点: {nearest_free_node}")
     
-    short_free_node = my_path.find_nearest_free_node(
-        source,
-        target,
-        nearest_highway_node,
-        node_status
-        )
-    print(f"{nearest_highway_node} 最接近空闲点: {short_free_node}")
-    
-    if short_free_node is None:
-        print("无法找到最近空闲点")
-        return
-    
-    path_1 = my_path.find_path(nearest_highway_node, short_free_node)
-    print(f"从{nearest_highway_node}到{short_free_node}的最短路径: {path_1}")
-    
-    if nearest_highway_node is None:
-        print("无法找到最接近高速公路的点")
-        return
-    
-    path_1_blocking_node = my_path.find_blocking_nodes(
-        nearest_highway_node,
-        short_free_node,
-        node_status)
-    print(f"路径1的阻塞点: {path_1_blocking_node}")
+        if nearest_free_node is None:
+            print("无法找到最近空闲点")
+            return
+        
+        if nearest_highway_node is None:
+            print("无法找到最接近高速公路的点")
+            return
+        
+        # step 2.4 检查处理阻塞点的路径是否存在阻塞
+        blocking_node_1 = my_path.find_blocking_nodes(
+            nearest_highway_node,
+            nearest_free_node,
+            node_status)
+        if blocking_node_1:
+            print(f"路径1存在阻塞点 {blocking_node_1}")
+            return
+        
+        # step 2.5 穿梭车移动处理阻塞点
+        segments = my_path.build_segments(car_location, nearest_highway_node)
+        print(f"穿梭车前往货物处:{segments}")
+        task_segments = my_path.build_pick_task(nearest_highway_node, nearest_free_node)
+        print(f"取货到目标处: {task_segments}")
+        # step 2.6 更新穿梭车坐标
+        car_location = nearest_free_node
 
-    # segments = my_path.build_segments(source, target)
-    # print(f"找到的路径分段:{segments}")
+    segments = my_path.build_segments(car_location, source)
+    print(f"穿梭车前往货物处:{segments}")
+    source_x, source_y, source_z = my_path.get_point(source)
+    if source_x != 5 and source_y != 3:
+        node_status[source] = "free"
+    task_segments = my_path.build_pick_task(source, target)
+    print(f"取货到目标处: {task_segments}")
+    target_x, target_y, target_z = my_path.get_point(target)
+    if target_x != 5 and target_y != 3:
+        node_status[source] = "occupied"
 
-    # task_segments = my_path.build_pick_task(source, target)
-    # print(f"取货任务分段: {task_segments}")
-
+    car_location = target
+    print(f"穿梭车最后位置: {car_location}")
+    print(f"{node_status}")
 if __name__ == "__main__":
     main()
