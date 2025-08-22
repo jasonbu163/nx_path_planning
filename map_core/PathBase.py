@@ -14,19 +14,17 @@ class PathBase:
         self.map_base = MapBase()
         self.G, self.pos = self.map_base.create_map()
 
-    def draw_path(self, path=None, G=None, pos=None):
+    def draw_path(self, PATH):
         """
-        绘制地图和路径
-        通过 NetworkX 和 Matplotlib 绘制地图
+        [绘制地图和路径] - 通过 NetworkX 和 Matplotlib 绘制地图
         """
         plt.figure(figsize=(10, 10))
-        # 在draw命令后添加
-        path = nx.shortest_path(G, source=path[0], target=path[-1]) if path else None
         # 高亮显示路径
-        path_edges = list(zip(path, path[1:]))  # 获取路径的边列表 (path为路径列表 path[1:]为路径列表的后半部分)
-        nx.draw_networkx_edges(G, pos, edgelist=path_edges, width=2, edge_color="r")
+        path_edges = list(zip(PATH, PATH[1:]))  # 获取路径的边列表 (path为路径列表 path[1:]为路径列表的后半部分)
+        print(f"path_edges - {path_edges}")
+        nx.draw_networkx_edges(self.G, self.pos, edgelist=path_edges, width=2, edge_color="r")
         nx.draw(
-            self.G,
+            G=self.G,
             pos=self.pos,
             with_labels=True,
             node_size=500,
@@ -36,18 +34,33 @@ class PathBase:
         plt.title("Map with Shortest Path")
         plt.show()
 
-    def find_shortest_path(self, source, target):
+    def find_shortest_path(self, SOURCE, TARGET):
         """
         查找最短路径
-        :param source: 起点
-        :param target: 终点
+
+        :param SOURCE: 起点
+        :param TARGET: 终点
+
         :return: 最短路径列表
         """
+        # 检查节点是否在图中
+        if SOURCE not in self.G.nodes():
+            raise ValueError(f"起点 {SOURCE} 不在地图节点中")
+        
+        if TARGET not in self.G.nodes():
+            raise ValueError(f"终点 {TARGET} 不在地图节点中")
+            
         try:
-            path = nx.shortest_path(self.G, source=source, target=target)
+            path = nx.shortest_path(self.G, source=SOURCE, target=TARGET)
             return path
         except nx.NetworkXNoPath:
-            print(f"从 {source} 到 {target} 没有可达路径")
+            print(f"从 {SOURCE} 到 {TARGET} 没有可达路径")
+            return None
+        except nx.NodeNotFound as e:
+            print(f"节点未找到: {e}")
+            return None
+        except Exception as e:
+            print(f"计算路径时发生未知错误: {e}")
             return None
 
 if __name__ == "__main__":
@@ -58,12 +71,17 @@ if __name__ == "__main__":
 
     # 绘制地图和路径
     source = "1,3,1"
-    target = "8,7,1"
+    target = "5,5,1"
+    
     path = pathbase.find_shortest_path(source, target)
+    if path is None:
+        print("没有找到路径")
+        exit()
     print("最短路径:", path)  # 输出: ['1,2,1', '1,3,1', '2,3,1', '2,4,1', '2,5,1']
     print("最短路径长度:", len(path)-1)  # 输出: 12
     source2target = [path[0], path[-1]]
     print("起点和终点:", source2target)  # 输出: ['1,2,1', '2,5,1']
+    
     G = pathbase.G  # 获取图对象
     pos = pathbase.pos  # 获取节点位置
     print("连通性检查:")
@@ -71,4 +89,4 @@ if __name__ == "__main__":
     print("最短路径数量:", len(list(nx.all_shortest_paths(G, source, target))))  # 输出: 1
 
     # 绘制地图和路径
-    pathbase.draw_path(path, G, pos)
+    pathbase.draw_path(path)
