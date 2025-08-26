@@ -13,9 +13,13 @@ from api.v2.common.decorators import standard_response, standard_response_sync
 from sqlalchemy.orm import Session
 from api.v2.wcs import schemas
 from api.v2.wcs.services import Services
-from api.v2.core.dependencies import get_database, get_services
+from api.v2.core.dependencies import get_database
+
+# 线程池使用以下方法
+# from api.v2.core.dependencies import get_database, get_services
 
 router = APIRouter()
+services = Services()
 
 #################################################
 # 任务接口
@@ -25,8 +29,7 @@ router = APIRouter()
 @standard_response
 async def create_task(
     task: schemas.TaskCreate, 
-    db: Session = get_database(),
-    services: Services = Depends(get_services)
+    db: Session = get_database()
     ):
     """创建新任务"""
     return services.create_task(db, task)
@@ -36,8 +39,7 @@ async def create_task(
 async def get_tasks(
     skip: int = 0, 
     limit: int = 100,
-    db: Session = get_database(),
-    services: Services = Depends(get_services)
+    db: Session = get_database()
     ):
     """获取任务列表"""
     tasks = services.get_tasks(db, skip=skip, limit=limit)
@@ -48,8 +50,7 @@ async def get_tasks(
 async def update_task_status(
     task_id: str, 
     status_update: schemas.TaskStatusUpdate,
-    db: Session = get_database(),
-    services: Services = Depends(get_services)
+    db: Session = get_database()
     ):
     """更新任务状态"""
     task = services.update_task_status(db, task_id=task_id, new_status=status_update.status)
@@ -77,8 +78,7 @@ async def update_task_status(
 @router.get("/read/locations", response_model=StandardResponse[list[schemas.Location]])
 @standard_response
 async def read_locations(
-    db: Session = get_database(),
-    services: Services = Depends(get_services)
+    db: Session = get_database()
     ):
     """
     [读 - 库位信息] 根据所有库位信息
@@ -89,8 +89,7 @@ async def read_locations(
 @standard_response
 async def read_location_by_id(
     request: schemas.LocationID,
-    db: Session = get_database(),
-    services: Services = Depends(get_services)
+    db: Session = get_database()
     ):
     """
     [读 - 库位信息] 根据库位ID, 获取指定位置信息
@@ -108,8 +107,7 @@ async def read_location_by_id(
 @standard_response
 async def read_location_by_loc(
     request: schemas.LocationPosition,
-    db: Session = get_database(),
-    services: Services = Depends(get_services)
+    db: Session = get_database()
     ):
     """
     [读 - 库位信息] 根据库位坐标, 获取指定位置信息
@@ -127,8 +125,7 @@ async def read_location_by_loc(
 @standard_response
 async def read_location_by_pallet_id(
     request: schemas.LocationPallet,
-    db: Session = get_database(),
-    services: Services = Depends(get_services)
+    db: Session = get_database()
     ):
     """
     [读 - 库位信息] 根据库位坐标, 获取指定位置信息
@@ -147,8 +144,7 @@ async def read_location_by_pallet_id(
 @standard_response
 async def read_location_by_status(
     request: schemas.LocationStatus,
-    db: Session = get_database(),
-    services: Services = Depends(get_services)
+    db: Session = get_database()
     ):
     """
     [读 - 库位信息] 根据库位坐标, 获取指定位置信息
@@ -173,8 +169,7 @@ async def read_location_by_status(
 @standard_response
 async def read_floor_info(
     request: schemas.Locations,
-    db: Session = get_database(),
-    services: Services = Depends(get_services)
+    db: Session = get_database()
     ):
     """
     [读 - 库位信息] 根据库位ID范围, 获取指定范围内的库位信息
@@ -193,8 +188,7 @@ async def read_floor_info(
 @standard_response
 async def write_update_pallet_by_id(
     request: schemas.UpdatePalletByID,
-    db: Session = get_database(),
-    services: Services = Depends(get_services)
+    db: Session = get_database()
     ):
     """
     [更新 - 库位信息] - 通过位置ID修改托盘号, 并返回更新库位状态
@@ -219,8 +213,7 @@ async def write_update_pallet_by_id(
 @standard_response
 async def write_delete_pallet_by_id(
     request: schemas.LocationID,
-    db: Session = get_database(),
-    services: Services = Depends(get_services)
+    db: Session = get_database()
     ):
     """
     [更新 - 库位信息] - 通过位置ID删除托盘号, 并返回更新库位状态
@@ -241,8 +234,7 @@ async def write_delete_pallet_by_id(
 @standard_response
 async def write_update_pallet_by_loc(
     request: schemas.UpdatePalletByLocation,
-    db: Session = get_database(),
-    services: Services = Depends(get_services)
+    db: Session = get_database()
     ):
     """
     [更新 - 库位信息] - 通过位置ID修改托盘号, 并返回更新库位状态
@@ -267,8 +259,7 @@ async def write_update_pallet_by_loc(
 @standard_response
 async def write_delete_pallet_by_loc(
     request: schemas.LocationPosition,
-    db: Session = get_database(),
-    services: Services = Depends(get_services)
+    db: Session = get_database()
     ):
     """
     [更新 - 库位信息] - 通过位置ID删除托盘号, 并返回更新库位状态
@@ -292,8 +283,7 @@ async def write_delete_pallet_by_loc(
 @router.post("/create/path")
 @standard_response
 async def get_path(
-    request: schemas.PathBase,
-    services: Services = Depends(get_services)
+    request: schemas.PathBase
     ):
     """
     [生成 - 路径] 根据起点和终点查找最短路径
@@ -305,8 +295,7 @@ async def get_path(
 @router.post("/create/car_move_segments")
 @standard_response
 async def car_move_segments(
-    request: schemas.PathBase,
-    services: Services = Depends(get_services)
+    request: schemas.PathBase
     ):
     """
     [生成 - 车移动任务路径] 根据起点和终点控制车辆移动
@@ -316,8 +305,7 @@ async def car_move_segments(
 @router.post("/create/good_move_segments")
 @standard_response
 async def good_move_segments(
-    request: schemas.PathBase,
-    services: Services = Depends(get_services)
+    request: schemas.PathBase
     ):
     """
     [生成 - 货物任务路径] 根据起点和终点控制车辆载货移动
@@ -331,9 +319,7 @@ async def good_move_segments(
 
 @router.get("/control/get_car_location")
 @standard_response
-async def get_car_location(
-    services: Services = Depends(get_services)
-    ):
+async def get_car_location():
     """
     [读 - 车辆信息] 获取穿梭车当前位置接口
 
@@ -342,16 +328,15 @@ async def get_car_location(
     """
 
     msg = await services.get_car_current_location()
-    if msg:
-        return StandardResponse.isSuccess(data=msg)
-    # return StandardResponse.isError(message="操作失败，穿梭车可能未连接", data=msg)
+    if msg == "error":
+        return StandardResponse.isError(message="操作失败，穿梭车可能未连接", data=msg)
+    return StandardResponse.isSuccess(data=msg)
 
     
 @router.post("/control/change_car_location")
 @standard_response
 async def change_car_location(
-    request: schemas.CarMoveBase,
-    services: Services = Depends(get_services)
+    request: schemas.CarMoveBase
     ):
     """
     [更新 - 修改穿梭车位置]
@@ -371,8 +356,7 @@ async def change_car_location(
 @router.post("/control/car_move")
 @standard_response
 async def car_move_control(
-    request: schemas.CarMoveBase,
-    services: Services = Depends(get_services)
+    request: schemas.CarMoveBase
     ):
     """
     [控制 - 穿梭车移动]
@@ -387,8 +371,7 @@ async def car_move_control(
 @router.post("/control/good_move")
 @standard_response
 async def good_move_control(
-    request: schemas.CarMoveBase,
-    services: Services = Depends(get_services)
+    request: schemas.CarMoveBase
     ):
     """
     [控制 - 货物移动]
@@ -407,8 +390,7 @@ async def good_move_control(
 @router.post("/control/lift")
 @standard_response
 async def lift_control(
-    request: schemas.LiftBase,
-    services: Services = Depends(get_services)
+    request: schemas.LiftBase
     ):
     """
     [控制 电梯] 电梯移动至目标楼层
@@ -426,9 +408,7 @@ async def lift_control(
 
 @router.get("/control/task_lift_inband")
 @standard_response
-async def lift_inband_control(
-    services: Services = Depends(get_services)
-    ):
+async def lift_inband_control():
     """
     物料进入提升机, 入库！！
     """
@@ -440,9 +420,7 @@ async def lift_inband_control(
     
 @router.get("/control/task_lift_outband")
 @standard_response
-async def lift_outband_control(
-    services: Services = Depends(get_services)
-    ):
+async def lift_outband_control():
     """
     物料从提升机移动到库口，出库！
     """
@@ -455,8 +433,7 @@ async def lift_outband_control(
 @router.post("/control/task_in_lift")
 @standard_response
 async def task_in_lift(
-    request: schemas.LiftBase,
-    services: Services = Depends(get_services)
+    request: schemas.LiftBase
     ):
     """
     物料从 库内 移动到 电梯 --》 出库！！
@@ -469,8 +446,7 @@ async def task_in_lift(
 @router.post("/control/task_feed_complete")
 @standard_response
 async def task_feed_complete(
-    request: schemas.LiftBase,
-    services: Services = Depends(get_services)
+    request: schemas.LiftBase
     ):
     """
     放下物料完成 --》 出库！！！
@@ -483,8 +459,7 @@ async def task_feed_complete(
 @router.post("/control/task_out_lift")
 @standard_response
 async def task_out_lift(
-    request: schemas.LiftBase,
-    services: Services = Depends(get_services)
+    request: schemas.LiftBase
     ):
     """
     物料从 电梯 移动到 库内 --》 入库！！！
@@ -497,8 +472,7 @@ async def task_out_lift(
 @router.post("/control/task_pick_complete")
 @standard_response
 async def task_pick_complete(
-    request: schemas.LiftBase,
-    services: Services = Depends(get_services)
+    request: schemas.LiftBase
     ):
     """
     取走物料完成 --》 入库！！！
@@ -515,8 +489,7 @@ async def task_pick_complete(
 @router.post("/control/wait_car")
 @standard_response
 async def wait_car(
-    request: schemas.CarMoveBase,
-    services: Services = Depends(get_services)
+    request: schemas.CarMoveBase
     ):
     """
     等待设备完成
@@ -533,16 +506,14 @@ async def wait_car(
 
 @router.get("/control/qrcode")
 @standard_response
-async def qrcode(
-    services: Services = Depends(get_services)
-    ):
+async def qrcode():
     """
     获取二维码
     """
     msg = await services.get_qrcode()
     if msg == False:
         return StandardResponse.isError(message="操作失败", data=msg)
-    return StandardResponse.isSuccess(data=msg)
+    # return StandardResponse.isSuccess(data=msg)
         
 
 #################################################
@@ -552,8 +523,7 @@ async def qrcode(
 @router.post("/control/car_cross_layer")
 @standard_response
 async def control_car_cross_layer(
-    request: schemas.LiftBase,
-    services: Services = Depends(get_services)
+    request: schemas.LiftBase
     ):
     """
     操作穿梭车联动电梯跨层
@@ -570,8 +540,7 @@ async def control_car_cross_layer(
 @router.post("/control/task_inband")
 @standard_response
 async def control_task_inband(
-    request: schemas.CarMoveBase,
-    services: Services = Depends(get_services)
+    request: schemas.CarMoveBase
     ):
     """
     操作穿梭车联动电梯跨层
@@ -588,8 +557,7 @@ async def control_task_inband(
 @router.post("/control/task_outband")
 @standard_response
 async def control_task_outband(
-    request: schemas.CarMoveBase,
-    services: Services = Depends(get_services)
+    request: schemas.CarMoveBase
     ):
     """
     操作穿梭车联动电梯跨层

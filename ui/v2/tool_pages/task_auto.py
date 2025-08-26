@@ -50,7 +50,7 @@ with a2:
                         if resp.json()["code"] == 404:
                             st.error(f"{resp.json()['message']}")
                         else:
-                            st.success(f"✅ 动作发送成功")
+                            st.success(f"✅ 扫码成功, 托盘码为: {resp.json()['data']}")
                     except:
                         st.text(resp.text)
                 else:

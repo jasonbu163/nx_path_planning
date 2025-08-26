@@ -9,19 +9,19 @@ from api.v2.wcs import routes as wcs_v2_routes
 from api.v2.wms import routes as wms_v2_routes
 # from daemon.scheduler import TaskScheduler
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # 启动时创建线程池
-    app.state.thread_pool = ThreadPoolExecutor(max_workers=3)
-    print("✅ 线程池已创建")
+# @asynccontextmanager
+# async def lifespan(app: FastAPI):
+#     # 启动时创建线程池
+#     app.state.thread_pool = ThreadPoolExecutor(max_workers=3)
+#     print("✅ 线程池已创建")
 
-    # 这里可以添加其他启动逻辑
-    yield
+#     # 这里可以添加其他启动逻辑
+#     yield
 
-    # 关闭时清理资源
-    app.state.thread_pool.shutdown(wait=True)
-    print("⛔ 线程池已关闭")
-    # 这里可以添加其他关闭逻辑
+#     # 关闭时清理资源
+#     app.state.thread_pool.shutdown(wait=True)
+#     print("⛔ 线程池已关闭")
+#     # 这里可以添加其他关闭逻辑
 
 
 app = FastAPI(
@@ -31,7 +31,7 @@ app = FastAPI(
     openapi_url="/api/v2/openapi.json",
     docs_url="/api/v2/docs",
     redoc_url="/api/v2/redoc",
-    lifespan=lifespan
+    # lifespan=lifespan
 )
 
 # 包含 WMS 路由 (v1)
@@ -86,7 +86,7 @@ if __name__ == "__main__":
         port=8765,
         reload=True,
         workers=1,
-        loop="asyncio",
-        timeout_keep_alive=30,
-        limit_concurrency=100
+        # loop="asyncio",
+        # timeout_keep_alive=30,
+        # limit_concurrency=100
     )

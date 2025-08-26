@@ -4,7 +4,7 @@ from typing import Optional
 from random import randint
 import time
 import asyncio
-from concurrent.futures import ThreadPoolExecutor
+# from concurrent.futures import ThreadPoolExecutor
 
 from sqlalchemy.orm import Session
 from models.base_model import TaskList as TaskModel
@@ -14,7 +14,7 @@ from . import schemas
 
 from map_core import PathCustom
 # from devices.service_asyncio import DevicesService, DB_12
-from devices.devices_controller import DevicesController, AsyncDevicesController
+from devices.devices_controller import DevicesController, AsyncDevicesController, DevicesControllerByStep
 from devices.car_controller import AsyncCarController, AsyncSocketCarController
 from devices.plc_controller import PLCController
 from devices.plc_enum import (
@@ -35,20 +35,21 @@ import config
 
 class Services:
 
-    def __init__(self, thread_pool: ThreadPoolExecutor):
-        self.thread_pool = thread_pool
+    # def __init__(self, thread_pool: ThreadPoolExecutor):
+    def __init__(self):
+        # self.thread_pool = thread_pool
         self._loop = None # 延迟初始化的事件循环引用
         self.path_planner = PathCustom()
         self.plc_service = PLCController(config.PLC_IP)
         self.car_service = AsyncSocketCarController(config.CAR_IP, config.CAR_PORT)
-        self.device_service = AsyncDevicesController(config.PLC_IP, config.CAR_IP, config.CAR_PORT)
+        self.device_service = DevicesControllerByStep(config.PLC_IP, config.CAR_IP, config.CAR_PORT)
 
-    @property
-    def loop(self):
-        """获取当前运行的事件循环（线程安全）"""
-        if self._loop is None:
-            self._loop = asyncio.get_running_loop()
-        return self._loop
+    # @property
+    # def loop(self):
+    #     """获取当前运行的事件循环（线程安全）"""
+    #     if self._loop is None:
+    #         self._loop = asyncio.get_running_loop()
+    #     return self._loop
 
 
     #################################################
@@ -233,15 +234,24 @@ class Services:
     # 路径服务
     #################################################
 
+    # async def get_path(self, source: str, target: str):
+    #     """
+    #     异步 - 获取路径服务 (线程池)
+    #     """
+    #     path = await self.loop.run_in_executor(
+    #         self.thread_pool,
+    #         self.path_planner.find_shortest_path,
+    #         source, target
+    #         )
+    #     if not path:
+    #         return False
+    #     return path
+    
     async def get_path(self, source: str, target: str):
         """
         异步 - 获取路径服务
         """
-        path = await self.loop.run_in_executor(
-            self.thread_pool,
-            self.path_planner.find_shortest_path,
-            source, target
-            )
+        path = self.path_planner.find_shortest_path(source, target)
         if not path:
             return False
         return path
@@ -255,15 +265,25 @@ class Services:
             return False
         return path
 
+    # async def get_car_move_segments(self, source: str, target: str):
+    #     """
+    #     异步 - 获取路径任务服务 (线程池)
+    #     """
+    #     segments = await self.loop.run_in_executor(
+    #         self.thread_pool,
+    #         self.path_planner.build_segments,
+    #         source, target
+    #         )
+
+    #     if not segments:
+    #         return False
+    #     return segments
+
     async def get_car_move_segments(self, source: str, target: str):
         """
         异步 - 获取路径任务服务
         """
-        segments = await self.loop.run_in_executor(
-            self.thread_pool,
-            self.path_planner.build_segments,
-            source, target
-            )
+        segments = self.path_planner.build_segments(source, target)
 
         if not segments:
             return False
@@ -279,15 +299,24 @@ class Services:
             return False
         return segments
     
+    # async def get_good_move_segments(self, source: str, target: str):
+    #     """
+    #     异步 - 获取路径任务服务 (线程池)
+    #     """
+    #     segments = await self.loop.run_in_executor(
+    #         self.thread_pool,
+    #         self.path_planner.build_pick_task,
+    #         source, target
+    #         )
+    #     if not segments:
+    #         return False
+    #     return segments
+
     async def get_good_move_segments(self, source: str, target: str):
         """
         异步 - 获取路径任务服务
         """
-        segments = await self.loop.run_in_executor(
-            self.thread_pool,
-            self.path_planner.build_pick_task,
-            source, target
-            )
+        segments = self.path_planner.build_pick_task(source, target)
         if not segments:
             return False
         return segments
@@ -327,20 +356,16 @@ class Services:
         移动穿梭车服务
         """
         task_no = randint(1, 255)
-        # return await self.car_service.car_move(task_no, target)
 
         return await self.car_service.car_move(task_no, target)
-        # return await self.car_service.wait_car_move_complete_by_location(target)
 
     async def good_move_by_target(self, target: str) -> bool:
         """
         移动货物服务
         """
         task_no = randint(1, 255)
-        # return await self.car_service.good_move(task_no, target)
 
         return await self.car_service.good_move(task_no, target)
-        # return await self.car_service.wait_car_move_complete_by_location(target)
 
 
     #################################################
@@ -353,6 +378,7 @@ class Services:
         """
         if self.plc_service.connect() and self.plc_service.plc_checker():
             self.plc_service.logger.info("🚧 电梯操作")
+            time.sleep(2)
             if self.plc_service._lift_move_by_layer(TASK_NO, LAYER):
                 self.plc_service.disconnect()
                 return True
@@ -370,6 +396,7 @@ class Services:
         """
         if await self.plc_service.async_connect() and self.plc_service.plc_checker():
             self.plc_service.logger.info("🚧 电梯操作")
+            await asyncio.sleep(2)
             if await self.plc_service.lift_move_by_layer(TASK_NO, LAYER):
                 await self.plc_service.async_disconnect()
                 return True
@@ -392,6 +419,7 @@ class Services:
         """
         if await self.plc_service.async_connect() and self.plc_service.plc_checker():
             self.plc_service.logger.info("📦 货物开始进入电梯...")
+            await asyncio.sleep(2)
             self.plc_service.inband_to_lift()
 
             self.plc_service.logger.info("⏳ 输送线移动中...")
@@ -412,6 +440,7 @@ class Services:
         """
         if await self.plc_service.async_connect() and self.plc_service.plc_checker():
             self.plc_service.logger.info("📦 货物开始离开电梯...")
+            await asyncio.sleep(2)
             self.plc_service.lift_to_outband()
 
             self.plc_service.logger.info("⏳ 输送线移动中...")
@@ -431,6 +460,7 @@ class Services:
         """
         if await self.plc_service.async_connect() and self.plc_service.plc_checker():
             self.plc_service.logger.info(f"📦 开始移动 {LAYER}层 货物到电梯前")
+            await asyncio.sleep(2)
             self.plc_service.feed_in_process(LAYER)
             await self.plc_service.async_disconnect()
             return True
@@ -447,12 +477,12 @@ class Services:
         """
         if await self.plc_service.async_connect() and self.plc_service.plc_checker():
             self.plc_service.logger.info(f"✅ 货物放置完成")
+            await asyncio.sleep(2)
             self.plc_service.feed_complete(LAYER)
 
             self.plc_service.logger.info(f"🚧 货物进入电梯")
             self.plc_service.logger.info("📦 货物开始进入电梯...")
             
-            # time.sleep(1)
             await asyncio.sleep(1)
             self.plc_service.logger.info("⏳ 输送线移动中...")
             await self.plc_service.wait_for_bit_change(11, DB_11.PLATFORM_PALLET_READY_1020.value, 1)
@@ -483,7 +513,6 @@ class Services:
                 self.plc_service.logger.error("❌ PLC运行错误")
                 return False
             
-            # time.sleep(1)
             await asyncio.sleep(1)
             self.plc_service.logger.info("📦 货物开始进入楼层...")
             self.plc_service.lift_to_everylayer(LAYER)
@@ -499,7 +528,6 @@ class Services:
             elif LAYER == 4:
                 await self.plc_service.wait_for_bit_change(11, DB_11.PLATFORM_PALLET_READY_1060.value, 1)
             
-            # time.sleep(1)
             await asyncio.sleep(1)
             self.plc_service.logger.info(f"✅ 货物到达 {LAYER} 层接驳位")
             self.plc_service.logger.info("⌛️ 可以开始取货...")
@@ -520,6 +548,7 @@ class Services:
         """
         if await self.plc_service.async_connect() and self.plc_service.plc_checker():
             self.plc_service.logger.info(f"✅ 货物取货完成")
+            await asyncio.sleep(2)
             self.plc_service.pick_complete(LAYER)
             await self.plc_service.async_disconnect()
             return True
@@ -548,7 +577,8 @@ class Services:
         """
         获取入库口二维码
         """
-        if await self.plc_service.async_connect() and self.plc_service.async_disconnect():
+        if await self.plc_service.async_connect() and self.plc_service.plc_checker():
+            await asyncio.sleep(2)
             QRcode = self.plc_service.scan_qrcode()
             if QRcode is None:
                 await self.plc_service.async_disconnect()
@@ -571,7 +601,7 @@ class Services:
             TARGET_LAYER: int
             ) -> list:
         """
-        操作穿梭车联动电梯跨层
+        [穿梭车跨层服务] - 操作穿梭车联动电梯跨层
         """
 
         car_last_location = await self.device_service.car_cross_layer(
@@ -590,7 +620,7 @@ class Services:
             TARGET_LOCATION: str
             ) -> list:
         """
-        操作穿梭车联动PLC系统入库
+        [入库服务] - 操作穿梭车联动PLC系统入库(无障碍检测)
         """
 
         car_last_location = await self.device_service.task_inband(
@@ -610,8 +640,75 @@ class Services:
             TARGET_LOCATION: str
             ) -> list:
         """
-        操作穿梭车联动PLC系统出库
+        [出库服务] - 操作穿梭车联动PLC系统出库(无障碍检测)
         """
+
+        car_last_location = await self.device_service.task_outband(
+            TASK_NO,
+            TARGET_LOCATION
+            )
+        
+        if car_last_location[0]:
+            return car_last_location[1]
+        else:
+            return car_last_location
+        
+
+    async def do_task_inband_with_solve_blocking(
+        self,
+        TASK_NO: int,
+        TARGET_LOCATION: str
+        ) -> list:
+        """
+        [入库服务] - 操作穿梭车联动PLC系统入库, 使用障碍检测功能
+        """
+        # 拆解目标位置 -> 坐标: 如, "1,3,1" 楼层: 如, 1
+        target_loc = list(map(int, TARGET_LOCATION.split(',')))
+        target_layer = target_loc[2]
+
+        # 先让穿梭车跨层
+        car_last_location = await self.device_service.car_cross_layer(
+            TASK_NO,
+            target_layer
+            )
+        
+        # 获取当前层所有库位信息
+
+        # 处理遮挡货物
+
+        # 开始入库
+        car_last_location = await self.device_service.task_inband(
+            TASK_NO,
+            TARGET_LOCATION
+            )
+        
+        if car_last_location[0]:
+            return car_last_location[1]
+        else:
+            return car_last_location
+        
+
+    async def do_task_outband_with_solve_blocking(
+            self,
+            TASK_NO: int,
+            TARGET_LOCATION: str
+            ) -> list:
+        """
+        [出库服务] - 操作穿梭车联动PLC系统出库, 使用障碍检测功能
+        """
+        # 拆解目标位置 -> 坐标: 如, "1,3,1" 楼层: 如, 1
+        target_loc = list(map(int, TARGET_LOCATION.split(',')))
+        target_layer = target_loc[2]
+
+        # 先让穿梭车跨层
+        car_last_location = await self.device_service.car_cross_layer(
+            TASK_NO,
+            target_layer
+            )
+        
+        # 获取当前层所有库位信息
+
+        # 处理遮挡货物
 
         car_last_location = await self.device_service.task_outband(
             TASK_NO,
