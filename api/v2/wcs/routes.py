@@ -571,3 +571,22 @@ async def control_task_outband(
     if msg:
         return StandardResponse.isSuccess(data=msg)
     return StandardResponse.isError(message=msg[1], data=msg[0])
+
+@router.post("/control/task_outband_with_solve_blocking")
+@standard_response
+async def control_task_outband_with_solve_blocking(
+    request: schemas.CarMoveBase,
+    db: Session = get_database()
+    ):
+    """
+    操作穿梭车联动电梯跨层
+    """
+    task_no = random.randint(1, 200)
+    msg = await services.do_task_outband_with_solve_blocking(
+        task_no,
+        request.target,
+        db
+        )
+    if msg:
+        return StandardResponse.isSuccess(data=msg)
+    return StandardResponse.isError(message="msg", data="msg")

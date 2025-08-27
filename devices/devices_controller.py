@@ -1653,13 +1653,13 @@ class DevicesControllerByStep(DevicesLogger):
                 
                 await asyncio.sleep(1)
                 if await self.car.car_current_location() == TARGET_LOCATION:
-                    return [True, f"✅ 货物已到达目标位置 {TARGET_LOCATION}"]
+                    return [True, f"{TARGET_LOCATION}"]
                 else:
                     return [False, f"❌ 货物未到达目标位置 {TARGET_LOCATION}"]
             else:
                 return [False, "❌ 穿梭车运行错误"]
         else:
-            return [True, f"✅ 货物已到达 {TARGET_LOCATION} 位置"]
+            return [True, f"{TARGET_LOCATION}"]
         
     
     ############################################################

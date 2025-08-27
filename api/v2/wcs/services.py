@@ -442,11 +442,51 @@ class Services:
                     return False
             else:
                 self.plc_service.logger.error(f"{lift_move_info[1]}")
-                # return [False, f"{lift_move_info[1]}"]
+                # return [False, f"{lift_layer_info[1]}"]
                 return False
 
             task_no = randint(1, 255)
             return await self.car_service.good_move(task_no+1, TARGET_LOCATION)
+        
+        finally:
+            self.release_lock()
+    
+    async def good_move_by_start_end(
+            self, 
+            START_LOCATION: str, 
+            END_LOCATION: str
+            ) -> list:
+        """
+        移动货物服务
+        """
+        if not await self.acquire_lock():
+            raise RuntimeError("正在执行其他操作，请稍后再试")
+        try:
+            # 拆解位置 -> 坐标: 如, "1,3,1" 楼层: 如, 1
+            start_loc = list(map(int, START_LOCATION.split(',')))
+            start_layer = start_loc[2]
+            end_loc = list(map(int, END_LOCATION.split(',')))
+            end_layer = end_loc[2]
+
+            if start_layer != end_layer:
+                return [False, "❌ 起点与终点楼层不一致"]
+            
+            task_no = randint(1, 250)
+            lift_move_info = await self.device_service.action_lift_move(task_no, start_layer)
+            if lift_move_info[0]:
+                self.plc_service.logger.info(f"{lift_move_info[1]}")
+                lift_layer_info = await self.device_service.get_lift_layer()
+                if lift_layer_info[0] and lift_layer_info[1] == 1:
+                    self.plc_service.logger.info(f"✅ 再次确认电梯到达{lift_layer_info[1]}层")
+                else:
+                    self.plc_service.logger.error(f"{lift_layer_info[1]}")
+                    return [False, f"{lift_layer_info[1]}"]
+            else:
+                self.plc_service.logger.error(f"{lift_move_info[1]}")
+                return [False, f"{lift_move_info[1]}"]
+
+            task_no = randint(1, 255)
+            return await self.device_service.action_good_move(task_no+1, START_LOCATION, END_LOCATION)
         
         finally:
             self.release_lock()
@@ -839,11 +879,73 @@ class Services:
         finally:
             self.release_lock()
         
+    def get_block_node(
+        self,
+        START_LOCATION: str,
+        END_LOCATION: str,
+        db: Session
+        ) -> list:
+        """
+        [获取阻塞节点] - 用于获取阻塞节点
 
+        ::: params :::
+            START_LOCATION: str 路径起点
+            END_LOCATION: str 路径终点
+            db: Session 数据库会话
+
+        ::: return :::
+            阻塞节点列表: list
+        """
+        
+        # 拆解位置 -> 坐标: 如, "1,3,1" 楼层: 如, 1
+        start_loc = list(map(int, START_LOCATION.split(',')))
+        start_layer = start_loc[2]
+        end_loc = list(map(int, END_LOCATION.split(',')))
+        end_layer = end_loc[2]
+
+        if start_layer != end_layer:
+            return [False, "❌ 起点与终点楼层不一致"]
+        
+        # 获取当前层所有库位信息
+        node_status = dict()
+        if start_layer == 1:
+            all_nodes = self.get_location_by_start_to_end(db, START_ID=124,END_ID=164)
+        elif start_layer == 2:
+            all_nodes = self.get_location_by_start_to_end(db, START_ID=83,END_ID=123)
+        elif start_layer == 3:
+            all_nodes = self.get_location_by_start_to_end(db, START_ID=42,END_ID=82)
+        elif start_layer == 4:
+            all_nodes = self.get_location_by_start_to_end(db, START_ID=1,END_ID=41)
+        else:
+            self.plc_service.logger.error("❌ 未找到符合条件的库位信息")
+            return [False, "❌ 未找到符合条件的库位信息"]
+            
+        # 检查all_locations是否为False
+        if all_nodes:
+            # 打印每个位置的详细信息
+            for node in all_nodes:
+                # print(f"ID: {location.id}, 托盘号: {location.pallet_id}, 坐标: {location.location}, 状态: {location.status}")                        
+                # node_status[node.location] = [node.id, node.status, node.pallet_id]
+                if node.status in ["lift", "highway"]:
+                    continue
+                node_status[node.location] = node.status
+                
+            print(f"[SYSTEM] 第 {start_layer} 层有 {len(node_status)} 个节点")
+            # return [True, node_status]
+            
+            blocking_nodes = self.path_planner.find_blocking_nodes(START_LOCATION, END_LOCATION, node_status)
+        
+            return [True, blocking_nodes]
+                
+        else:
+            self.plc_service.logger.error("❌ 库位信息获取失败")
+            return [False, "❌ 库位信息获取失败"]
+            
     async def do_task_inband_with_solve_blocking(
         self,
         TASK_NO: int,
-        TARGET_LOCATION: str
+        TARGET_LOCATION: str,
+        db: Session
         ) -> list:
         """
         [入库服务] - 操作穿梭车联动PLC系统入库, 使用障碍检测功能
@@ -853,20 +955,39 @@ class Services:
             raise RuntimeError("正在执行其他操作，请稍后再试")
 
         try:
+            self.device_service.logger.info(f"[入库服务] - 操作穿梭车联动PLC系统入库, 使用障碍检测功能")
+            location_info = self.get_location_by_loc(db, TARGET_LOCATION)
+            if location_info:
+                if location_info.status in ["occupied", "lift", "highway"]:
+                    return [False, f"入库目标错误，目标状态为{location_info.status}"]
+                else:
+                    self.device_service.logger.info(f"[SYSTEM] 入库目标信息{location_info}")
+            else:
+                return [False, "目标库位错误"]
 
+            # step 1: 获取目标库位信息
             # 拆解目标位置 -> 坐标: 如, "1,3,1" 楼层: 如, 1
+            self.device_service.logger.info("[step 1] 获取目标库位信息")
             target_loc = list(map(int, TARGET_LOCATION.split(',')))
             target_layer = target_loc[2]
+            inband_location = f"5,3,{target_layer}"
 
-            # 先让穿梭车跨层
-            car_last_location = await self.device_service.car_cross_layer(
-                TASK_NO,
-                target_layer
-                )
             
-            # 获取当前层所有库位信息
+            # step 2: 先让穿梭车跨层
+            self.device_service.logger.info("[step 2] 先让穿梭车跨层")
+            # car_move_info = await self.device_service.car_cross_layer(
+            #     TASK_NO,
+            #     target_layer
+            #     )
+            # if car_move_info[0]:
+            #     self.device_service.logger.info(f"{car_move_info[1]}")
+            # else:
+            #     self.device_service.logger.error(f"{car_move_info[1]}")
+            #     return [False, f"{car_move_info[1]}"]
+            
+            
+            # step 3: 处理入库阻挡货物
 
-            # 处理遮挡货物
 
             # 开始入库
             car_last_location = await self.device_service.task_inband(
@@ -882,12 +1003,13 @@ class Services:
         finally:
             self.release_lock()
         
-        
+    
 
     async def do_task_outband_with_solve_blocking(
             self,
             TASK_NO: int,
-            TARGET_LOCATION: str
+            TARGET_LOCATION: str,
+            db: Session
             ) -> list:
         """
         [出库服务] - 操作穿梭车联动PLC系统出库, 使用障碍检测功能
@@ -898,29 +1020,122 @@ class Services:
 
         try:
 
-            # 拆解目标位置 -> 坐标: 如, "1,3,1" 楼层: 如, 1
+            self.device_service.logger.info(f"[出库服务] - 操作穿梭车联动PLC系统出库, 使用障碍检测功能")
+            location_info = self.get_location_by_loc(db, TARGET_LOCATION)
+            if location_info:
+                if location_info.status in ["free", "lift", "highway"]:
+                    return [False, f"出库目标错误，目标状态为{location_info.status}"]
+                else:
+                    self.device_service.logger.info(f"[SYSTEM] 出库目标信息{location_info}")
+            else:
+                return [False, "目标库位错误"]
+
+            # step 1: 获取目标库位信息
+            self.device_service.logger.info("[step 1] 获取目标库位信息")
             target_loc = list(map(int, TARGET_LOCATION.split(',')))
             target_layer = target_loc[2]
+            outband_location = f"5,3,{target_layer}"
 
-            # 先让穿梭车跨层
-            car_last_location = await self.device_service.car_cross_layer(
-                TASK_NO,
-                target_layer
-                )
             
-            # 获取当前层所有库位信息
-
-            # 处理遮挡货物
-
-            car_last_location = await self.device_service.task_outband(
-                TASK_NO,
-                TARGET_LOCATION
-                )
+            # step 2: 先让穿梭车跨层
+            self.device_service.logger.info("[step 2] 先让穿梭车跨层")
+            # car_move_info = await self.device_service.car_cross_layer(
+            #     TASK_NO,
+            #     target_layer
+            #     )
+            # if car_move_info[0]:
+            #     self.device_service.logger.info(f"{car_move_info[1]}")
+            # else:
+            #     self.device_service.logger.error(f"{car_move_info[1]}")
+            #     return [False, f"{car_move_info[1]}"]
             
-            if car_last_location[0]:
-                return car_last_location[1]
+            
+            # step 3: 处理出库阻挡货物
+            self.device_service.logger.info("[step 3] 处理出库阻挡货物")
+            blocking_nodes = self.get_block_node(TARGET_LOCATION, outband_location, db)
+            if blocking_nodes and blocking_nodes[0] and blocking_nodes[1]:
+                # step 3.1: 计算靠近高速道阻塞点(按距离排序)
+                # 找到最接近 highway 的阻塞节点
+                do_blocking_nodes = []
+                # 创建阻塞节点的副本，避免修改原始列表
+                remaining_nodes = set(blocking_nodes[1])
+                
+                # 持续查找并移除最近的节点，直到没有剩余节点
+                while remaining_nodes:
+                    # 找到最接近 highway 的阻塞节点
+                    nearest_highway_node = self.path_planner.find_nearest_highway_node(list(remaining_nodes))
+                    if nearest_highway_node:
+                        do_blocking_nodes.append(nearest_highway_node)
+                        # 从剩余节点中移除已找到的节点
+                        remaining_nodes.discard(nearest_highway_node)
+                    else:
+                        # 如果找不到最近节点，跳出循环避免无限循环
+                        break
+                        
+                self.device_service.logger.info(f"[SYSTEM] 靠近高速道阻塞点(按距离排序): {do_blocking_nodes}")
+
+                # 定义临时存放点
+                temp_storage_nodes = [f"5,1,{target_layer}", f"5,4,{target_layer}", f"5,5,{target_layer}"]
+                # 记录移动映射关系，用于将货物移回原位
+                move_mapping = {}
+
+                # step 3.2: 处理遮挡货物
+                for i, blocking_node in enumerate(do_blocking_nodes):
+                    if i < len(temp_storage_nodes):
+                        temp_node = temp_storage_nodes[i]
+                        self.device_service.logger.info(f"[CAR] 移动{blocking_node}遮挡货物到{temp_node}")
+                        move_mapping[blocking_node] = temp_node
+
+                        # 移动货物
+                        # good_move_info = await self.good_move_by_start_end(blocking_node, temp_node)
+                        # if good_move_info[0]:
+                        #     self.device_service.logger.info(f"{good_move_info[1]}")
+                        # else:
+                        #     self.device_service.logger.error(f"{good_move_info[1]}")
+                        #     return [False, f"{good_move_info[1]}"]
+
+                    else:
+                        self.device_service.logger.warning(f"[SYSTEM] 没有足够的临时存储点来处理遮挡货物 {blocking_node}")
+                        return [False, f"[SYSTEM] 没有足够的临时存储点来处理遮挡货物 {blocking_node}"]
             else:
-                return car_last_location
+                self.device_service.logger.info("[SYSTEM] 无阻塞节点，直接出库")
+
+            
+            # step 4: 货物出库
+            self.device_service.logger.info(f"[step 4] {TARGET_LOCATION}货物出库")
+            # good_move_info = await self.device_service.task_outband(
+            #     TASK_NO+1,
+            #     TARGET_LOCATION
+            #     )
+            # if good_move_info[0]:
+            #     self.device_service.logger.info(f"{TARGET_LOCATION}货物出库成功")
+            # else:
+            #     self.device_service.logger.error(f"{TARGET_LOCATION}货物出库失败")
+            #     return [False, f"{TARGET_LOCATION}货物出库失败"]
+
+            
+            # step 5: 移动遮挡货物返回到原位（按相反顺序）
+            self.device_service.logger.info(f"[step 5] 移动遮挡货物返回到原位（按相反顺序）")
+            if blocking_nodes and blocking_nodes[0] and blocking_nodes[1]:
+                for blocking_node, temp_node in reversed(list(move_mapping.items())):
+                    self.device_service.logger.info(f"[CAR] 移动{temp_node}遮挡货物返回{blocking_node}")
+                    
+                    # 移动货物
+                    # good_move_info = await self.good_move_by_start_end(temp_node, blocking_node)
+                    # if good_move_info[0]:
+                    #     self.device_service.logger.info(f"{good_move_info[1]}")
+                    # else:
+                    #     self.device_service.logger.error(f"{good_move_info[1]}")
+                    #     return [False, f"{good_move_info[1]}"]
+            else:
+                self.device_service.logger.info("[SYSTEM] 无阻塞节点返回原位，无需处理")
+            
+            
+            # step 6: 数据库更新信息
+            self.device_service.logger.info(f"[step 6] 数据库更新信息")
+            self.delete_pallet_by_loc(db, TARGET_LOCATION)
+
+            return [True, TARGET_LOCATION]
 
         finally:
             self.release_lock()
