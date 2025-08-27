@@ -87,6 +87,6 @@ if __name__ == "__main__":
         reload=True,
         workers=1,
         # loop="asyncio",
-        # timeout_keep_alive=30,
-        # limit_concurrency=100
+        timeout_keep_alive=30,
+        limit_concurrency=15
     )

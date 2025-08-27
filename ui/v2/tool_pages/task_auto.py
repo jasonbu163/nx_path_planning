@@ -24,6 +24,8 @@ with a1:
                     try:
                         if resp.json()["code"] == 404:
                             st.error(f"{resp.json()['message']}")
+                        elif resp.json()["code"] == 500:
+                            st.error(f"{resp.json()['message']}, {resp.json()['data']}")
                         else:
                             st.success(f"✅ 动作发送成功")
                     except:
@@ -49,6 +51,8 @@ with a2:
                     try:
                         if resp.json()["code"] == 404:
                             st.error(f"{resp.json()['message']}")
+                        elif resp.json()["code"] == 500:
+                            st.error(f"{resp.json()['message']}, {resp.json()['data']}")
                         else:
                             st.success(f"✅ 扫码成功, 托盘码为: {resp.json()['data']}")
                     except:
@@ -176,6 +180,8 @@ with c1:
                     try:
                         if resp.json()["code"] == 404:
                             st.error(f"{resp.json()['message']}")
+                        elif resp.json()["code"] == 500:
+                            st.error(f"{resp.json()['message']}, {resp.json()['data']}")
                         else:
                             st.success(f"✅ 动作发送成功")
                     except:
@@ -210,6 +216,8 @@ with c2:
                     try:
                         if resp.json()["code"] == 404:
                             st.error(f"{resp.json()['message']}")
+                        elif resp.json()["code"] == 500:
+                            st.error(f"{resp.json()['message']}, {resp.json()['data']}")
                         else:
                             st.success(f"✅ 动作发送成功")
                     except:
@@ -249,6 +257,8 @@ with c3:
                     try:
                         if resp.json()["code"] == 404:
                             st.error(f"{resp.json()['message']}")
+                        elif resp.json()["code"] == 500:
+                            st.error(f"{resp.json()['message']}, {resp.json()['data']}")
                         else:
                             st.success(f"✅ 动作发送成功")
                     except:

@@ -65,6 +65,8 @@ for i, step in enumerate(steps):
                         try:
                             if resp.json()["code"] == 404:
                                 st.error(f"{resp.json()['message']}")
+                            elif resp.json()["code"] == 500:
+                                st.error(f"{resp.json()['message']}, {resp.json()['data']}")
                             else:
                                 st.success(f"{resp.json()['data']}")
                         except:
@@ -99,6 +101,8 @@ for i, step in enumerate(steps):
                         try:
                             if resp.json()["code"] == 404:
                                 st.error(f"{resp.json()['message']}")
+                            elif resp.json()["code"] == 500:
+                                st.error(f"{resp.json()['message']}, {resp.json()['data']}")
                             else:
                                 st.success(f"{resp.json()['data']}")
                         except:

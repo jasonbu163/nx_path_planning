@@ -395,11 +395,12 @@ async def lift_control(
     """
     [控制 电梯] 电梯移动至目标楼层
     """
+        
     task_no = random.randint(1, 255)
     msg = await services.lift_by_id(task_no, request.layer)
-    if msg:
-        return StandardResponse.isSuccess(data=msg)
-    return StandardResponse.isError(message="找不到该楼层", data=msg)
+    if msg[0]:
+        return StandardResponse.isSuccess(data=msg[1])
+    return StandardResponse.isError(message=msg[1], data=msg[1])
 
 
 #################################################
@@ -513,7 +514,7 @@ async def qrcode():
     msg = await services.get_qrcode()
     if msg == False:
         return StandardResponse.isError(message="操作失败", data=msg)
-    # return StandardResponse.isSuccess(data=msg)
+    return StandardResponse.isSuccess(data=msg)
         
 
 #################################################

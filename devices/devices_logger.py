@@ -14,6 +14,7 @@ class DevicesLogger:
         """
         self._logger_name = LOGGER_NAME
         self.logger = self.setup_logger(self._logger_name)
+        
     def setup_logger(self, logger_name):
         """
         [设置日志记录器] - 创建一个日志记录器
@@ -26,8 +27,11 @@ class DevicesLogger:
         """
         logger = logging.getLogger(logger_name)
         logger.setLevel(logging.INFO)
-        handler = logging.StreamHandler()
-        formatter = logging.Formatter('[%(asctime)s -  %(levelname)s] %(message)s')
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
+        
+        # 检查是否已经存在handler，避免重复添加导致日志重复输出
+        if not logger.handlers:
+            handler = logging.StreamHandler()
+            formatter = logging.Formatter('[%(asctime)s -  %(levelname)s] %(message)s')
+            handler.setFormatter(formatter)
+            logger.addHandler(handler)
         return logger

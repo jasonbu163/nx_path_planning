@@ -20,6 +20,8 @@ with st.expander("📋 电梯到达🚗层操作", expanded=True):
                 try:
                     if resp.json()["code"] == 404:
                         st.error(f"{resp.json()['message']}")
+                    elif resp.json()["code"] == 500:
+                            st.error(f"{resp.json()['message']}, {resp.json()['data']}")
                     else:
                         st.success(f"✅ 动作发送成功")
                 except:
@@ -147,6 +149,8 @@ for i, step in enumerate(steps):
                     try:
                         if resp.json()["code"] == 404:
                             st.error(f"{resp.json()['message']}")
+                        elif resp.json()["code"] == 500:
+                            st.error(f"{resp.json()['message']}, {resp.json()['data']}")
                         else:
                             st.success(f"✅ 动作发送成功")
                     except:

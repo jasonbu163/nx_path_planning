@@ -1,3 +1,5 @@
+# api/v2/wcs/decorators.py
+
 from functools import wraps
 from fastapi import HTTPException
 from .response import StandardResponse

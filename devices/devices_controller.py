@@ -1326,10 +1326,12 @@ class DevicesControllerByStep(DevicesLogger):
             TASK_NO: 任务编号
             LAYER: 层数
         """
-        max_attempts = 10  # 最多尝试10次，约60秒超时
+        max_attempts = 5  # 最多尝试5次，约60秒超时
         attempt = 0
         
+        await asyncio.sleep(2)
         if not (await self.plc.async_connect() and self.plc.plc_checker()):
+            await asyncio.sleep(2)
             await self.plc.async_disconnect()
             return [False, "❌ PLC连接失败"]
         
@@ -1337,8 +1339,9 @@ class DevicesControllerByStep(DevicesLogger):
         
         try:
             while attempt < max_attempts:
+                await asyncio.sleep(2)
                 current_layer = self.plc.get_lift()
-                await asyncio.sleep(1)
+                await asyncio.sleep(2)
                 if current_layer == LAYER:
                     return [True, f"✅ 电梯已到达{LAYER}层"]
                 
