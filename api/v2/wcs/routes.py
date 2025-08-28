@@ -527,7 +527,7 @@ async def control_car_cross_layer(
     request: schemas.LiftBase
     ):
     """
-    操作穿梭车联动电梯跨层
+    [跨层接口] - 操作穿梭车联动电梯跨层
     """
     task_no = random.randint(1, 200)
     msg = await services.do_car_cross_layer(
@@ -544,7 +544,7 @@ async def control_task_inband(
     request: schemas.CarMoveBase
     ):
     """
-    操作穿梭车联动电梯跨层
+    [入库接口] - 操作穿梭车联动PLC系统入库 (无障碍检测功能)
     """
     task_no = random.randint(1, 200)
     msg = await services.do_task_inband(
@@ -561,7 +561,7 @@ async def control_task_outband(
     request: schemas.CarMoveBase
     ):
     """
-    操作穿梭车联动电梯跨层
+    [出库服务] - 操作穿梭车联动PLC系统出库 (无障碍检测功能)
     """
     task_no = random.randint(1, 200)
     msg = await services.do_task_outband(
@@ -572,6 +572,27 @@ async def control_task_outband(
         return StandardResponse.isSuccess(data=msg)
     return StandardResponse.isError(message=msg[1], data=msg[0])
 
+
+@router.post("/control/task_inband_with_solve_blocking")
+@standard_response
+async def control_task_inband_with_solve_blocking(
+    request: schemas.InbandTask,
+    db: Session = get_database()
+    ):
+    """
+    [入库接口] - 操作穿梭车联动PLC系统入库, 使用障碍检测功能
+    """
+    task_no = random.randint(1, 200)
+    msg = await services.do_task_inband_with_solve_blocking(
+        task_no,
+        request.location,
+        request.new_pallet_id,
+        db
+        )
+    if msg[0]:
+        return StandardResponse.isSuccess(data=msg[1])
+    return StandardResponse.isError(message=f"{msg[1]}", data=f"{msg[0]}")
+
 @router.post("/control/task_outband_with_solve_blocking")
 @standard_response
 async def control_task_outband_with_solve_blocking(
@@ -579,7 +600,7 @@ async def control_task_outband_with_solve_blocking(
     db: Session = get_database()
     ):
     """
-    操作穿梭车联动电梯跨层
+    [出库服务] - 操作穿梭车联动PLC系统出库, 使用障碍检测功能
     """
     task_no = random.randint(1, 200)
     msg = await services.do_task_outband_with_solve_blocking(
@@ -587,6 +608,6 @@ async def control_task_outband_with_solve_blocking(
         request.target,
         db
         )
-    if msg:
-        return StandardResponse.isSuccess(data=msg)
-    return StandardResponse.isError(message="msg", data="msg")
+    if msg[0]:
+        return StandardResponse.isSuccess(data=msg[1])
+    return StandardResponse.isError(message=f"{msg[1]}", data=msg[0])
