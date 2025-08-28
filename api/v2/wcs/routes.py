@@ -204,7 +204,10 @@ async def write_update_pallet_by_id(
     location_info = services.get_location_by_id(db, request.id)
     if location_info:
         new_location_info = services.update_pallet_by_id(db, request.id, request.new_pallet_id)
-        return StandardResponse.isSuccess(data=new_location_info)
+        if new_location_info:
+            return StandardResponse.isSuccess(data=new_location_info)
+        else:
+            return StandardResponse.isError(message="更新位置信息失败")
     else:
         return StandardResponse.isError(message="位置未找到")
 
@@ -225,7 +228,10 @@ async def write_delete_pallet_by_id(
     location_info = services.get_location_by_id(db, request.id)
     if location_info:
         new_location_info = services.delete_pallet_by_id(db, request.id)
-        return StandardResponse.isSuccess(data=new_location_info)
+        if new_location_info:
+            return StandardResponse.isSuccess(data=new_location_info)
+        else:
+            return StandardResponse.isError(message="更新位置信息失败")
     else:
         return StandardResponse.isError(message="位置未找到")
 
@@ -250,7 +256,10 @@ async def write_update_pallet_by_loc(
     location_info = services.get_location_by_loc(db, request.location)
     if location_info:
         new_location_info = services.update_pallet_by_loc(db, request.location, request.new_pallet_id)
-        return StandardResponse.isSuccess(data=new_location_info)
+        if new_location_info:
+            return StandardResponse.isSuccess(data=new_location_info)
+        else:
+            return StandardResponse.isError(message="更新位置信息失败")
     else:
         return StandardResponse.isError(message="位置未找到")
 
@@ -271,7 +280,10 @@ async def write_delete_pallet_by_loc(
     location_info = services.get_location_by_loc(db, request.location)
     if location_info:
         new_location_info = services.delete_pallet_by_loc(db, request.location)
-        return StandardResponse.isSuccess(data=new_location_info)
+        if new_location_info:
+            return StandardResponse.isSuccess(data=new_location_info)
+        else:
+            return StandardResponse.isError(message="更新位置信息失败")
     else:
         return StandardResponse.isError(message="位置未找到")
 

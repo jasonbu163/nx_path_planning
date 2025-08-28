@@ -184,6 +184,15 @@ class Services:
         """
         用库位ID, 更新库位托盘号服务
         """
+        disable_id_list = [
+            22, 23, 24, 25, 26, 27, 28, 30, 35,
+            63, 64, 65, 66, 67, 68, 69, 71, 76,
+            104, 105, 106, 107, 108, 109, 110, 112, 117,
+            145, 146, 147, 148, 149, 150, 151, 153, 158
+            ]
+        if LOCATION_ID in disable_id_list:
+            return False
+        
         # Check if location exists
         location_info = db.query(LocationModel).filter(LocationModel.id == LOCATION_ID).first()
         if not location_info:
@@ -204,6 +213,15 @@ class Services:
         """
         用库位ID, 删除库位托盘号服务
         """
+        disable_id_list = [
+            22, 23, 24, 25, 26, 27, 28, 30, 35,
+            63, 64, 65, 66, 67, 68, 69, 71, 76,
+            104, 105, 106, 107, 108, 109, 110, 112, 117,
+            145, 146, 147, 148, 149, 150, 151, 153, 158
+            ]
+        if LOCATION_ID in disable_id_list:
+            return False
+        
         # Check if location exists
         location_info = db.query(LocationModel).filter(LocationModel.id == LOCATION_ID).first()
         if not location_info:
@@ -224,6 +242,15 @@ class Services:
         """
         用库位坐标, 更新库位托盘号服务
         """
+        disable_locations = [
+            "4,1,1", "4,2,1", "4,3,1", "4,4,1", "4,5,1", "4,6,1", "4,7,1", "5,3,1", "6,3,1",
+            "4,1,2", "4,2,2", "4,3,2", "4,4,2", "4,5,2", "4,6,2", "4,7,2", "5,3,2", "6,3,2",
+            "4,1,3", "4,2,3", "4,3,3", "4,4,3", "4,5,3", "4,6,3", "4,7,3", "5,3,3", "6,3,3",
+            "4,1,4", "4,2,4", "4,3,4", "4,4,4", "4,5,4", "4,6,4", "4,7,4", "5,3,4", "6,3,4",
+            ]
+        if LOCATION in disable_locations:
+            return False
+        
         # 查询库位信息 匹配是否存在
         location_info = db.query(LocationModel).filter(LocationModel.location == LOCATION).first()
         if not location_info:
@@ -239,11 +266,21 @@ class Services:
         db.commit()
         db.refresh(location_info)
         return location_info
+    
 
     def delete_pallet_by_loc(self, db: Session, LOCATION: str):
         """
         用库位ID, 删除库位托盘号服务
         """
+        disable_locations = [
+            "4,1,1", "4,2,1", "4,3,1", "4,4,1", "4,5,1", "4,6,1", "4,7,1", "5,3,1", "6,3,1",
+            "4,1,2", "4,2,2", "4,3,2", "4,4,2", "4,5,2", "4,6,2", "4,7,2", "5,3,2", "6,3,2",
+            "4,1,3", "4,2,3", "4,3,3", "4,4,3", "4,5,3", "4,6,3", "4,7,3", "5,3,3", "6,3,3",
+            "4,1,4", "4,2,4", "4,3,4", "4,4,4", "4,5,4", "4,6,4", "4,7,4", "5,3,4", "6,3,4",
+            ]
+        if LOCATION in disable_locations:
+            return False
+        
         # Check if location exists
         location_info = db.query(LocationModel).filter(LocationModel.location == LOCATION).first()
         if not location_info:
@@ -769,27 +806,20 @@ class Services:
         """
         获取入库口二维码
         """
-        if not await self.acquire_lock():
-            raise RuntimeError("正在执行其他操作，请稍后再试")
 
-        try:
-
-            if await self.plc_service.async_connect() and self.plc_service.plc_checker():
-                await asyncio.sleep(2)
-                QRcode = self.plc_service.scan_qrcode()
-                if QRcode is None:
-                    await self.plc_service.async_disconnect()
-                    return False
-
+        if await self.plc_service.async_connect() and self.plc_service.plc_checker():
+            await asyncio.sleep(2)
+            QRcode = self.plc_service.scan_qrcode()
+            if QRcode is None:
                 await self.plc_service.async_disconnect()
-                return QRcode
-            else:
-                await self.plc_service.async_disconnect()
-                self.plc_service.logger.error("❌ PLC运行错误")
                 return False
 
-        finally:
-            self.release_lock()
+            await self.plc_service.async_disconnect()
+            return QRcode
+        else:
+            await self.plc_service.async_disconnect()
+            self.plc_service.logger.error("❌ PLC运行错误")
+            return False
 
 
     #################################################
@@ -964,12 +994,24 @@ class Services:
                 return [False, "❌ 订单托盘已在库内"]
             self.device_service.logger.info(f"[订单托盘号校验] - ✅ 订单托盘不在库内")
             
-            # inband_qrcode_info = await self.get_qrcode()
-            # if not inband_qrcode_info:
-            #     return [False, "❌ 获取二维码信息失败"]
-            # if NEW_PALLET_ID != inband_qrcode_info:
-            #     return [False, "❌ 订单托盘号和入库口托盘号不一致"]
-            # self.device_service.logger.info(f"[入口托盘号校验] - ✅ 入口托盘号与订单托盘号一致: {inband_qrcode_info}")
+            qrcode_info = await self.get_qrcode()
+            if not qrcode_info:
+                return [False, "❌ 获取二维码信息失败"]
+            
+            # 统一转换为字符串处理
+            if isinstance(qrcode_info, bytes):
+                try:
+                    inband_qrcode_info = qrcode_info.decode('utf-8')
+                except UnicodeDecodeError:
+                    return [False, "❌ 二维码解码失败"]
+            elif isinstance(qrcode_info, str):
+                inband_qrcode_info = qrcode_info
+            else:
+                return [False, "❌ 二维码信息格式无效"]
+            
+            if NEW_PALLET_ID != inband_qrcode_info:
+                return [False, "❌ 订单托盘号和入库口托盘号不一致"]
+            self.device_service.logger.info(f"[入口托盘号校验] - ✅ 入口托盘号与订单托盘号一致: {inband_qrcode_info}")
             
             
             # base 2: 校验目标合法性
@@ -1057,15 +1099,15 @@ class Services:
             # step 4: 货物入库
             self.device_service.logger.info(f"[step 4] 货物入库至位置({TARGET_LOCATION})")
             
-            good_move_info = await self.device_service.task_inband(
-                TASK_NO,
-                TARGET_LOCATION
-                )
-            if good_move_info[0]:
-                self.device_service.logger.info(f"货物入库至({TARGET_LOCATION})成功")
-            else:
-                self.device_service.logger.error(f"货物出库至({TARGET_LOCATION})失败")
-                return [False, f"货物出库至({TARGET_LOCATION})失败"]
+            # good_move_info = await self.device_service.task_inband(
+            #     TASK_NO,
+            #     TARGET_LOCATION
+            #     )
+            # if good_move_info[0]:
+            #     self.device_service.logger.info(f"货物入库至({TARGET_LOCATION})成功")
+            # else:
+            #     self.device_service.logger.error(f"货物出库至({TARGET_LOCATION})失败")
+            #     return [False, f"货物出库至({TARGET_LOCATION})失败"]
             
             # step 5: 移动遮挡货物返回到原位（按相反顺序）
             self.device_service.logger.info(f"[step 5] 移动遮挡货物返回到原位（按相反顺序）")
@@ -1086,8 +1128,8 @@ class Services:
             
             # step 6: 数据库更新信息
             self.device_service.logger.info(f"[step 6] 数据库更新信息")
-            # update_pallet_id = str(inband_qrcode_info)
-            update_pallet_id = NEW_PALLET_ID
+            update_pallet_id = inband_qrcode_info
+            # update_pallet_id = NEW_PALLET_ID
             sql_info = self.update_pallet_by_loc(db, TARGET_LOCATION, update_pallet_id)
             if sql_info:
                 sql_returen = {
@@ -1103,7 +1145,6 @@ class Services:
         finally:
             self.release_lock()
         
-    
 
     async def do_task_outband_with_solve_blocking(
             self,

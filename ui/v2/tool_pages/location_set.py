@@ -20,7 +20,16 @@ steps = [
     },
     {
         "step": 2,
-        "title": "**新增位置托盘信息**",
+        "title": "**库内托盘查询**",
+        "api": "/read/location_by_pallet_id",
+        "method": "POST",
+        "params": {
+            "pallet_id": "P1001"
+            }
+    },
+    {
+        "step": 3,
+        "title": "**新增位置托盘信息 (入库)**",
         "api": "/write/update_pallet_by_loc",
         "method": "POST",
         "params": {
@@ -29,8 +38,8 @@ steps = [
             },
     },
     {
-        "step": 3,
-        "title": "**删除位置托盘信息**",
+        "step": 4,
+        "title": "**删除位置托盘信息 (出库)**",
         "api": "/write/delete_pallet_by_loc",
         "method": "POST",
         "params": {
@@ -113,8 +122,71 @@ for i, step in enumerate(steps):
 
                 except Exception as e:
                     st.error(f"请求失败：{e}")
-
+    
     elif step["step"] == 2:
+        with st.expander(step["title"], expanded=True):
+            
+            user_inputs = {}
+
+            pallet_id = st.text_input("请输入托盘号, 如 A10001", value="A10001", key=f"input_{i}")
+            if pallet_id:
+                user_inputs["pallet_id"] = f"{pallet_id}"
+            else:
+                st.warning("请输入托盘号")
+
+            if st.button(f"🔍 {step['title']}", key=f"btn_{i}"):
+                try:
+                    body = {}
+                    for k, v in user_inputs.items():
+                        if isinstance(step["params"][k], list):
+                            body[k] = v
+                        else:
+                            try:
+                                body[k] = int(v)
+                            except:
+                                body[k] = v
+
+                    url = API_BASE + step["api"]
+
+                    resp = (
+                        requests.post(url, json=body)
+                        if step["method"] == "POST"
+                        else requests.get(url, params=body)
+                    )
+
+                    if resp.status_code == 200:
+                        try:
+                            if resp.json()["code"] == 404:
+                                st.error(f"{resp.json()['message']}")
+                            elif resp.json()["code"] == 500:
+                                st.error(f"{resp.json()['message']}, {resp.json()['data']}")
+                            else:
+                                st.success(f"✅ 动作发送成功")
+                                sql_infos = resp.json()['data']
+                                # st.write(sql_infos)
+                                if sql_infos:
+                                    table_data = []
+                                    table_data.append([
+                                        sql_infos['id'],
+                                        sql_infos['location'],
+                                        sql_infos['pallet_id'],
+                                        sql_infos['status']
+                                        ])
+                                    with st.expander(f"{floor_id}层库位信息", expanded=True):
+                                        df = pd.DataFrame(table_data, columns=['id', '库位', '托盘ID', '状态'])
+                                        st.dataframe(df)
+                                else:
+                                    st.warning("没有找到库位信息")
+                        except:
+                            st.text(resp.text)
+                    else:
+                        st.error(f"请求失败，状态码：{resp.status_code}")
+                        st.text(resp.text)
+
+                except Exception as e:
+                    st.error(f"请求失败：{e}")
+
+    elif step["step"] == 3:
         with st.expander(step["title"], expanded=True):
             
             user_inputs = {}
@@ -188,7 +260,7 @@ for i, step in enumerate(steps):
                 except Exception as e:
                     st.error(f"请求失败：{e}")
 
-    elif step["step"] == 3:
+    elif step["step"] == 4:
         with st.expander(step["title"], expanded=True):
             
             user_inputs = {}
