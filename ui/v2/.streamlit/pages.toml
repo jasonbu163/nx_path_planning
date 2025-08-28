@@ -4,6 +4,11 @@ name = "首页"
 icon = "🏠"
 
 [[pages]]
+path = "tool_pages/location_set.py"
+name = "仓库位置信息设置"
+icon = "🛠️"
+
+[[pages]]
 path = "tool_pages/car_position_calibration.py"
 name = "穿梭车位置校准"
 icon = "⚙️"

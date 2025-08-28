@@ -445,7 +445,6 @@ class Services:
                 # return [False, f"{lift_layer_info[1]}"]
                 return False
 
-            task_no = randint(1, 255)
             return await self.car_service.good_move(task_no+1, TARGET_LOCATION)
         
         finally:
