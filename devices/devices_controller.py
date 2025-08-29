@@ -1739,7 +1739,10 @@ class DevicesControllerByStep(DevicesLogger):
         # 获取目标位置 -> 坐标: 如, "1,1,1" 楼层: 如, 1
         self.logger.info(f"🧭 穿梭车目的楼层: {TARGET_LAYER} 层")
 
-        
+        if car_current_floor == TARGET_LAYER:
+            self.logger.info(f"✅ 穿梭车已在: {car_current_floor} 层")
+            return [True, f"✅ 穿梭车已在: {car_current_floor} 层"]
+
         ############################################################
         # step 1: 电梯到位接车
         ############################################################

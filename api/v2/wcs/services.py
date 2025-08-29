@@ -441,7 +441,7 @@ class Services:
             if lift_move_info[0]:
                 self.plc_service.logger.info(f"{lift_move_info[1]}")
                 lift_layer_info = await self.device_service.get_lift_layer()
-                if lift_layer_info[0] and lift_layer_info[1] == 1:
+                if lift_layer_info[0] and lift_layer_info[1] == target_layer:
                     self.plc_service.logger.info(f"✅ 再次确认电梯到达{lift_layer_info[1]}层")
                 else:
                     self.plc_service.logger.error(f"{lift_layer_info[1]}")
@@ -471,7 +471,7 @@ class Services:
             if lift_move_info[0]:
                 self.plc_service.logger.info(f"{lift_move_info[1]}")
                 lift_layer_info = await self.device_service.get_lift_layer()
-                if lift_layer_info[0] and lift_layer_info[1] == 1:
+                if lift_layer_info[0] and lift_layer_info[1] == target_layer:
                     self.plc_service.logger.info(f"✅ 再次确认电梯到达{lift_layer_info[1]}层")
                 else:
                     self.plc_service.logger.error(f"{lift_layer_info[1]}")
@@ -512,7 +512,7 @@ class Services:
             if lift_move_info[0]:
                 self.plc_service.logger.info(f"{lift_move_info[1]}")
                 lift_layer_info = await self.device_service.get_lift_layer()
-                if lift_layer_info[0] and lift_layer_info[1] == 1:
+                if lift_layer_info[0] and lift_layer_info[1] == start_layer:
                     self.plc_service.logger.info(f"✅ 再次确认电梯到达{lift_layer_info[1]}层")
                 else:
                     self.plc_service.logger.error(f"{lift_layer_info[1]}")
