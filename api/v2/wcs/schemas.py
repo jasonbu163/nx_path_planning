@@ -80,7 +80,7 @@ class UpdateStatusByLocation(LocationPosition):
     """更新托盘号 - 根据位置坐标"""
     new_status: Optional[str] = Field(..., examples=["free"], description="新状态")
 
-class InbandTask(BaseModel):
+class GoodTask(BaseModel):
     """WCS带托盘号入库"""
     location: str = Field(..., examples=["1,1,4"], description="库位坐标")
     new_pallet_id: str = Field(..., examples=["P1001"], description="托盘号")

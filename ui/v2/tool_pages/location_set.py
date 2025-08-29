@@ -124,8 +124,7 @@ for i, step in enumerate(steps):
                     st.error(f"请求失败：{e}")
     
     elif step["step"] == 2:
-        with st.expander(step["title"], expanded=True):
-            
+        with st.expander(step["title"], expanded=True):  
             user_inputs = {}
 
             pallet_id = st.text_input("请输入托盘号, 如 A10001", value="A10001", key=f"input_{i}")
@@ -140,7 +139,7 @@ for i, step in enumerate(steps):
                     for k, v in user_inputs.items():
                         if isinstance(step["params"][k], list):
                             body[k] = v
-                        else:
+                        else:    
                             try:
                                 body[k] = int(v)
                             except:

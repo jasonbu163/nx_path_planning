@@ -588,7 +588,7 @@ async def control_task_outband(
 @router.post("/control/task_inband_with_solve_blocking")
 @standard_response
 async def control_task_inband_with_solve_blocking(
-    request: schemas.InbandTask,
+    request: schemas.GoodTask,
     db: Session = get_database()
     ):
     """
@@ -608,7 +608,7 @@ async def control_task_inband_with_solve_blocking(
 @router.post("/control/task_outband_with_solve_blocking")
 @standard_response
 async def control_task_outband_with_solve_blocking(
-    request: schemas.CarMoveBase,
+    request: schemas.GoodTask,
     db: Session = get_database()
     ):
     """
@@ -617,7 +617,8 @@ async def control_task_outband_with_solve_blocking(
     task_no = random.randint(1, 200)
     msg = await services.do_task_outband_with_solve_blocking(
         task_no,
-        request.target,
+        request.location,
+        request.new_pallet_id,
         db
         )
     if msg[0]:

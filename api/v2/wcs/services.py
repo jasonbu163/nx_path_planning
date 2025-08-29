@@ -994,27 +994,35 @@ class Services:
                 return [False, "❌ 订单托盘已在库内"]
             self.device_service.logger.info(f"[订单托盘号校验] - ✅ 订单托盘不在库内")
             
-            qrcode_info = await self.get_qrcode()
-            if not qrcode_info:
-                return [False, "❌ 获取二维码信息失败"]
+            # qrcode_info = await self.get_qrcode()
+            # if not qrcode_info:
+            #     return [False, "❌ 获取二维码信息失败"]
             
-            # 统一转换为字符串处理
-            if isinstance(qrcode_info, bytes):
-                try:
-                    inband_qrcode_info = qrcode_info.decode('utf-8')
-                except UnicodeDecodeError:
-                    return [False, "❌ 二维码解码失败"]
-            elif isinstance(qrcode_info, str):
-                inband_qrcode_info = qrcode_info
-            else:
-                return [False, "❌ 二维码信息格式无效"]
+            # # 统一转换为字符串处理
+            # if isinstance(qrcode_info, bytes):
+            #     try:
+            #         inband_qrcode_info = qrcode_info.decode('utf-8')
+            #     except UnicodeDecodeError:
+            #         return [False, "❌ 二维码解码失败"]
+            # elif isinstance(qrcode_info, str):
+            #     inband_qrcode_info = qrcode_info
+            # else:
+            #     return [False, "❌ 二维码信息格式无效"]
             
-            if NEW_PALLET_ID != inband_qrcode_info:
-                return [False, "❌ 订单托盘号和入库口托盘号不一致"]
-            self.device_service.logger.info(f"[入口托盘号校验] - ✅ 入口托盘号与订单托盘号一致: {inband_qrcode_info}")
+            # if NEW_PALLET_ID != inband_qrcode_info:
+            #     return [False, "❌ 订单托盘号和入库口托盘号不一致"]
+            # self.device_service.logger.info(f"[入口托盘号校验] - ✅ 入口托盘号与订单托盘号一致: {inband_qrcode_info}")
             
             
             # base 2: 校验目标合法性
+            buffer_list = [
+                "5,1,1", "5,3,1", "5,4,1", "5,5,1",
+                "5,1,2", "5,3,2", "5,4,2", "5,5,2",
+                "5,1,3", "5,3,3", "5,4,3", "5,5,3",
+                "5,1,4", "5,3,4", "5,4,4", "5,5,4"
+                ]
+            if TARGET_LOCATION in buffer_list:
+                return [False, f"❌ {TARGET_LOCATION} 位置为接驳位，不能直接使用此功能操作"]
             location_info = self.get_location_by_loc(db, TARGET_LOCATION)
             if location_info:
                 if location_info.status in ["occupied", "lift", "highway"]:
@@ -1078,7 +1086,7 @@ class Services:
                 for i, blocking_node in enumerate(do_blocking_nodes):
                     if i < len(temp_storage_nodes):
                         temp_node = temp_storage_nodes[i]
-                        self.device_service.logger.info(f"[CAR] 移动{blocking_node}遮挡货物到{temp_node}")
+                        self.device_service.logger.info(f"[CAR] 移动({blocking_node})遮挡货物到({temp_node})")
                         move_mapping[blocking_node] = temp_node
 
                         # 移动货物
@@ -1090,8 +1098,8 @@ class Services:
                         #     return [False, f"{good_move_info[1]}"]
 
                     else:
-                        self.device_service.logger.warning(f"[SYSTEM] 没有足够的临时存储点来处理遮挡货物 {blocking_node}")
-                        return [False, f"[SYSTEM] 没有足够的临时存储点来处理遮挡货物 {blocking_node}"]
+                        self.device_service.logger.warning(f"[SYSTEM] 没有足够的临时存储点来处理遮挡货物 ({blocking_node})")
+                        return [False, f"[SYSTEM] 没有足够的临时存储点来处理遮挡货物 ({blocking_node})"]
             else:
                 self.device_service.logger.info("[SYSTEM] 无阻塞节点，直接出库")
             
@@ -1113,7 +1121,7 @@ class Services:
             self.device_service.logger.info(f"[step 5] 移动遮挡货物返回到原位（按相反顺序）")
             if blocking_nodes and blocking_nodes[0] and blocking_nodes[1]:
                 for blocking_node, temp_node in reversed(list(move_mapping.items())):
-                    self.device_service.logger.info(f"[CAR] 移动{temp_node}遮挡货物返回{blocking_node}")
+                    self.device_service.logger.info(f"[CAR] 移动({temp_node})遮挡货物返回({blocking_node})")
                     
                     # 移动货物
                     # good_move_info = await self.good_move_by_start_end(temp_node, blocking_node)
@@ -1128,8 +1136,8 @@ class Services:
             
             # step 6: 数据库更新信息
             self.device_service.logger.info(f"[step 6] 数据库更新信息")
-            update_pallet_id = inband_qrcode_info
-            # update_pallet_id = NEW_PALLET_ID
+            # update_pallet_id = inband_qrcode_info
+            update_pallet_id = NEW_PALLET_ID
             sql_info = self.update_pallet_by_loc(db, TARGET_LOCATION, update_pallet_id)
             if sql_info:
                 sql_returen = {
@@ -1150,6 +1158,7 @@ class Services:
             self,
             TASK_NO: int,
             TARGET_LOCATION: str,
+            NEW_PALLET_ID: str,
             db: Session
             ) -> list:
         """
@@ -1163,7 +1172,29 @@ class Services:
 
             self.device_service.logger.info(f"[出库服务] - 操作穿梭车联动PLC系统出库, 使用障碍检测功能")
             
-            # base 1: 校验目标合法性
+            # base 1: 获取入库口托盘信息，并且校验信息合法性
+            sql_qrcode_info = self.get_location_by_pallet_id(db, NEW_PALLET_ID)
+            if sql_qrcode_info and sql_qrcode_info.pallet_id in [NEW_PALLET_ID]:
+                self.device_service.logger.info(f"[订单托盘校验] - ✅ 订单托盘在库内")
+            else:
+                self.device_service.logger.error(f"[订单托盘校验] - ❌ 订单托盘不在库内")
+                return [False, "❌ 订单托盘不在库内"]
+            if sql_qrcode_info and sql_qrcode_info.location in [TARGET_LOCATION]:
+                self.device_service.logger.error(f"[订单托盘校验] - ✅ 订单托盘位置与库位匹配")
+            else:
+                self.device_service.logger.error(f"[订单托盘校验] - ❌ 订单托盘位置与库位不匹配")
+                return [False, "❌ 订单托盘位置与库位不匹配"]
+            
+            # base 2: 校验目标合法性
+            buffer_list = [
+                "5,1,1", "5,3,1", "5,4,1", "5,5,1",
+                "5,1,2", "5,3,2", "5,4,2", "5,5,2",
+                "5,1,3", "5,3,3", "5,4,3", "5,5,3",
+                "5,1,4", "5,3,4", "5,4,4", "5,5,4"
+                ]
+            if TARGET_LOCATION in buffer_list:
+                return [False, f"❌ {TARGET_LOCATION} 位置为接驳位/缓冲位，不能使用此功能操作"]
+            
             location_info = self.get_location_by_loc(db, TARGET_LOCATION)
             if location_info:
                 if location_info.status in ["free", "lift", "highway"]:
@@ -1227,7 +1258,7 @@ class Services:
                 for i, blocking_node in enumerate(do_blocking_nodes):
                     if i < len(temp_storage_nodes):
                         temp_node = temp_storage_nodes[i]
-                        self.device_service.logger.info(f"[CAR] 移动{blocking_node}遮挡货物到{temp_node}")
+                        self.device_service.logger.info(f"[CAR] 移动({blocking_node})遮挡货物到({temp_node})")
                         move_mapping[blocking_node] = temp_node
 
                         # 移动货物
@@ -1239,8 +1270,8 @@ class Services:
                         #     return [False, f"{good_move_info[1]}"]
 
                     else:
-                        self.device_service.logger.warning(f"[SYSTEM] 没有足够的临时存储点来处理遮挡货物 {blocking_node}")
-                        return [False, f"[SYSTEM] 没有足够的临时存储点来处理遮挡货物 {blocking_node}"]
+                        self.device_service.logger.warning(f"[SYSTEM] 没有足够的临时存储点来处理遮挡货物 ({blocking_node})")
+                        return [False, f"[SYSTEM] 没有足够的临时存储点来处理遮挡货物 ({blocking_node})"]
             else:
                 self.device_service.logger.info("[SYSTEM] 无阻塞节点，直接出库")
 
@@ -1262,7 +1293,7 @@ class Services:
             self.device_service.logger.info(f"[step 5] 移动遮挡货物返回到原位（按相反顺序）")
             if blocking_nodes and blocking_nodes[0] and blocking_nodes[1]:
                 for blocking_node, temp_node in reversed(list(move_mapping.items())):
-                    self.device_service.logger.info(f"[CAR] 移动{temp_node}遮挡货物返回{blocking_node}")
+                    self.device_service.logger.info(f"[CAR] 移动({temp_node})遮挡货物返回({blocking_node})")
                     
                     # 移动货物
                     # good_move_info = await self.good_move_by_start_end(temp_node, blocking_node)
