@@ -988,33 +988,44 @@ class Services:
             
             self.device_service.logger.info(f"[入库服务] - 操作穿梭车联动PLC系统入库, 使用障碍检测功能")
             
-            # base 1: 获取入库口托盘信息，并且校验信息合法性
+            # ---------------------------------------- #
+            # base 1: 获取入库口托盘信息，并校验托盘信息
+            # ---------------------------------------- #
+
+            self.device_service.logger.info(f"[base 1] 获取入库口托盘信息，并校验托盘信息")
+
             sql_qrcode_info = self.get_location_by_pallet_id(db, NEW_PALLET_ID)
             if sql_qrcode_info and sql_qrcode_info.pallet_id in [NEW_PALLET_ID]:
                 return [False, "❌ 订单托盘已在库内"]
             self.device_service.logger.info(f"[订单托盘号校验] - ✅ 订单托盘不在库内")
             
-            # qrcode_info = await self.get_qrcode()
-            # if not qrcode_info:
-            #     return [False, "❌ 获取二维码信息失败"]
+            # 获取入库口托盘信息
+            qrcode_info = await self.get_qrcode()
+            if not qrcode_info:
+                return [False, "❌ 获取二维码信息失败"]
             
-            # # 统一转换为字符串处理
-            # if isinstance(qrcode_info, bytes):
-            #     try:
-            #         inband_qrcode_info = qrcode_info.decode('utf-8')
-            #     except UnicodeDecodeError:
-            #         return [False, "❌ 二维码解码失败"]
-            # elif isinstance(qrcode_info, str):
-            #     inband_qrcode_info = qrcode_info
-            # else:
-            #     return [False, "❌ 二维码信息格式无效"]
+            # 统一转换为字符串处理
+            if isinstance(qrcode_info, bytes):
+                try:
+                    inband_qrcode_info = qrcode_info.decode('utf-8')
+                except UnicodeDecodeError:
+                    return [False, "❌ 二维码解码失败"]
+            elif isinstance(qrcode_info, str):
+                inband_qrcode_info = qrcode_info
+            else:
+                return [False, "❌ 二维码信息格式无效"]
             
-            # if NEW_PALLET_ID != inband_qrcode_info:
-            #     return [False, "❌ 订单托盘号和入库口托盘号不一致"]
-            # self.device_service.logger.info(f"[入口托盘号校验] - ✅ 入口托盘号与订单托盘号一致: {inband_qrcode_info}")
+            if NEW_PALLET_ID != inband_qrcode_info:
+                return [False, "❌ 订单托盘号和入库口托盘号不一致"]
+            self.device_service.logger.info(f"[入口托盘号校验] - ✅ 入口托盘号与订单托盘号一致: {inband_qrcode_info}")
             
             
-            # base 2: 校验目标合法性
+            # ---------------------------------------- #
+            # base 2: 校验订单目标位置
+            # ---------------------------------------- #
+
+            self.device_service.logger.info(f"[base 2] 校验订单目标位置")
+
             buffer_list = [
                 "5,1,1", "5,3,1", "5,4,1", "5,5,1",
                 "5,1,2", "5,3,2", "5,4,2", "5,5,2",
@@ -1032,29 +1043,42 @@ class Services:
                     self.device_service.logger.info(f"[SYSTEM] 入库位置信息 - id:{location_info.id}, 位置:{location_info.location}, 托盘号:{location_info.pallet_id}, 状态:{location_info.status}")
             else:
                 return [False, "❌ 目标库位错误"]
+            
 
-            # step 1: 获取目标库位信息
-            self.device_service.logger.info("[step 1] 获取目标库位信息")
+            # ---------------------------------------- #
+            # step 1: 解析目标库位信息
+            # ---------------------------------------- #
+
+            self.device_service.logger.info("[step 1] 解析目标库位信息")
+            
             target_loc = list(map(int, TARGET_LOCATION.split(',')))
             target_layer = target_loc[2]
             inband_location = f"5,3,{target_layer}"
 
             
-            # step 2: 先让穿梭车跨层
-            self.device_service.logger.info("[step 2] 先让穿梭车跨层")
-            # car_move_info = await self.device_service.car_cross_layer(
-            #     TASK_NO,
-            #     target_layer
-            #     )
-            # if car_move_info[0]:
-            #     self.device_service.logger.info(f"{car_move_info[1]}")
-            # else:
-            #     self.device_service.logger.error(f"{car_move_info[1]}")
-            #     return [False, f"{car_move_info[1]}"]
+            # ---------------------------------------- #
+            # step 2: 判断是否需要穿梭车跨层
+            # ---------------------------------------- #
+
+            self.device_service.logger.info("[step 2] 判断是否需要穿梭车跨层")
+            
+            car_move_info = await self.device_service.car_cross_layer(
+                TASK_NO,
+                target_layer
+                )
+            if car_move_info[0]:
+                self.device_service.logger.info(f"{car_move_info[1]}")
+            else:
+                self.device_service.logger.error(f"{car_move_info[1]}")
+                return [False, f"{car_move_info[1]}"]
             
             
+            # ---------------------------------------- #
             # step 3: 处理入库阻挡货物
+            # ---------------------------------------- #
+
             self.device_service.logger.info("[step 3] 处理入库阻挡货物")
+
             blocking_nodes = self.get_block_node( inband_location, TARGET_LOCATION, db)
             if blocking_nodes and blocking_nodes[0] and blocking_nodes[1]:
                 # step 3.1: 计算靠近高速道阻塞点(按距离排序)
@@ -1104,21 +1128,29 @@ class Services:
                 self.device_service.logger.info("[SYSTEM] 无阻塞节点，直接出库")
             
 
+            # ---------------------------------------- #
             # step 4: 货物入库
+            # ---------------------------------------- #
+
             self.device_service.logger.info(f"[step 4] 货物入库至位置({TARGET_LOCATION})")
             
-            # good_move_info = await self.device_service.task_inband(
-            #     TASK_NO,
-            #     TARGET_LOCATION
-            #     )
-            # if good_move_info[0]:
-            #     self.device_service.logger.info(f"货物入库至({TARGET_LOCATION})成功")
-            # else:
-            #     self.device_service.logger.error(f"货物出库至({TARGET_LOCATION})失败")
-            #     return [False, f"货物出库至({TARGET_LOCATION})失败"]
+            good_move_info = await self.device_service.task_inband(
+                TASK_NO+1,
+                TARGET_LOCATION
+                )
+            if good_move_info[0]:
+                self.device_service.logger.info(f"货物入库至({TARGET_LOCATION})成功")
+            else:
+                self.device_service.logger.error(f"货物出库至({TARGET_LOCATION})失败")
+                return [False, f"货物出库至({TARGET_LOCATION})失败"]
             
+            
+            # ---------------------------------------- #
             # step 5: 移动遮挡货物返回到原位（按相反顺序）
+            # ---------------------------------------- #
+
             self.device_service.logger.info(f"[step 5] 移动遮挡货物返回到原位（按相反顺序）")
+            
             if blocking_nodes and blocking_nodes[0] and blocking_nodes[1]:
                 for blocking_node, temp_node in reversed(list(move_mapping.items())):
                     self.device_service.logger.info(f"[CAR] 移动({temp_node})遮挡货物返回({blocking_node})")
@@ -1134,10 +1166,15 @@ class Services:
                 self.device_service.logger.info("[SYSTEM] 无阻塞节点返回原位，无需处理")
             
             
+            # ---------------------------------------- #
             # step 6: 数据库更新信息
+            # ---------------------------------------- #
+
             self.device_service.logger.info(f"[step 6] 数据库更新信息")
-            # update_pallet_id = inband_qrcode_info
-            update_pallet_id = NEW_PALLET_ID
+            
+            update_pallet_id = inband_qrcode_info # 生产用
+            # update_pallet_id = NEW_PALLET_ID # 测试用
+            
             sql_info = self.update_pallet_by_loc(db, TARGET_LOCATION, update_pallet_id)
             if sql_info:
                 sql_returen = {
@@ -1172,7 +1209,12 @@ class Services:
 
             self.device_service.logger.info(f"[出库服务] - 操作穿梭车联动PLC系统出库, 使用障碍检测功能")
             
-            # base 1: 获取入库口托盘信息，并且校验信息合法性
+            # ---------------------------------------- #
+            # base 1: 解析订单托盘信息，并且校验托盘信息
+            # ---------------------------------------- #
+
+            self.device_service.logger.info(f"[base 1] 解析订单托盘信息，并且校验托盘信息")
+
             sql_qrcode_info = self.get_location_by_pallet_id(db, NEW_PALLET_ID)
             if sql_qrcode_info and sql_qrcode_info.pallet_id in [NEW_PALLET_ID]:
                 self.device_service.logger.info(f"[订单托盘校验] - ✅ 订单托盘在库内")
@@ -1185,7 +1227,13 @@ class Services:
                 self.device_service.logger.error(f"[订单托盘校验] - ❌ 订单托盘位置与库位不匹配")
                 return [False, "❌ 订单托盘位置与库位不匹配"]
             
-            # base 2: 校验目标合法性
+            
+            # ---------------------------------------- #
+            # base 2: 校验订单目标位置
+            # ---------------------------------------- #
+
+            self.device_service.logger.info(f"[base 2] 校验订单目标位置")
+
             buffer_list = [
                 "5,1,1", "5,3,1", "5,4,1", "5,5,1",
                 "5,1,2", "5,3,2", "5,4,2", "5,5,2",
@@ -1205,28 +1253,41 @@ class Services:
             else:
                 return [False, "目标库位错误"]
 
-            # step 1: 获取目标库位信息
+            
+            # ---------------------------------------- #
+            # step 1: 解析目标库位信息
+            # ---------------------------------------- #
+
             self.device_service.logger.info("[step 1] 获取目标库位信息")
+            
             target_loc = list(map(int, TARGET_LOCATION.split(',')))
             target_layer = target_loc[2]
             outband_location = f"5,3,{target_layer}"
 
             
-            # step 2: 先让穿梭车跨层
+            # ---------------------------------------- #
+            # step 2: 判断是否需要穿梭车跨层
+            # ---------------------------------------- #
+
             self.device_service.logger.info("[step 2] 先让穿梭车跨层")
-            # car_move_info = await self.device_service.car_cross_layer(
-            #     TASK_NO,
-            #     target_layer
-            #     )
-            # if car_move_info[0]:
-            #     self.device_service.logger.info(f"{car_move_info[1]}")
-            # else:
-            #     self.device_service.logger.error(f"{car_move_info[1]}")
-            #     return [False, f"{car_move_info[1]}"]
+            
+            car_move_info = await self.device_service.car_cross_layer(
+                TASK_NO,
+                target_layer
+                )
+            if car_move_info[0]:
+                self.device_service.logger.info(f"{car_move_info[1]}")
+            else:
+                self.device_service.logger.error(f"{car_move_info[1]}")
+                return [False, f"{car_move_info[1]}"]
             
             
+            # ---------------------------------------- #
             # step 3: 处理出库阻挡货物
+            # ---------------------------------------- #
+
             self.device_service.logger.info("[step 3] 处理出库阻挡货物")
+
             blocking_nodes = self.get_block_node(TARGET_LOCATION, outband_location, db)
             if blocking_nodes and blocking_nodes[0] and blocking_nodes[1]:
                 # step 3.1: 计算靠近高速道阻塞点(按距离排序)
@@ -1276,21 +1337,28 @@ class Services:
                 self.device_service.logger.info("[SYSTEM] 无阻塞节点，直接出库")
 
             
+            # ---------------------------------------- #
             # step 4: 货物出库
+            # ---------------------------------------- #
+
             self.device_service.logger.info(f"[step 4] ({TARGET_LOCATION})货物出库")
-            # good_move_info = await self.device_service.task_outband(
-            #     TASK_NO+1,
-            #     TARGET_LOCATION
-            #     )
-            # if good_move_info[0]:
-            #     self.device_service.logger.info(f"{TARGET_LOCATION}货物出库成功")
-            # else:
-            #     self.device_service.logger.error(f"{TARGET_LOCATION}货物出库失败")
-            #     return [False, f"{TARGET_LOCATION}货物出库失败"]
+            good_move_info = await self.device_service.task_outband(
+                TASK_NO+1,
+                TARGET_LOCATION
+                )
+            if good_move_info[0]:
+                self.device_service.logger.info(f"{TARGET_LOCATION}货物出库成功")
+            else:
+                self.device_service.logger.error(f"{TARGET_LOCATION}货物出库失败")
+                return [False, f"{TARGET_LOCATION}货物出库失败"]
 
             
+            # ---------------------------------------- #
             # step 5: 移动遮挡货物返回到原位（按相反顺序）
+            # ---------------------------------------- #
+
             self.device_service.logger.info(f"[step 5] 移动遮挡货物返回到原位（按相反顺序）")
+            
             if blocking_nodes and blocking_nodes[0] and blocking_nodes[1]:
                 for blocking_node, temp_node in reversed(list(move_mapping.items())):
                     self.device_service.logger.info(f"[CAR] 移动({temp_node})遮挡货物返回({blocking_node})")
@@ -1306,8 +1374,12 @@ class Services:
                 self.device_service.logger.info("[SYSTEM] 无阻塞节点返回原位，无需处理")
             
             
+            # ---------------------------------------- #
             # step 6: 数据库更新信息
+            # ---------------------------------------- #
+
             self.device_service.logger.info(f"[step 6] 数据库更新信息")
+            
             sql_info = self.delete_pallet_by_loc(db, TARGET_LOCATION)
             if sql_info:
                 sql_returen = {
