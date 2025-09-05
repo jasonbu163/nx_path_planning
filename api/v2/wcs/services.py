@@ -1649,3 +1649,9 @@ class Services:
         finally:
             self.release_lock()
         
+
+# 修改_with_solve_blocking系列内的障碍移动部份，
+# 不可以使用self.good_move_by_start_end，因为会卡线程锁
+# 要使用 self.device_service.action_good_move
+
+# 补充电梯任务号的判断
