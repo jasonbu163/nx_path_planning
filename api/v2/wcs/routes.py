@@ -592,7 +592,7 @@ async def control_task_inband_with_solve_blocking(
     db: Session = get_database()
     ):
     """
-    [入库接口] - 操作穿梭车联动PLC系统入库, 使用障碍检测功能
+    [入库服务接口 - 数据库] - 操作穿梭车联动PLC系统入库, 使用障碍检测功能
     """
     task_no = random.randint(1, 200)
     msg = await services.do_task_inband_with_solve_blocking(
@@ -612,13 +612,34 @@ async def control_task_outband_with_solve_blocking(
     db: Session = get_database()
     ):
     """
-    [出库服务] - 操作穿梭车联动PLC系统出库, 使用障碍检测功能
+    [出库服务接口 - 数据库] - 操作穿梭车联动PLC系统出库, 使用障碍检测功能
     """
     task_no = random.randint(1, 200)
     msg = await services.do_task_outband_with_solve_blocking(
         task_no,
         request.location,
         request.new_pallet_id,
+        db
+        )
+    if msg[0]:
+        return StandardResponse.isSuccess(data=msg[1])
+    return StandardResponse.isError(message=f"{msg[1]}", data=msg[0])
+
+@router.post("/control/good_move_with_solve_blocking")
+@standard_response
+async def control_good_move_with_solve_blocking(
+    request: schemas.GoodMoveTask,
+    db: Session = get_database()
+    ):
+    """
+    [货物移动服务接口 - 数据库] - 操作穿梭车联动PLC系统移动货物, 使用障碍检测功能
+    """
+    task_no = random.randint(1, 200)
+    msg = await services.do_good_move_with_solve_blocking(
+        task_no,
+        request.pallet_id,
+        request.start_location,
+        request.end_location,
         db
         )
     if msg[0]:

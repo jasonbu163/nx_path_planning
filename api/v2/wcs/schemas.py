@@ -85,6 +85,11 @@ class GoodTask(BaseModel):
     location: str = Field(..., examples=["1,1,4"], description="库位坐标")
     new_pallet_id: str = Field(..., examples=["P1001"], description="托盘号")
 
+class GoodMoveTask(BaseModel):
+    """WCS带托盘号入库"""
+    pallet_id: str = Field(..., examples=["P1001"], description="托盘号")
+    start_location: str = Field(..., examples=["1,1,4"], description="初始库位坐标")
+    end_location: str = Field(..., examples=["1,1,4"], description="目标库位坐标")
 
 class Location(LocationBase):
     """WCS库位模型"""
