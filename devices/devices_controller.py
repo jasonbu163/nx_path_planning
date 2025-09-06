@@ -1339,7 +1339,7 @@ class DevicesControllerByStep(DevicesLogger):
         
         try:
             while attempt < max_attempts:
-                await asyncio.sleep(2)
+                await asyncio.sleep(3)
                 current_layer = self.plc.get_lift()
                 await asyncio.sleep(2)
                 if current_layer == LAYER:
@@ -1369,7 +1369,7 @@ class DevicesControllerByStep(DevicesLogger):
 
         await asyncio.sleep(2)
         if await self.plc.async_connect() and self.plc.plc_checker():
-            await asyncio.sleep(2)
+            await asyncio.sleep(3)
             layer = self.plc.get_lift()
             await self.plc.async_disconnect()
             return [True, layer]

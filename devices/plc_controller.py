@@ -268,7 +268,7 @@ class PLCController(PLCConnectionBase):
                 if self.read_bit(12, DB_12.TARGET_LAYER_ARRIVED.value) == 1:
                     self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
                 # time.sleep(1)
-                await asyncio.sleep(1)
+                await asyncio.sleep(3)
                 self.logger.info(f"[LIFT] 电梯到达 {self.get_lift()} 层")
                 
                 return True
@@ -290,7 +290,7 @@ class PLCController(PLCConnectionBase):
                 if self.read_bit(12, DB_12.TARGET_LAYER_ARRIVED.value) == 1:
                     self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
                 # time.sleep(1)
-                await asyncio.sleep(1)
+                await asyncio.sleep(3)
                 self.logger.info(f"[LIFT] 电梯到达 {self.get_lift()} 层")
                 
                 return True
@@ -313,13 +313,13 @@ class PLCController(PLCConnectionBase):
                     self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
                 
                 # time.sleep(1)
-                await asyncio.sleep(1)
+                await asyncio.sleep(3)
                 self.logger.info(f"[LIFT] 电梯到达 {self.get_lift()} 层")
                 
                 return True
             
             else:
-                self.logger.error("[LIFT] 未知状态")
+                self.logger.error(f"[LIFT] 未知状态，电梯到达 {self.get_lift()} 层")
                 return False
 
     ########################################################
