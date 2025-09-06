@@ -222,6 +222,7 @@ class AsyncCarConnection(DevicesLogger):
         """
         [数据发送器] 发送消息到服务器
         """
+        time.sleep(1)
         if not self.is_connected() or self._socket is None:
             self.logger.error("[CAR] 发送失败：未建立有效连接")
             return False
