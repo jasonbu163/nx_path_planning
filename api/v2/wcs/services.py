@@ -999,25 +999,25 @@ class Services:
                 return [False, "❌ 订单托盘已在库内"]
             self.device_service.logger.info(f"[订单托盘号校验] - ✅ 订单托盘不在库内")
             
-            # # 获取入库口托盘信息
-            # qrcode_info = await self.get_qrcode()
-            # if not qrcode_info:
-            #     return [False, "❌ 获取二维码信息失败"]
+            # 获取入库口托盘信息
+            qrcode_info = await self.get_qrcode()
+            if not qrcode_info:
+                return [False, "❌ 获取二维码信息失败"]
             
-            # # 统一转换为字符串处理
-            # if isinstance(qrcode_info, bytes):
-            #     try:
-            #         inband_qrcode_info = qrcode_info.decode('utf-8')
-            #     except UnicodeDecodeError:
-            #         return [False, "❌ 二维码解码失败"]
-            # elif isinstance(qrcode_info, str):
-            #     inband_qrcode_info = qrcode_info
-            # else:
-            #     return [False, "❌ 二维码信息格式无效"]
+            # 统一转换为字符串处理
+            if isinstance(qrcode_info, bytes):
+                try:
+                    inband_qrcode_info = qrcode_info.decode('utf-8')
+                except UnicodeDecodeError:
+                    return [False, "❌ 二维码解码失败"]
+            elif isinstance(qrcode_info, str):
+                inband_qrcode_info = qrcode_info
+            else:
+                return [False, "❌ 二维码信息格式无效"]
             
-            # if NEW_PALLET_ID != inband_qrcode_info:
-            #     return [False, "❌ 订单托盘号和入库口托盘号不一致"]
-            # self.device_service.logger.info(f"[入口托盘号校验] - ✅ 入口托盘号与订单托盘号一致: {inband_qrcode_info}")
+            if NEW_PALLET_ID != inband_qrcode_info:
+                return [False, "❌ 订单托盘号和入库口托盘号不一致"]
+            self.device_service.logger.info(f"[入口托盘号校验] - ✅ 入口托盘号与订单托盘号一致: {inband_qrcode_info}")
             
             
             # ---------------------------------------- #
@@ -1062,15 +1062,15 @@ class Services:
 
             self.device_service.logger.info("[step 2] 判断是否需要穿梭车跨层")
             
-            # car_move_info = await self.device_service.car_cross_layer(
-            #     TASK_NO,
-            #     target_layer
-            #     )
-            # if car_move_info[0]:
-            #     self.device_service.logger.info(f"{car_move_info[1]}")
-            # else:
-            #     self.device_service.logger.error(f"{car_move_info[1]}")
-            #     return [False, f"{car_move_info[1]}"]
+            car_move_info = await self.device_service.car_cross_layer(
+                TASK_NO,
+                target_layer
+                )
+            if car_move_info[0]:
+                self.device_service.logger.info(f"{car_move_info[1]}")
+            else:
+                self.device_service.logger.error(f"{car_move_info[1]}")
+                return [False, f"{car_move_info[1]}"]
             
             
             # ---------------------------------------- #
@@ -1107,6 +1107,7 @@ class Services:
                 move_mapping = {}
 
                 # step 3.2: 处理遮挡货物
+                block_taskno = TASK_NO+1
                 for i, blocking_node in enumerate(do_blocking_nodes):
                     if i < len(temp_storage_nodes):
                         temp_node = temp_storage_nodes[i]
@@ -1114,12 +1115,13 @@ class Services:
                         move_mapping[blocking_node] = temp_node
 
                         # 移动货物
-                        # good_move_info = await self.good_move_by_start_end(blocking_node, temp_node)
-                        # if good_move_info[0]:
-                        #     self.device_service.logger.info(f"{good_move_info[1]}")
-                        # else:
-                        #     self.device_service.logger.error(f"{good_move_info[1]}")
-                        #     return [False, f"{good_move_info[1]}"]
+                        good_move_info = await self.device_service.action_good_move(block_taskno, blocking_node, temp_node)
+                        if good_move_info[0]:
+                            self.device_service.logger.info(f"{good_move_info[1]}")
+                            block_taskno += 2
+                        else:
+                            self.device_service.logger.error(f"{good_move_info[1]}")
+                            return [False, f"{good_move_info[1]}"]
 
                     else:
                         self.device_service.logger.warning(f"[SYSTEM] 没有足够的临时存储点来处理遮挡货物 ({blocking_node})")
@@ -1134,15 +1136,15 @@ class Services:
 
             self.device_service.logger.info(f"[step 4] 货物入库至位置({TARGET_LOCATION})")
             
-            # good_move_info = await self.device_service.task_inband(
-            #     TASK_NO+1,
-            #     TARGET_LOCATION
-            #     )
-            # if good_move_info[0]:
-            #     self.device_service.logger.info(f"货物入库至({TARGET_LOCATION})成功")
-            # else:
-            #     self.device_service.logger.error(f"货物出库至({TARGET_LOCATION})失败")
-            #     return [False, f"货物出库至({TARGET_LOCATION})失败"]
+            good_move_info = await self.device_service.task_inband(
+                TASK_NO+2,
+                TARGET_LOCATION
+                )
+            if good_move_info[0]:
+                self.device_service.logger.info(f"货物入库至({TARGET_LOCATION})成功")
+            else:
+                self.device_service.logger.error(f"货物出库至({TARGET_LOCATION})失败")
+                return [False, f"货物出库至({TARGET_LOCATION})失败"]
             
             
             # ---------------------------------------- #
@@ -1151,17 +1153,19 @@ class Services:
 
             self.device_service.logger.info(f"[step 5] 移动遮挡货物返回到原位（按相反顺序）")
             
+            block_taskno = TASK_NO+3
             if blocking_nodes and blocking_nodes[0] and blocking_nodes[1]:
                 for blocking_node, temp_node in reversed(list(move_mapping.items())):
                     self.device_service.logger.info(f"[CAR] 移动({temp_node})遮挡货物返回({blocking_node})")
                     
                     # 移动货物
-                    # good_move_info = await self.good_move_by_start_end(temp_node, blocking_node)
-                    # if good_move_info[0]:
-                    #     self.device_service.logger.info(f"{good_move_info[1]}")
-                    # else:
-                    #     self.device_service.logger.error(f"{good_move_info[1]}")
-                    #     return [False, f"{good_move_info[1]}"]
+                    good_move_info = await self.device_service.action_good_move(block_taskno, temp_node, blocking_node)
+                    if good_move_info[0]:
+                        self.device_service.logger.info(f"{good_move_info[1]}")
+                        block_taskno += 2
+                    else:
+                        self.device_service.logger.error(f"{good_move_info[1]}")
+                        return [False, f"{good_move_info[1]}"]
             else:
                 self.device_service.logger.info("[SYSTEM] 无阻塞节点返回原位，无需处理")
             
@@ -1172,8 +1176,8 @@ class Services:
 
             self.device_service.logger.info(f"[step 6] 数据库更新信息")
             
-            # update_pallet_id = inband_qrcode_info # 生产用
-            update_pallet_id = NEW_PALLET_ID # 测试用
+            update_pallet_id = inband_qrcode_info # 生产用
+            # update_pallet_id = NEW_PALLET_ID # 测试用
             
             sql_info = self.update_pallet_by_loc(db, TARGET_LOCATION, update_pallet_id)
             if sql_info:
@@ -1271,15 +1275,15 @@ class Services:
 
             self.device_service.logger.info("[step 2] 先让穿梭车跨层")
             
-            # car_move_info = await self.device_service.car_cross_layer(
-            #     TASK_NO,
-            #     target_layer
-            #     )
-            # if car_move_info[0]:
-            #     self.device_service.logger.info(f"{car_move_info[1]}")
-            # else:
-            #     self.device_service.logger.error(f"{car_move_info[1]}")
-            #     return [False, f"{car_move_info[1]}"]
+            car_move_info = await self.device_service.car_cross_layer(
+                TASK_NO,
+                target_layer
+                )
+            if car_move_info[0]:
+                self.device_service.logger.info(f"{car_move_info[1]}")
+            else:
+                self.device_service.logger.error(f"{car_move_info[1]}")
+                return [False, f"{car_move_info[1]}"]
             
             
             # ---------------------------------------- #
@@ -1316,6 +1320,7 @@ class Services:
                 move_mapping = {}
 
                 # step 3.2: 处理遮挡货物
+                block_taskno = TASK_NO+1
                 for i, blocking_node in enumerate(do_blocking_nodes):
                     if i < len(temp_storage_nodes):
                         temp_node = temp_storage_nodes[i]
@@ -1323,12 +1328,13 @@ class Services:
                         move_mapping[blocking_node] = temp_node
 
                         # 移动货物
-                        # good_move_info = await self.good_move_by_start_end(blocking_node, temp_node)
-                        # if good_move_info[0]:
-                        #     self.device_service.logger.info(f"{good_move_info[1]}")
-                        # else:
-                        #     self.device_service.logger.error(f"{good_move_info[1]}")
-                        #     return [False, f"{good_move_info[1]}"]
+                        good_move_info = await self.device_service.action_good_move(block_taskno, blocking_node, temp_node)
+                        if good_move_info[0]:
+                            self.device_service.logger.info(f"{good_move_info[1]}")
+                            block_taskno += 2
+                        else:
+                            self.device_service.logger.error(f"{good_move_info[1]}")
+                            return [False, f"{good_move_info[1]}"]
 
                     else:
                         self.device_service.logger.warning(f"[SYSTEM] 没有足够的临时存储点来处理遮挡货物 ({blocking_node})")
@@ -1343,15 +1349,15 @@ class Services:
 
             self.device_service.logger.info(f"[step 4] ({TARGET_LOCATION})货物出库")
            
-            # good_move_info = await self.device_service.task_outband(
-            #     TASK_NO+1,
-            #     TARGET_LOCATION
-            #     )
-            # if good_move_info[0]:
-            #     self.device_service.logger.info(f"{TARGET_LOCATION}货物出库成功")
-            # else:
-            #     self.device_service.logger.error(f"{TARGET_LOCATION}货物出库失败")
-            #     return [False, f"{TARGET_LOCATION}货物出库失败"]
+            good_move_info = await self.device_service.task_outband(
+                TASK_NO+2,
+                TARGET_LOCATION
+                )
+            if good_move_info[0]:
+                self.device_service.logger.info(f"{TARGET_LOCATION}货物出库成功")
+            else:
+                self.device_service.logger.error(f"{TARGET_LOCATION}货物出库失败")
+                return [False, f"{TARGET_LOCATION}货物出库失败"]
 
             
             # ---------------------------------------- #
@@ -1360,17 +1366,19 @@ class Services:
 
             self.device_service.logger.info(f"[step 5] 移动遮挡货物返回到原位（按相反顺序）")
             
+            block_taskno = TASK_NO+3
             if blocking_nodes and blocking_nodes[0] and blocking_nodes[1]:
                 for blocking_node, temp_node in reversed(list(move_mapping.items())):
                     self.device_service.logger.info(f"[CAR] 移动({temp_node})遮挡货物返回({blocking_node})")
                     
                     # 移动货物
-                    # good_move_info = await self.good_move_by_start_end(temp_node, blocking_node)
-                    # if good_move_info[0]:
-                    #     self.device_service.logger.info(f"{good_move_info[1]}")
-                    # else:
-                    #     self.device_service.logger.error(f"{good_move_info[1]}")
-                    #     return [False, f"{good_move_info[1]}"]
+                    good_move_info = await self.device_service.action_good_move(block_taskno, temp_node, blocking_node)
+                    if good_move_info[0]:
+                        self.device_service.logger.info(f"{good_move_info[1]}")
+                        block_taskno += 2
+                    else:
+                        self.device_service.logger.error(f"{good_move_info[1]}")
+                        return [False, f"{good_move_info[1]}"]
             else:
                 self.device_service.logger.info("[SYSTEM] 无阻塞节点返回原位，无需处理")
             
@@ -1553,6 +1561,7 @@ class Services:
                 move_mapping = {}
 
                 # step 3.2: 处理遮挡货物
+                block_taskno = TASK_NO+1
                 for i, blocking_node in enumerate(do_blocking_nodes):
                     if i < len(temp_storage_nodes):
                         temp_node = temp_storage_nodes[i]
@@ -1560,9 +1569,10 @@ class Services:
                         move_mapping[blocking_node] = temp_node
 
                         # 移动货物
-                        good_move_info = await self.good_move_by_start_end(blocking_node, temp_node)
+                        good_move_info = await self.device_service.action_good_move(block_taskno, blocking_node, temp_node)
                         if good_move_info[0]:
                             self.device_service.logger.info(f"{good_move_info[1]}")
+                            block_taskno += 2
                         else:
                             self.device_service.logger.error(f"{good_move_info[1]}")
                             return [False, f"{good_move_info[1]}"]
@@ -1581,7 +1591,7 @@ class Services:
             self.device_service.logger.info(f"[step 4] ({START_LOCATION})货物转移到({END_LOCATION})")
             
             good_move_info = await self.device_service.action_good_move(
-                TASK_NO+1,
+                TASK_NO+2,
                 START_LOCATION,
                 END_LOCATION
                 )
@@ -1598,14 +1608,16 @@ class Services:
 
             self.device_service.logger.info(f"[step 5] 移动遮挡货物返回到原位（按相反顺序）")
             
+            block_taskno = TASK_NO+3
             if blocking_nodes and blocking_nodes[0] and blocking_nodes[1]:
                 for blocking_node, temp_node in reversed(list(move_mapping.items())):
                     self.device_service.logger.info(f"[CAR] 移动({temp_node})遮挡货物返回({blocking_node})")
                     
                     # 移动货物
-                    good_move_info = await self.good_move_by_start_end(temp_node, blocking_node)
+                    good_move_info = await self.device_service.action_good_move(block_taskno, temp_node, blocking_node)
                     if good_move_info[0]:
                         self.device_service.logger.info(f"{good_move_info[1]}")
+                        block_taskno += 2
                     else:
                         self.device_service.logger.error(f"{good_move_info[1]}")
                         return [False, f"{good_move_info[1]}"]
@@ -1648,10 +1660,3 @@ class Services:
 
         finally:
             self.release_lock()
-        
-
-# 修改_with_solve_blocking系列内的障碍移动部份，
-# 不可以使用self.good_move_by_start_end，因为会卡线程锁
-# 要使用 self.device_service.action_good_move
-
-# 补充电梯任务号的判断

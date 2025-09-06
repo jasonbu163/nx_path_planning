@@ -170,6 +170,31 @@ class DB_11(PLCAddressBase, Enum):
     PLATFORM_PALLET_READY_1050 = 53.3, "1050载物台托盘到位(1到位0无), 库内3层"
     PLATFORM_PALLET_READY_1060 = 53.4, "1060载物台托盘到位(1到位0无), 库内4层"
 
+class DB_9(PLCAddressBase, Enum):
+    """
+    [DB 9] - PLC点位地址枚举, 根据EXCEL点位表生成
+    """
+    def __init__(self, address, description):
+        # 这里可以添加额外的初始化代码，例如验证地址格式
+        self._value_ = address
+        self._description = description # 自定义属性
+    
+    @property
+    def value(self):
+        """
+        [显式操作] - 覆盖默认的value属性获取方式
+        """
+        return self._value_
+    
+    @property
+    def description(self):
+        """
+        [获取枚举的描述信息] - 符合WCS/WMS系统交互需求的描述信息
+        """
+        return self._description
+    
+    LAST_TASK_NO = 14, "上一次任务号"
+    READY = 28.0, "就绪"
 
 class DB_5(PLCAddressBase, Enum):
     """

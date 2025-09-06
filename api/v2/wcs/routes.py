@@ -408,7 +408,7 @@ async def lift_control(
     [控制 电梯] 电梯移动至目标楼层
     """
         
-    task_no = random.randint(1, 255)
+    task_no = random.randint(1, 100)
     msg = await services.lift_by_id(task_no, request.layer)
     if msg[0]:
         return StandardResponse.isSuccess(data=msg[1])
@@ -541,7 +541,7 @@ async def control_car_cross_layer(
     """
     [跨层接口] - 操作穿梭车联动电梯跨层
     """
-    task_no = random.randint(1, 200)
+    task_no = random.randint(1, 100)
     msg = await services.do_car_cross_layer(
         task_no,
         request.layer
@@ -558,7 +558,7 @@ async def control_task_inband(
     """
     [入库接口] - 操作穿梭车联动PLC系统入库 (无障碍检测功能)
     """
-    task_no = random.randint(1, 200)
+    task_no = random.randint(1, 100)
     msg = await services.do_task_inband(
         task_no,
         request.target
@@ -575,7 +575,7 @@ async def control_task_outband(
     """
     [出库服务] - 操作穿梭车联动PLC系统出库 (无障碍检测功能)
     """
-    task_no = random.randint(1, 200)
+    task_no = random.randint(1, 100)
     msg = await services.do_task_outband(
         task_no,
         request.target
@@ -594,7 +594,7 @@ async def control_task_inband_with_solve_blocking(
     """
     [入库服务接口 - 数据库] - 操作穿梭车联动PLC系统入库, 使用障碍检测功能
     """
-    task_no = random.randint(1, 200)
+    task_no = random.randint(1, 100)
     msg = await services.do_task_inband_with_solve_blocking(
         task_no,
         request.location,
@@ -614,7 +614,7 @@ async def control_task_outband_with_solve_blocking(
     """
     [出库服务接口 - 数据库] - 操作穿梭车联动PLC系统出库, 使用障碍检测功能
     """
-    task_no = random.randint(1, 200)
+    task_no = random.randint(1, 100)
     msg = await services.do_task_outband_with_solve_blocking(
         task_no,
         request.location,
@@ -634,7 +634,7 @@ async def control_good_move_with_solve_blocking(
     """
     [货物移动服务接口 - 数据库] - 操作穿梭车联动PLC系统移动货物, 使用障碍检测功能
     """
-    task_no = random.randint(1, 200)
+    task_no = random.randint(1, 100)
     msg = await services.do_good_move_with_solve_blocking(
         task_no,
         request.pallet_id,

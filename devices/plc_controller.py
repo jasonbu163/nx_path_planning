@@ -6,7 +6,7 @@ from typing import Union
 import asyncio
 
 from .plc_connection_module import PLCConnectionBase
-from .plc_enum import DB_2, DB_11, DB_12, FLOOR_CODE, LIFT_TASK_TYPE
+from .plc_enum import DB_2, DB_9, DB_11, DB_12, FLOOR_CODE, LIFT_TASK_TYPE
 
 class PLCController(PLCConnectionBase):
     """
@@ -75,6 +75,22 @@ class PLCController(PLCConnectionBase):
         # 返回原数据
         # return db
     
+
+    def get_lift_last_taskno(self) -> int:
+        """
+        [获取电梯上一次任务号] - 无连接PLC
+
+        ::: return :::
+            层数, 如 1层为 1
+        """
+        # 读取提升机所在层
+        db = self.read_db(9, DB_9.LAST_TASK_NO.value, 2)
+        # 返回解码的数据
+        return struct.unpack('!H', db)[0]
+        # 返回原数据
+        # return db
+    
+
     def lift_move(
             self,
             TASK_TYPE: int,
@@ -89,6 +105,13 @@ class PLCController(PLCConnectionBase):
             TASK_NO: 任务号
             END_FLOOR: 目标层
         """
+
+        # 任务号检测
+        lift_last_taskno = self.get_lift_last_taskno()
+        if lift_last_taskno == TASK_NO:
+            TASK_NO += 1
+            self.logger.warning(f"[LIFT] 当前任务号和新任务号一致，调整任务号为 - {TASK_NO}")
+        
         task_type = struct.pack('!H', TASK_TYPE)
         task_num = struct.pack('!H', TASK_NO)
         # start_floor = struct.pack('!H', start_floor)
@@ -114,6 +137,12 @@ class PLCController(PLCConnectionBase):
         [同步 - 移动电梯] - 带PLC连接
         """
 
+        # 任务号检测
+        lift_last_taskno = self.get_lift_last_taskno()
+        if lift_last_taskno == TASK_NO:
+            TASK_NO += 1
+            self.logger.warning(f"[LIFT] 当前任务号和新任务号一致，调整任务号为 - {TASK_NO}")
+        
         # 任务识别
         lift_running = self.read_bit(11, DB_11.RUNNING.value)
         lift_idle = self.read_bit(11, DB_11.IDLE.value)
@@ -202,6 +231,12 @@ class PLCController(PLCConnectionBase):
         [异步 - 移动电梯] - 带PLC连接
         """
 
+        # 任务号检测
+        lift_last_taskno = self.get_lift_last_taskno()
+        if lift_last_taskno == TASK_NO:
+            TASK_NO += 1
+            self.logger.warning(f"[LIFT] 当前任务号和新任务号一致，调整任务号为 - {TASK_NO}")
+        
         # 任务识别
         lift_running = self.read_bit(11, DB_11.RUNNING.value)
         lift_idle = self.read_bit(11, DB_11.IDLE.value)
