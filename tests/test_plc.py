@@ -17,25 +17,10 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-from devices.plc_connection_module import PLCService
-from devices.plc_enum import PLCAddress, TASK_TYPE
+from devices.plc_connection_module import PLCConnectionBase
+from devices.plc_enum import DB_2, DB_5, DB_9, DB_11, DB_12, LIFT_TASK_TYPE
 import time
 import struct
-
-plc = PLCService("192.168.8.10")
-
-# 连接PLC（自动重试）
-while True:
-    try:
-        plc.connect()
-        if plc.is_connected():
-            logger.info("✅ PLC 连接成功")
-            break
-        else:
-            logger.warning("⚠️ PLC 连接失败，重试中...")
-    except Exception as e:
-        logger.error(f"❌ 连接PLC失败: {e}")
-    time.sleep(1)
 
 # 移动提升机
 def life_move(task_type, task_num, end_floor):
@@ -198,106 +183,150 @@ def car_to_lift():
     plc.write_db(12, 14, data)
     # 清零
 
-try:
-    # plc.write_db(11, 0, b'\x01\x02\x03')
-    # task_num = 11
-    # life_move(TASK_TYPE.IDEL, task_num, end_floor=1)
-    # floor_1_in()
+def test_connect():
+    plc = PLCConnectionBase("192.168.8.10")
 
-    # data = plc.read_db(12, 24, 1)
-    # print(data)
-
+    # 连接PLC（自动重试）
+    while True:
+        try:
+            plc.connect()
+            if plc.is_connected():
+                logger.info("✅ PLC 连接成功")
+                break
+            else:
+                logger.warning("⚠️ PLC 连接失败，重试中...")
+        except Exception as e:
+            logger.error(f"❌ 连接PLC失败: {e}")
+        time.sleep(1)
     
-    # lift_in()
-    # floor_1_to_lift()
-    
-    ############ 入库 ###############
-    task_num = 1
-    task_layer = [3,3,1]
-    car_location = [3,2,4]
-    # # step1: 确认小车是否在目标层
-    # if car_location[4] != task_layer[2]:
-    #     # 移车任务
-    #     car_task_num = 1
-    #     life_move(TASK_TYPE.IDEL, car_task_num+1, end_floor=car_location[2])
-    #     # 确认电梯到位
-    #     if plc.read_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value) == 1:
-    #         plc.write_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 0)
-    #     # 小车进电梯
-    #     car_
-    #     car_move(car_location, )
-    
-    # car_task_num = 11
-    # life_move(TASK_TYPE.IDEL, car_task_num, end_floor=1)
-    # # 确认电梯到位
-    # if plc.read_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value) == 1:
-    #     plc.write_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 0)
+    plc.disconnect()
 
-    # step: 入货口进入电梯
-    # inband(plc)
-    # time.sleep(13)
+def test_inband(plc):
+    try:
+        ############ 入库 ###############
+        task_num = 1
+        task_layer = [3,3,1]
+        car_location = [3,2,4]
+        
+        # # step1: 确认小车是否在目标层
+        # if car_location[4] != task_layer[2]:
+        #     # 移车任务
+        #     car_task_num = 1
+        #     life_move(TASK_TYPE.IDEL, car_task_num+1, end_floor=car_location[2])
+        #     # 确认电梯到位
+        #     if plc.read_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value) == 1:
+        #         plc.write_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 0)
+        #     # 小车进电梯
+        #     car_
+        #     car_move(car_location, )
+        
+        # car_task_num = 11
+        # life_move(TASK_TYPE.IDEL, car_task_num, end_floor=1)
+        # # 确认电梯到位
+        # if plc.read_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value) == 1:
+        #     plc.write_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 0)
 
-    # # step: 电梯到达货物层
-    # good_task_num = 34
-    # life_move(TASK_TYPE.GOOD, good_task_num, end_floor=2)
-    # # 确认电梯到位
-    # if plc.read_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value) == 1:
-    #     plc.write_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 0)
+        # step: 入货口进入电梯
+        # inband(plc)
+        # time.sleep(13)
 
-    # time.sleep(20)
-    # lift_everwhere(plc, 1040, PLCAddress.TARGET_1020.value)
+        # # step: 电梯到达货物层
+        # good_task_num = 34
+        # life_move(TASK_TYPE.GOOD, good_task_num, end_floor=2)
+        # # 确认电梯到位
+        # if plc.read_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value) == 1:
+        #     plc.write_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 0)
 
-    # 1040的取料进行中会自动清零，给一下信号即可
-    plc.write_bit(12, PLCAddress.PICK_IN_PROGRESS_1040.value, 1)
+        # time.sleep(20)
+        # lift_everwhere(plc, 1040, PLCAddress.TARGET_1020.value)
 
-    # 1030的放料完成信号给完要手动清零。
-    # 这里是小车取货
-    time.sleep(15)
+        # 1040的取料进行中会自动清零，给一下信号即可
+        plc.write_bit(12, PLCAddress.PICK_IN_PROGRESS_1040.value, 1)
+
+        # 1030的放料完成信号给完要手动清零。
+        # 这里是小车取货
+        time.sleep(15)
+        
+        # 取料完成
+        plc.write_bit(12, PLCAddress.PICK_COMPLETE_1040.value, 1)
+        if plc.read_bit(12, PLCAddress.PICK_COMPLETE_1040.value):
+            plc.write_bit(12, PLCAddress.PICK_COMPLETE_1040.value, 0)
+
+        logger.info("📤 写入成功")
+    except Exception as e:
+        logger.error(f"❌ 写入失败: {e}")
+
+def test_outband(plc):
+    try:
+        ############ 出库 ###############
+        # task_num = 1
+        # task_layer = [3,3,1]
+        # print(task_layer[2])
+        
+        # step1: 电梯先到货物所在楼层
+        # life_move(TASK_TYPE.IDEL, task_num, end_floor=task_layer[2])
+        
+        # step2: 车把货物送到出库传送带
+        # 先给放料进行中
+        # plc.write_bit(12, PLCAddress.FEED_IN_PROGRESS_1030.value, 1)
+        # good_out(task_num)
+        # if good_out():
+        # time.sleep(20) # 模拟小车事件
+        
+        # step3: 放料
+        # 放料完成
+        # plc.write_bit(12, PLCAddress.FEED_COMPLETE_1030.value, 1)
+        # if plc.read_bit(12, PLCAddress.FEED_COMPLETE_1030.value) == 1:
+        #     plc.write_bit(12, PLCAddress.FEED_COMPLETE_1030.value, 0)
+        
+        # step4: 进入电梯
+        # data_1020 = struct.pack("!H", 1020)
+        # # plc.write_db(12, PLCAddress.TARGET_1030.value, data_1020)
+        # if plc.read_db(12, PLCAddress.TARGET_1030.value, 2) == data_1020:
+        #     data_clean = struct.pack("!H", 0)
+        #     plc.write_db(12, PLCAddress.TARGET_1030.value, data_clean)
+
+        # step5: 将电梯移动到1楼
+        # time.sleep(3)
+        # if plc.read_bit(11, PLCAddress.PLATFORM_PALLET_READY.value) == 1:
+        #     life_move(TASK_TYPE.GOOD, task_num, end_floor=1)
+        # 确认电梯到位
+        # if plc.read_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value) == 1:
+        #     plc.write_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 0)
+        
+        # step6: 将货物移出电梯
+        # lift_everwhere(plc, 1010, PLCAddress.TARGET_1020.value)
+
+        logger.info("📤 写入成功")
+    except Exception as e:
+        logger.error(f"❌ 写入失败: {e}")
+
+def test_1(plc):
+    try:
+        # plc.write_db(11, 0, b'\x01\x02\x03')
+        # task_num = 11
+        # life_move(TASK_TYPE.IDEL, task_num, end_floor=1)
+        # floor_1_in()
+
+        # data = plc.read_db(12, 24, 1)
+        # print(data)
+        
+        # lift_in()
+        # floor_1_to_lift()
+
+        logger.info("📤 写入成功")
+    except Exception as e:
+        logger.error(f"❌ 写入失败: {e}")
+
+def main():
+    PLC_IP = "192.168.8.10"
+    plc = PLCConnectionBase(PLC_IP)
     
-    # 取料完成
-    plc.write_bit(12, PLCAddress.PICK_COMPLETE_1040.value, 1)
-    if plc.read_bit(12, PLCAddress.PICK_COMPLETE_1040.value):
-        plc.write_bit(12, PLCAddress.PICK_COMPLETE_1040.value, 0)
+    plc.connect()
 
-    ############ 出库 ###############
-    # task_num = 1
-    # task_layer = [3,3,1]
-    # print(task_layer[2])
+    test_1(plc)
     
-    # step1: 电梯先到货物所在楼层
-    # life_move(TASK_TYPE.IDEL, task_num, end_floor=task_layer[2])
-    
-    # step2: 车把货物送到出库传送带
-    # 先给放料进行中
-    # plc.write_bit(12, PLCAddress.FEED_IN_PROGRESS_1030.value, 1)
-    # good_out(task_num)
-    # if good_out():
-    # time.sleep(20) # 模拟小车事件
-    
-    # step3: 放料
-    # 放料完成
-    # plc.write_bit(12, PLCAddress.FEED_COMPLETE_1030.value, 1)
-    # if plc.read_bit(12, PLCAddress.FEED_COMPLETE_1030.value) == 1:
-    #     plc.write_bit(12, PLCAddress.FEED_COMPLETE_1030.value, 0)
-    
-    # step4: 进入电梯
-    # data_1020 = struct.pack("!H", 1020)
-    # # plc.write_db(12, PLCAddress.TARGET_1030.value, data_1020)
-    # if plc.read_db(12, PLCAddress.TARGET_1030.value, 2) == data_1020:
-    #     data_clean = struct.pack("!H", 0)
-    #     plc.write_db(12, PLCAddress.TARGET_1030.value, data_clean)
+    plc.disconnect()
 
-    # step5: 将电梯移动到1楼
-    # time.sleep(3)
-    # if plc.read_bit(11, PLCAddress.PLATFORM_PALLET_READY.value) == 1:
-    #     life_move(TASK_TYPE.GOOD, task_num, end_floor=1)
-    # 确认电梯到位
-    # if plc.read_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value) == 1:
-    #     plc.write_bit(12, PLCAddress.TARGET_LAYER_ARRIVED.value, 0)
-    
-    # step6: 将货物移出电梯
-    # lift_everwhere(plc, 1010, PLCAddress.TARGET_1020.value)
-
-    logger.info("📤 写入成功")
-except Exception as e:
-    logger.error(f"❌ 写入失败: {e}")
+if __name__ == "__main__":
+    main()
