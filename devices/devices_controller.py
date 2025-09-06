@@ -163,7 +163,7 @@ class DevicesController(DevicesLogger):
 
         time.sleep(1)
         if self.plc.connect() and self.plc.plc_checker():
-            time.sleep(2)
+            time.sleep(3)
             if self.plc.get_lift() == TARGET_LAYER and self.plc.read_bit(11, DB_11.IDLE.value) == 1:
                 self.plc.disconnect()
                 self.logger.info("🚧 更新穿梭车楼层")
@@ -781,7 +781,7 @@ class AsyncDevicesController(DevicesLogger):
 
         await asyncio.sleep(1)
         if await self.plc.async_connect() and self.plc.plc_checker():
-            await asyncio.sleep(2)
+            await asyncio.sleep(3)
             if self.plc.get_lift() == TARGET_LAYER and self.plc.read_bit(11, DB_11.IDLE.value) == 1:
                 await self.plc.async_disconnect()
                 self.logger.info("🚧 更新穿梭车楼层")
@@ -1683,7 +1683,7 @@ class DevicesControllerByStep(DevicesLogger):
 
         await asyncio.sleep(2)
         if await self.plc.async_connect() and self.plc.plc_checker():
-            await asyncio.sleep(2)
+            await asyncio.sleep(3)
             if self.plc.get_lift() == TARGET_LAYER and self.plc.read_bit(11, DB_11.IDLE.value) == 1:
                 self.logger.info(f"🚧 电梯到达{TARGET_LAYER}, 开始更新穿梭车位置...")
                 await self.plc.async_disconnect()

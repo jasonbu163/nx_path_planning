@@ -172,7 +172,7 @@ class PLCController(PLCConnectionBase):
                 # 确认电梯到位后，清除到位状态
                 if self.read_bit(12, DB_12.TARGET_LAYER_ARRIVED.value) == 1:
                     self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
-                time.sleep(1)
+                time.sleep(3)
                 self.logger.info(f"[LIFT] 电梯到达 {self.get_lift()} 层")
                 
                 return True
@@ -192,7 +192,7 @@ class PLCController(PLCConnectionBase):
                 # 确认电梯到位后，清除到位状态
                 if self.read_bit(12, DB_12.TARGET_LAYER_ARRIVED.value) == 1:
                     self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
-                time.sleep(1)
+                time.sleep(3)
                 self.logger.info(f"[LIFT] 电梯到达 {self.get_lift()} 层")
                 
                 return True
@@ -213,13 +213,14 @@ class PLCController(PLCConnectionBase):
                 if self.read_bit(12, DB_12.TARGET_LAYER_ARRIVED.value) == 1:
                     self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
                 
-                time.sleep(1)
+                time.sleep(3)
                 self.logger.info(f"[LIFT] 电梯到达 {self.get_lift()} 层")
                 
                 return True
             
             else:
-                self.logger.error("[LIFT] 未知状态")
+                time.sleep(3)
+                self.logger.error(f"[LIFT] 未知状态，电梯到达 {self.get_lift()} 层")
                 return False
             
     async def lift_move_by_layer(
@@ -319,6 +320,7 @@ class PLCController(PLCConnectionBase):
                 return True
             
             else:
+                await asyncio.sleep(3)
                 self.logger.error(f"[LIFT] 未知状态，电梯到达 {self.get_lift()} 层")
                 return False
 
