@@ -1758,6 +1758,7 @@ class DevicesControllerByStep(DevicesLogger):
             self.logger.error(f"{lift_move_info[1]}")
             return [False, f"{lift_move_info[1]}"]
         
+        # 无论车和电梯是不是同层，都要先让电梯去到当前车所在层
         if car_current_floor == TARGET_LAYER:
             self.logger.info(f"✅ 穿梭车已在: {car_current_floor} 层")
             return [True, f"✅ 穿梭车已在: {car_current_floor} 层"]
