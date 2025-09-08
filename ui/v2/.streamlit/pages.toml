@@ -5,7 +5,7 @@ icon = "🏠"
 
 [[pages]]
 path = "tool_pages/location_set.py"
-name = "仓库位置信息设置"
+name = "仓库位置信息设置(数据库)"
 icon = "🛠️"
 
 [[pages]]
