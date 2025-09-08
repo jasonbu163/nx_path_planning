@@ -395,6 +395,20 @@ async def good_move_control(
     return StandardResponse.isError(message="发送指令失败", data=msg)
 
 
+@router.post("/control/good_move_by_start_end_control")
+@standard_response
+async def good_move_by_start_end_control(
+    request: schemas.GoodMoveBase
+    ):
+    """
+    [控制 - 货物移动]
+    """
+
+    msg = await services.good_move_by_start_end(request.start_location, request.end_location)
+    if msg:
+        return StandardResponse.isSuccess(data=msg)
+    return StandardResponse.isError(message="发送指令失败", data=msg)
+
 #################################################
 # 电梯接口
 #################################################

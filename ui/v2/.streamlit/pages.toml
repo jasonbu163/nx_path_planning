@@ -14,13 +14,23 @@ name = "穿梭车位置校准"
 icon = "⚙️"
 
 [[pages]]
+path = "tool_pages/task_auto_base.py"
+name = "beta - 基础操作"
+icon = "🚦" 
+
+[[pages]]
+path = "tool_pages/task_auto_advanced.py"
+name = "beta - 高级操作(数据库)"
+icon = "🎩" 
+
+[[pages]]
 path = "tool_pages/car_move.py"
-name = "穿梭车移动操作"
+name = "单步 - 穿梭车移动操作"
 icon = "🚗" 
 
 [[pages]]
 path = "tool_pages/good_move.py"
-name = "货物移动操作"
+name = "单步 - 货物移动操作"
 icon = "📦" 
 
 [[pages]]
@@ -37,8 +47,3 @@ icon = "⬇️"
 path = "tool_pages/car_cross_layer_by_step.py"
 name = "单步 - 穿梭车跨层操作"
 icon = "🚚" 
-
-[[pages]]
-path = "tool_pages/task_auto.py"
-name = "beta - 自动化操作"
-icon = "🚦" 

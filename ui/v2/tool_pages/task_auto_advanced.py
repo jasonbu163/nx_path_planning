@@ -5,7 +5,7 @@ import pandas as pd
 
 from api_config import API_BASE
 
-st.subheader("⚠️⚠️ 此页面为设备自动化联动页面，请使用前确保所有设备正常")
+st.markdown("⚠️ 此页面为设备自动化联动页面，请使用前**确保所有设备正常**")
 
 st.image("img/locations.png")
 
@@ -742,134 +742,6 @@ with e2:
                                     st.dataframe(df)
                             else:
                                 st.warning("没有找到库位信息")
-                    except:
-                        st.text(resp.text)
-                else:
-                    st.error(f"请求失败，状态码：{resp.status_code}")
-                    st.text(resp.text)
-
-            except Exception as e:
-                st.error(f"请求失败：{e}")
-
-
-################################################
-# ----------------- 设备基础联动操作 -----------------
-################################################
-
-st.subheader("🚧 设备基础联动操作(无遮挡货物处理)")
-# --- 创建水平布局 ---
-c1, c2, c3 = st.columns(3)  # 创建三列水平布局
-
-# 入库操作 -> 放在第一列
-with c1:
-    step = steps[0]
-    with st.expander(step["title"]):
-        body = {}
-
-        st.markdown("📌 **设置入库目标**")
-        col_x_1, col_y_1, col_z_1 = st.columns(3)
-        with col_x_1:
-            x_1 = st.selectbox("目标行(x)", list(range(1, 9)), key="x_1")
-        with col_y_1:
-            y_1 = st.selectbox("目标列(y)", list(range(1, 8)), key="y_1")
-        with col_z_1:
-            z_1 = st.selectbox("目标层(z)", list(range(1, 5)), key="z_1")
-        body["target"] = f"{x_1},{y_1},{z_1}"
-
-
-        if st.button(f"🚀 [执行] {step['title']}", key=f"btn_step_1"):
-            try:
-                url = API_BASE + step["api"]
-                resp = (
-                    requests.post(url, json=body)
-                    if step["method"] == "POST"
-                    else requests.get(url, params=body)
-                )
-                if resp.status_code == 200:
-                    try:
-                        if resp.json()["code"] == 404:
-                            st.error(f"{resp.json()['message']}")
-                        elif resp.json()["code"] == 500:
-                            st.error(f"{resp.json()['message']}, {resp.json()['data']}")
-                        else:
-                            st.success(f"✅ 动作发送成功")
-                    except:
-                        st.text(resp.text)
-                else:
-                    st.error(f"请求失败，状态码：{resp.status_code}")
-                    st.text(resp.text)
-
-            except Exception as e:
-                st.error(f"请求失败：{e}")
-
-# 小车跨层 -> 放在第二列
-with c2:
-    step = steps[1]
-    with st.expander(step["title"]):
-        body = {}
-
-        # 楼层选择区
-        st.markdown("📌 **设置目标楼层**")
-        layer = st.selectbox("🚩 小车目标层", list(range(1, 5)), key="layer")
-        body["layer"] = layer
-
-        if st.button(f"🚀 [执行] {step['title']}", key=f"btn_step_2"):
-            try:
-                url = API_BASE + step["api"]
-                resp = (
-                    requests.post(url, json=body)
-                    if step["method"] == "POST"
-                    else requests.get(url, params=body)
-                )
-                if resp.status_code == 200:
-                    try:
-                        if resp.json()["code"] == 404:
-                            st.error(f"{resp.json()['message']}")
-                        elif resp.json()["code"] == 500:
-                            st.error(f"{resp.json()['message']}, {resp.json()['data']}")
-                        else:
-                            st.success(f"✅ 动作发送成功")
-                    except:
-                        st.text(resp.text)
-                else:
-                    st.error(f"请求失败，状态码：{resp.status_code}")
-                    st.text(resp.text)
-
-            except Exception as e:
-                st.error(f"请求失败：{e}")
-
-# 出库操作 -> 放在第三列
-with c3:
-    step = steps[2]
-    with st.expander(step["title"]):
-        body = {}
-
-        st.markdown("📌 **设置出库目标**")
-        col_x_2, col_y_2, col_z_2 = st.columns(3)
-        with col_x_2:
-            x_2 = st.selectbox("目标行(x)", list(range(1, 9)), key="x_2")
-        with col_y_2:
-            y_2 = st.selectbox("目标列(y)", list(range(1, 8)), key="y_2")
-        with col_z_2:
-            z_2 = st.selectbox("目标层(z)", list(range(1, 5)), key="z_2")
-        body["target"] = f"{x_2},{y_2},{z_2}"
-
-        if st.button(f"🚀 [执行] {step['title']}", key=f"btn_step_3"):
-            try:
-                url = API_BASE + step["api"]
-                resp = (
-                    requests.post(url, json=body)
-                    if step["method"] == "POST"
-                    else requests.get(url, params=body)
-                )
-                if resp.status_code == 200:
-                    try:
-                        if resp.json()["code"] == 404:
-                            st.error(f"{resp.json()['message']}")
-                        elif resp.json()["code"] == 500:
-                            st.error(f"{resp.json()['message']}, {resp.json()['data']}")
-                        else:
-                            st.success(f"✅ 动作发送成功")
                     except:
                         st.text(resp.text)
                 else:

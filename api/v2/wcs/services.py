@@ -418,7 +418,7 @@ class Services:
             raise RuntimeError("正在执行其他操作，请稍后再试")
 
         try:
-            task_no = randint(1, 255)
+            task_no = randint(1, 100)
             return await self.car_service.change_car_location(task_no, target)
         
         finally:
@@ -436,7 +436,7 @@ class Services:
             target_loc = list(map(int, TARGET_LOCATION.split(',')))
             target_layer = target_loc[2]
             
-            task_no = randint(1, 250)
+            task_no = randint(1, 100)
             lift_move_info = await self.device_service.action_lift_move(task_no, target_layer)
             if lift_move_info[0]:
                 self.plc_service.logger.info(f"{lift_move_info[1]}")
@@ -466,7 +466,7 @@ class Services:
             target_loc = list(map(int, TARGET_LOCATION.split(',')))
             target_layer = target_loc[2]
             
-            task_no = randint(1, 250)
+            task_no = randint(1, 100)
             lift_move_info = await self.device_service.action_lift_move(task_no, target_layer)
             if lift_move_info[0]:
                 self.plc_service.logger.info(f"{lift_move_info[1]}")
@@ -507,7 +507,7 @@ class Services:
             if start_layer != end_layer:
                 return [False, "❌ 起点与终点楼层不一致"]
             
-            task_no = randint(1, 250)
+            task_no = randint(1, 100)
             lift_move_info = await self.device_service.action_lift_move(task_no, start_layer)
             if lift_move_info[0]:
                 self.plc_service.logger.info(f"{lift_move_info[1]}")
