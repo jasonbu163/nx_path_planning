@@ -530,7 +530,10 @@ class Services:
             end_loc = list(map(int, END_LOCATION.split(',')))
             end_layer = end_loc[2]
 
-            if start_layer != end_layer and car_layer != start_layer and car_layer != end_layer:
+            if start_layer != end_layer:
+                return [False, f"❌ 起点{start_layer}和终点{end_layer}楼层不一致"]
+            
+            if car_layer != start_layer or car_layer != end_layer:
                 return [False, f"❌ 穿梭车层{car_layer}、起点{start_layer}、终点{end_layer}楼层必须保持一致"]
             
             task_no = randint(1, 100)
