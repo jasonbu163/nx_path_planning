@@ -14,14 +14,14 @@ name = "穿梭车位置校准"
 icon = "⚙️"
 
 [[pages]]
-path = "tool_pages/task_auto_base.py"
-name = "beta - 基础操作"
-icon = "🚦" 
-
-[[pages]]
 path = "tool_pages/task_auto_advanced.py"
 name = "beta - 高级操作(数据库)"
-icon = "🎩" 
+icon = "🎩"
+
+[[pages]]
+path = "tool_pages/task_auto_base.py"
+name = "beta - 基础操作"
+icon = "🚦"  
 
 [[pages]]
 path = "tool_pages/car_move.py"

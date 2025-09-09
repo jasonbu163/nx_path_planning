@@ -206,7 +206,7 @@ class DevicesController(DevicesLogger):
         # step 7: 校准电梯水平操作
         ############################################################
 
-        time.sleep(1)
+        time.sleep(3)
         if self.plc.connect() and self.plc.plc_checker():
             self.logger.info("🚧 空载校准电梯楼层")
             time.sleep(2)
@@ -826,7 +826,7 @@ class AsyncDevicesController(DevicesLogger):
         # step 7: 校准电梯水平操作
         ############################################################
 
-        await asyncio.sleep(1)
+        await asyncio.sleep(3)
         if await self.plc.async_connect() and self.plc.plc_checker():
             self.logger.info("🚧 空载校准电梯楼层")
             await asyncio.sleep(2)
@@ -1851,6 +1851,7 @@ class DevicesControllerByStep(DevicesLogger):
         
         self.logger.info(f"🚧 校准电梯{TARGET_LAYER}层水平位置...")
         
+        await asyncio.sleep(3)
         lift_move_info =  await self.action_lift_move(TASK_NO+6, TARGET_LAYER)
         if lift_move_info[0]:
             self.logger.info(f"{lift_move_info[1]}")

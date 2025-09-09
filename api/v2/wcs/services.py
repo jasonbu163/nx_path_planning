@@ -432,16 +432,25 @@ class Services:
             raise RuntimeError("正在执行其他操作，请稍后再试")
         
         try:
+            car_current_location = await self.car_service.car_current_location()
+            if car_current_location == "error":
+                return [False, "❌ 操作失败，穿梭车可能未连接"]
+            
+            car_loc = list(map(int, car_current_location.split(',')))
+            car_layer = car_loc[2]
 
             target_loc = list(map(int, TARGET_LOCATION.split(',')))
             target_layer = target_loc[2]
+
+            if car_layer != target_layer:
+                return [False, f"❌ 操作失败，穿梭车层({car_layer})和任务层({target_layer})不一致"]
             
             task_no = randint(1, 100)
-            lift_move_info = await self.device_service.action_lift_move(task_no, target_layer)
+            lift_move_info = await self.device_service.action_lift_move(task_no, car_layer)
             if lift_move_info[0]:
                 self.plc_service.logger.info(f"{lift_move_info[1]}")
                 lift_layer_info = await self.device_service.get_lift_layer()
-                if lift_layer_info[0] and lift_layer_info[1] == target_layer:
+                if lift_layer_info[0] and lift_layer_info[1] == car_layer:
                     self.plc_service.logger.info(f"✅ 再次确认电梯到达{lift_layer_info[1]}层")
                 else:
                     self.plc_service.logger.error(f"{lift_layer_info[1]}")
@@ -463,15 +472,25 @@ class Services:
         if not await self.acquire_lock():
             raise RuntimeError("正在执行其他操作，请稍后再试")
         try:
+            car_current_location = await self.car_service.car_current_location()
+            if car_current_location == "error":
+                return False
+            
+            car_loc = list(map(int, car_current_location.split(',')))
+            car_layer = car_loc[2]
+
             target_loc = list(map(int, TARGET_LOCATION.split(',')))
             target_layer = target_loc[2]
+
+            if car_layer != target_layer:
+                return False
             
             task_no = randint(1, 100)
-            lift_move_info = await self.device_service.action_lift_move(task_no, target_layer)
+            lift_move_info = await self.device_service.action_lift_move(task_no, car_layer)
             if lift_move_info[0]:
                 self.plc_service.logger.info(f"{lift_move_info[1]}")
                 lift_layer_info = await self.device_service.get_lift_layer()
-                if lift_layer_info[0] and lift_layer_info[1] == target_layer:
+                if lift_layer_info[0] and lift_layer_info[1] == car_layer:
                     self.plc_service.logger.info(f"✅ 再次确认电梯到达{lift_layer_info[1]}层")
                 else:
                     self.plc_service.logger.error(f"{lift_layer_info[1]}")
@@ -498,21 +517,28 @@ class Services:
         if not await self.acquire_lock():
             raise RuntimeError("正在执行其他操作，请稍后再试")
         try:
+            car_current_location = await self.car_service.car_current_location()
+            if car_current_location == "error":
+                return [False, "❌ 操作失败，穿梭车可能未连接"]
+            
+            car_loc = list(map(int, car_current_location.split(',')))
+            car_layer = car_loc[2]
+
             # 拆解位置 -> 坐标: 如, "1,3,1" 楼层: 如, 1
             start_loc = list(map(int, START_LOCATION.split(',')))
             start_layer = start_loc[2]
             end_loc = list(map(int, END_LOCATION.split(',')))
             end_layer = end_loc[2]
 
-            if start_layer != end_layer:
-                return [False, "❌ 起点与终点楼层不一致"]
+            if start_layer != end_layer and car_layer != start_layer and car_layer != end_layer:
+                return [False, f"❌ 穿梭车层{car_layer}、起点{start_layer}、终点{end_layer}楼层必须保持一致"]
             
             task_no = randint(1, 100)
-            lift_move_info = await self.device_service.action_lift_move(task_no, start_layer)
+            lift_move_info = await self.device_service.action_lift_move(task_no, car_layer)
             if lift_move_info[0]:
                 self.plc_service.logger.info(f"{lift_move_info[1]}")
                 lift_layer_info = await self.device_service.get_lift_layer()
-                if lift_layer_info[0] and lift_layer_info[1] == start_layer:
+                if lift_layer_info[0] and lift_layer_info[1] == car_layer:
                     self.plc_service.logger.info(f"✅ 再次确认电梯到达{lift_layer_info[1]}层")
                 else:
                     self.plc_service.logger.error(f"{lift_layer_info[1]}")
@@ -521,7 +547,6 @@ class Services:
                 self.plc_service.logger.error(f"{lift_move_info[1]}")
                 return [False, f"{lift_move_info[1]}"]
 
-            task_no = randint(1, 255)
             return await self.device_service.action_good_move(task_no+1, START_LOCATION, END_LOCATION)
         
         finally:
