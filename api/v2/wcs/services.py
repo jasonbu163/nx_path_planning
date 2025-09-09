@@ -1026,11 +1026,17 @@ class Services:
 
             self.device_service.logger.info(f"[base 2] 校验订单目标位置")
 
+            # buffer_list = [
+            #     "5,1,1", "5,3,1", "5,4,1", "5,5,1",
+            #     "5,1,2", "5,3,2", "5,4,2", "5,5,2",
+            #     "5,1,3", "5,3,3", "5,4,3", "5,5,3",
+            #     "5,1,4", "5,3,4", "5,4,4", "5,5,4"
+            #     ]
             buffer_list = [
-                "5,1,1", "5,3,1", "5,4,1", "5,5,1",
-                "5,1,2", "5,3,2", "5,4,2", "5,5,2",
-                "5,1,3", "5,3,3", "5,4,3", "5,5,3",
-                "5,1,4", "5,3,4", "5,4,4", "5,5,4"
+                "1,3,1", "2,3,1", "3,3,1", "5,3,1",
+                "1,3,2", "2,3,2", "3,3,2", "5,3,2",
+                "1,3,3", "2,3,3", "3,3,3", "5,3,3",
+                "1,3,4", "2,3,4", "3,3,4", "5,3,4"
                 ]
             if TARGET_LOCATION in buffer_list:
                 return [False, f"❌ {TARGET_LOCATION} 位置为接驳位，不能直接使用此功能操作"]
@@ -1102,7 +1108,7 @@ class Services:
                 self.device_service.logger.info(f"[SYSTEM] 靠近高速道阻塞点(按距离排序): {do_blocking_nodes}")
 
                 # 定义临时存放点
-                temp_storage_nodes = [f"5,1,{target_layer}", f"5,4,{target_layer}", f"5,5,{target_layer}"]
+                temp_storage_nodes = [f"1,3,{target_layer}", f"2,3,{target_layer}", f"3,3,{target_layer}"]
                 # 记录移动映射关系，用于将货物移回原位
                 move_mapping = {}
 
@@ -1238,11 +1244,17 @@ class Services:
 
             self.device_service.logger.info(f"[base 2] 校验订单目标位置")
 
+            # buffer_list = [
+            #     "5,1,1", "5,3,1", "5,4,1", "5,5,1",
+            #     "5,1,2", "5,3,2", "5,4,2", "5,5,2",
+            #     "5,1,3", "5,3,3", "5,4,3", "5,5,3",
+            #     "5,1,4", "5,3,4", "5,4,4", "5,5,4"
+            #     ]
             buffer_list = [
-                "5,1,1", "5,3,1", "5,4,1", "5,5,1",
-                "5,1,2", "5,3,2", "5,4,2", "5,5,2",
-                "5,1,3", "5,3,3", "5,4,3", "5,5,3",
-                "5,1,4", "5,3,4", "5,4,4", "5,5,4"
+                "1,3,1", "2,3,1", "3,3,1", "5,3,1",
+                "1,3,2", "2,3,2", "3,3,2", "5,3,2",
+                "1,3,3", "2,3,3", "3,3,3", "5,3,3",
+                "1,3,4", "2,3,4", "3,3,4", "5,3,4"
                 ]
             if TARGET_LOCATION in buffer_list:
                 return [False, f"❌ {TARGET_LOCATION} 位置为接驳位/缓冲位，不能使用此功能操作"]
@@ -1315,7 +1327,7 @@ class Services:
                 self.device_service.logger.info(f"[SYSTEM] 靠近高速道阻塞点(按距离排序): {do_blocking_nodes}")
 
                 # 定义临时存放点
-                temp_storage_nodes = [f"5,1,{target_layer}", f"5,4,{target_layer}", f"5,5,{target_layer}"]
+                temp_storage_nodes = [f"1,3,{target_layer}", f"2,3,{target_layer}", f"3,3,{target_layer}"]
                 # 记录移动映射关系，用于将货物移回原位
                 move_mapping = {}
 
@@ -1454,11 +1466,17 @@ class Services:
             if START_LOCATION == END_LOCATION:
                 return [False, f"❌ 起始位置与目标位置相同({START_LOCATION})，请重新选择"]
 
+            # buffer_list = [
+            #     "5,1,1", "5,3,1", "5,4,1", "5,5,1",
+            #     "5,1,2", "5,3,2", "5,4,2", "5,5,2",
+            #     "5,1,3", "5,3,3", "5,4,3", "5,5,3",
+            #     "5,1,4", "5,3,4", "5,4,4", "5,5,4"
+            #     ]
             buffer_list = [
-                "5,1,1", "5,3,1", "5,4,1", "5,5,1",
-                "5,1,2", "5,3,2", "5,4,2", "5,5,2",
-                "5,1,3", "5,3,3", "5,4,3", "5,5,3",
-                "5,1,4", "5,3,4", "5,4,4", "5,5,4"
+                "1,3,1", "2,3,1", "3,3,1", "5,3,1",
+                "1,3,2", "2,3,2", "3,3,2", "5,3,2",
+                "1,3,3", "2,3,3", "3,3,3", "5,3,3",
+                "1,3,4", "2,3,4", "3,3,4", "5,3,4"
                 ]
             
             # 校验订单起始位置
@@ -1556,7 +1574,7 @@ class Services:
                     return [False, f"❌ 没有足够的临时存储点操作货物移动 ({START_LOCATION}) -> ({END_LOCATION})"]
 
                 # 定义临时存放点
-                temp_storage_nodes = [f"5,1,{end_layer}", f"5,4,{end_layer}", f"5,5,{end_layer}"]
+                temp_storage_nodes = [f"1,3,{end_layer}", f"2,3,{end_layer}", f"3,3,{end_layer}"]
                 # 记录移动映射关系，用于将货物移回原位
                 move_mapping = {}
 
