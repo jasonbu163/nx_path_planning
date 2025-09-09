@@ -1637,7 +1637,7 @@ class Services:
             self.device_service.logger.info(f"[step 4] ({START_LOCATION})货物转移到({END_LOCATION})")
             
             good_move_info = await self.device_service.action_good_move(
-                TASK_NO+6,
+                TASK_NO+9,
                 START_LOCATION,
                 END_LOCATION
                 )
