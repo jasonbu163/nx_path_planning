@@ -1152,7 +1152,7 @@ class Services:
                         good_move_info = await self.device_service.action_good_move(block_taskno, blocking_node, temp_node)
                         if good_move_info[0]:
                             self.device_service.logger.info(f"{good_move_info[1]}")
-                            block_taskno += 1
+                            block_taskno += 3
                         else:
                             self.device_service.logger.error(f"{good_move_info[1]}")
                             return [False, f"{good_move_info[1]}"]
@@ -1196,7 +1196,7 @@ class Services:
                     good_move_info = await self.device_service.action_good_move(block_taskno, temp_node, blocking_node)
                     if good_move_info[0]:
                         self.device_service.logger.info(f"{good_move_info[1]}")
-                        block_taskno += 1
+                        block_taskno += 3
                     else:
                         self.device_service.logger.error(f"{good_move_info[1]}")
                         return [False, f"{good_move_info[1]}"]
@@ -1371,7 +1371,7 @@ class Services:
                         good_move_info = await self.device_service.action_good_move(block_taskno, blocking_node, temp_node)
                         if good_move_info[0]:
                             self.device_service.logger.info(f"{good_move_info[1]}")
-                            block_taskno += 1
+                            block_taskno += 3
                         else:
                             self.device_service.logger.error(f"{good_move_info[1]}")
                             return [False, f"{good_move_info[1]}"]
@@ -1415,7 +1415,7 @@ class Services:
                     good_move_info = await self.device_service.action_good_move(block_taskno, temp_node, blocking_node)
                     if good_move_info[0]:
                         self.device_service.logger.info(f"{good_move_info[1]}")
-                        block_taskno += 1
+                        block_taskno += 3
                     else:
                         self.device_service.logger.error(f"{good_move_info[1]}")
                         return [False, f"{good_move_info[1]}"]
@@ -1618,7 +1618,7 @@ class Services:
                         good_move_info = await self.device_service.action_good_move(block_taskno, blocking_node, temp_node)
                         if good_move_info[0]:
                             self.device_service.logger.info(f"{good_move_info[1]}")
-                            block_taskno += 1
+                            block_taskno += 3
                         else:
                             self.device_service.logger.error(f"{good_move_info[1]}")
                             return [False, f"{good_move_info[1]}"]
@@ -1663,7 +1663,7 @@ class Services:
                     good_move_info = await self.device_service.action_good_move(block_taskno, temp_node, blocking_node)
                     if good_move_info[0]:
                         self.device_service.logger.info(f"{good_move_info[1]}")
-                        block_taskno += 1
+                        block_taskno += 3
                     else:
                         self.device_service.logger.error(f"{good_move_info[1]}")
                         return [False, f"{good_move_info[1]}"]
