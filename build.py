@@ -34,7 +34,7 @@ def download_snap7_dll():
         for root, dirs, files in os.walk(extract_dir):
             if "snap7.dll" in files:
                 dll_path = os.path.join(root, "snap7.dll")
-                shutil.copy2(dll_path, "snap7.dll")
+                shutil.copy2(dll_path, "dll/snap7.dll")
                 print(f"找到并复制 snap7.dll: {dll_path}")
                 dll_found = True
                 break
