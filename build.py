@@ -43,7 +43,7 @@ def download_snap7_dll():
         #         break
 
         # 优先查找 Win64 目录
-        win64_path = os.path.join(extract_dir, "release", "Windows", "Win64")
+        win64_path = os.path.join(extract_dir, "snap7-full-1.4.2", "release", "Windows", "Win64")
         win64_dll_path = os.path.join(win64_path, "snap7.dll")
 
         if os.path.exists(win64_dll_path):
