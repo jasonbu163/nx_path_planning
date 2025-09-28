@@ -12,7 +12,8 @@ def download_snap7_dll():
     snap7_url = "https://sourceforge.net/projects/snap7/files/1.4.2/snap7-full-1.4.2.7z/download"
     download_path = "snap7-full-1.4.2.7z"
     extract_dir = "snap7_temp"
-    
+    # win64_dll_path = "release\\Windows\\Win64" # 此处调整路径，找到解压后到这个路径
+
     try:
         # 如果存在则不用重复下载
         if not os.path.exists(download_path):
@@ -31,13 +32,41 @@ def download_snap7_dll():
 
         # 查找并复制 snap7.dll
         dll_found = False
-        for root, dirs, files in os.walk(extract_dir):
-            if "snap7.dll" in files:
-                dll_path = os.path.join(root, "snap7.dll")
-                shutil.copy2(dll_path, "dll/snap7.dll")
-                print(f"找到并复制 snap7.dll: {dll_path}")
-                dll_found = True
-                break
+        # for root, dirs, files in os.walk(extract_dir):
+        #     if "snap7.dll" in files:
+        #         # 此处调整路径
+        #         # dll_path = os.path.join(root, "snap7.dll")
+        #         dll_path = os.path.join(win64_dll_path, "snap7.dll")
+        #         shutil.copy2(dll_path, "snap7.dll")
+        #         print(f"找到并复制 snap7.dll: {dll_path}")
+        #         dll_found = True
+        #         break
+
+        # 优先查找 Win64 目录
+        win64_path = os.path.join(extract_dir, "release", "Windows", "Win64")
+        win64_dll_path = os.path.join(win64_path, "snap7.dll")
+
+        if os.path.exists(win64_dll_path):
+            shutil.copy2(win64_dll_path, "snap7.dll")
+            print(f"找到并复制 snap7.dll: {win64_dll_path}")
+            dll_found = True
+        else:
+            # 如果 Win64 目录不存在，尝试查找其他可能的目录
+            possible_paths = [
+                os.path.join(extract_dir, "release", "Windows", "Win64"),
+                os.path.join(extract_dir, "release", "Windows", "Win32"),
+                os.path.join(extract_dir, "bin", "x86_64-win"),
+                os.path.join(extract_dir, "bin", "x86-win"),
+                extract_dir  # 最后在整个解压目录中查找
+            ]
+            
+            for path in possible_paths:
+                dll_path = os.path.join(path, "snap7.dll")
+                if os.path.exists(dll_path):
+                    shutil.copy2(dll_path, "snap7.dll")
+                    print(f"找到并复制 snap7.dll: {dll_path}")
+                    dll_found = True
+                    break
             
         if not dll_found:
             print("警告: 在下载的压缩包中未找到 snap7.dll")
@@ -49,12 +78,15 @@ def download_snap7_dll():
             return False
             
         # 清理临时文件
-        # shutil.rmtree(extract_dir)
-        # os.remove(download_path)
+        shutil.rmtree(extract_dir)
+        os.remove(download_path)
         
         return True
     except Exception as e:
         print(f"下载 snap7.dll 失败: {e}")
+        # 清理可能的部分文件
+        if os.path.exists(extract_dir):
+            shutil.rmtree(extract_dir)
         return False
     
 def clean_build_folders():
@@ -82,8 +114,8 @@ def copy_resources():
         shutil.copytree('app/map_core/data', f'{dist_path}/app/map_core/data', dirs_exist_ok=True)
 
     # 复制 snap7.dll
-    if os.path.exists('dll/snap7.dll'):
-        shutil.copy2('dll/snap7.dll', f'{dist_path}/dll')
+    if os.path.exists('snap7.dll'):
+        shutil.copy2('snap7.dll', f'{dist_path}/snap7.dll')
 
 def build_executable():
     """使用PyInstaller构建可执行文件"""
@@ -96,7 +128,7 @@ def build_executable():
         '--noconfirm',  # 覆盖输出目录
         '--add-data=app/data;app/data',  # 添加配置文件夹
         '--add-data=app/map_core/data;app/map_core/data',
-        '--add-binary=dll/snap7.dll;dll/snap7.dll'
+        '--hidden-import=snap7',  # 添加snap7模块'
     ]
 
     # 添加图标如果存在
