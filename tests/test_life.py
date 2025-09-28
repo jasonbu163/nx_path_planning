@@ -7,7 +7,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import time
 import struct
 import asyncio
-from async_tcp_client_module import AsyncTCPClient
+from tests.test_async_tcp_client_module import AsyncTCPClient
 from res_protocol_system import PacketBuilder, RESProtocol, PacketParser
 from devices.service_asyncio import DevicesService
 from map_core import PathCustom

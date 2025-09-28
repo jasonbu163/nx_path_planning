@@ -7,23 +7,26 @@ import asyncio
 import time
 import random
 
-import config
-from devices.devices_controller import DevicesController
-from devices.plc_controller import PLCController
-from devices.car_controller import CarController
-from devices.plc_enum import LIFT_TASK_TYPE, DB_12, DB_11, DB_2
+import app.core.config as config
+from app.devices.devices_controller import DevicesController
+from app.plc_system.plc_controller import PLCController
+from app.res_system.car_controller import CarController
+from app.plc_system.plc_enum import LIFT_TASK_TYPE, DB_12, DB_11, DB_2
 
-def test_plc_controller(PLC_IP):
+def test_plc_controller(plc_ip: str):
     """测试PLC控制器"""
-    plc = PLCController(PLC_IP)
-    if plc.connect() and plc.plc_checker():
-        print(f"PLC {PLC_IP} 连接成功")
+
+    plc = PLCController(plc_ip)
+    
+    if plc.connect():
+        plc.logger.info(f"[PLC] ✅ {plc_ip} 连接成功")
     else:
-        print(f"PLC {PLC_IP} 连接失败")
         plc.disconnect()
+        plc.logger.error(f"[PLC] ❌ {plc_ip} 连接失败")
         return False
 
-    print(f"电梯在 {plc.get_lift()} 楼")
+    current_floor = plc.get_lift()
+    plc.logger.info(f"电梯在 {current_floor} 楼")
     
     # scan_msg = plc.scan_qrcode()
     # plc.logger.info(f"🙈 扫码内容: {scan_msg}")
@@ -35,18 +38,66 @@ def test_plc_controller(PLC_IP):
     #     plc.wait_for_bit_change_sync(11, DB_11.PLATFORM_PALLET_READY_1020.value, 1)
     #     plc.logger.info("✅ 入库完成")
     # else:
-    #     plc.logger.error("❌ 托盘识别错误，请检查托盘是否扫到二维码。")
     #     plc.disconnect()
+    #     plc.logger.error("❌ 托盘识别错误，请检查托盘是否扫到二维码。")
     #     return False
     
     task_no = random.randint(1, 100)
-    plc.logger.info("🚧 电梯开始移动")
-    plc._lift_move_by_layer(task_no, 2)
+    target_floor = 2
+
+    if current_floor != target_floor:
+
+        if plc.plc_checker():
+            plc.logger.info("🚧 电梯开始移动...")
+
+            if plc.lift_move_by_layer_sync(task_no, target_floor):
+                plc.logger.info("✅ 电梯工作指令发送成功")
+            else:
+                plc.disconnect()
+                plc.logger.error(f"❌ 电梯工作指令发送失败")
+                return False
+            
+            plc.logger.info(f"⌛️ 等待电梯到达{target_floor}层")
+
+            if plc.wait_lift_move_complete_by_location_sync():
+                plc.logger.info(f"✅ 电梯已到达{target_floor}层") 
+            else:
+                plc.disconnect()
+                plc.logger.error(f"❌ 电梯未到达{target_floor}层")
+                return False
+            
+        else:
+            plc.disconnect()
+            plc.logger.error("❌ PLC错误")
+            return False
 
     time.sleep(2)
 
-    plc.logger.info("🚧 电梯开始移动")
-    plc._lift_move_by_layer(task_no+1, 1)
+    task_no += 1
+    target_floor = 1
+
+    if plc.plc_checker():
+    
+        plc.logger.info("🚧 电梯开始移动...")
+        if plc.lift_move_by_layer_sync(task_no, target_floor):
+            plc.logger.info("✅ 电梯工作指令发送成功")
+        else:
+            plc.disconnect()
+            plc.logger.error(f"❌ 电梯工作指令发送失败")
+            return False
+        
+        plc.logger.info(f"⌛️ 等待电梯到达{target_floor}层")
+
+        if plc.wait_lift_move_complete_by_location_sync():
+            plc.logger.info(f"✅ 电梯已到达{target_floor}层")
+        else:
+            plc.disconnect()
+            plc.logger.error(f"❌ 电梯未到达{target_floor}层")
+            return False
+    else:
+        plc.disconnect()
+        plc.logger.error("❌ PLC错误")
+        return False
 
     # plc.logger.info("🚧 开始出库")
     # plc.lift_to_outband()
@@ -74,17 +125,15 @@ def test_car_controller(CAR_IP, CAR_PORT):
     car.wait_car_move_complete_by_location_sync(car_target)
     car.logger.info("✅ 车辆已到达目标位置")
 
-def test_devices_controller(PLC_IP, CAR_IP, CAR_PORT):
-    
+def test_devices_controller(plc_ip, car_ip, car_port):
     # 创建设备控制器
-    d_c = DevicesController(PLC_IP, CAR_IP, CAR_PORT)
+    d_c = DevicesController(plc_ip, car_ip, car_port)
 
     # 开始测试
-    # d_c.car_cross_layer(TASK_NO=1, TARGET_LAYER=1)
-    d_c.task_inband(TASK_NO=2, TARGET_LOCATION="5,1,2")
-    # d_c.task_outband(TASK_NO=3, TARGET_LOCATION="5,4,1")
-
-
+    # d_c.car_cross_layer(task_no=1, target_layer=1)
+    # d_c.task_inband(task_no=2, target_location="5,1,2")
+    d_c.task_outband(task_no=3, target_location="5,4,1")
+    
 def main():
     plc_ip = config.PLC_IP
     car_ip = config.CAR_IP
@@ -93,7 +142,7 @@ def main():
     # 开始测试时间
     start_time = time.time()
 
-    test_plc_controller(plc_ip)
+    # test_plc_controller(plc_ip)
     # test_car_controller(car_ip, car_port)
     # test_devices_controller(plc_ip, car_ip, car_port)
     
