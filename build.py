@@ -4,41 +4,59 @@ import shutil
 import subprocess
 import sys
 import urllib.request
-import zipfile
+import py7zr
 
 def download_snap7_dll():
     """下载 snap7.dll 文件"""
-    print("正在下载 snap7.dll...")
+
     snap7_url = "https://sourceforge.net/projects/snap7/files/1.4.2/snap7-full-1.4.2.7z/download"
     download_path = "snap7-full-1.4.2.7z"
     extract_dir = "snap7_temp"
     
     try:
-        # 下载 snap7
-        urllib.request.urlretrieve(snap7_url, download_path)
-        print("下载完成")
-        
+        # 如果存在则不用重复下载
+        if not os.path.exists(download_path):
+            # 下载 snap7
+            print("正在下载 snap7.dll...")
+            urllib.request.urlretrieve(snap7_url, download_path)
+            print("下载完成")
+            
+        # 创建解压目录
+        os.makedirs(extract_dir, exist_ok=True)
+
         # 解压文件
-        with zipfile.ZipFile(download_path, 'r') as zip_ref:
-            zip_ref.extractall(extract_dir)
+        with py7zr.SevenZipFile(download_path, 'r') as z:
+            z.extractall(extract_dir)
         print("解压完成")
-        
+
         # 查找并复制 snap7.dll
+        dll_found = False
         for root, dirs, files in os.walk(extract_dir):
             if "snap7.dll" in files:
                 dll_path = os.path.join(root, "snap7.dll")
                 shutil.copy2(dll_path, "snap7.dll")
                 print(f"找到并复制 snap7.dll: {dll_path}")
+                dll_found = True
                 break
-        
+            
+        if not dll_found:
+            print("警告: 在下载的压缩包中未找到 snap7.dll")
+            # 列出所有文件帮助调试
+            print("压缩包内容:")
+            for root, dirs, files in os.walk(extract_dir):
+                for file in files:
+                    print(f"  {os.path.join(root, file)}")
+            return False
+            
         # 清理临时文件
-        shutil.rmtree(extract_dir)
-        os.remove(download_path)
+        # shutil.rmtree(extract_dir)
+        # os.remove(download_path)
         
         return True
     except Exception as e:
         print(f"下载 snap7.dll 失败: {e}")
         return False
+    
 def clean_build_folders():
     """清理构建文件夹"""
     folders_to_clean = ['build', 'dist']
@@ -49,6 +67,7 @@ def clean_build_folders():
 
 def copy_resources():
     """复制必要的资源文件到dist文件夹"""
+    
     # 确保dist文件夹存在
     dist_path = 'dist/nx_path_planning'
     if not os.path.exists(dist_path):
@@ -57,15 +76,14 @@ def copy_resources():
     # 复制配置文件夹
     if os.path.exists('app/data'):
         print("复制配置文件夹...")
-        shutil.copytree('app/data', 'dist/nx_path_planning/app/data', dirs_exist_ok=True)
+        shutil.copytree('app/data', f'{dist_path}/app/data', dirs_exist_ok=True)
     
     if os.path.exists('app/map_core/data'):
-        shutil.copytree('app/map_core/data', 'dist/nx_path_planning/app/map_core/data', dirs_exist_ok=True)
+        shutil.copytree('app/map_core/data', f'{dist_path}/app/map_core/data', dirs_exist_ok=True)
 
     # 复制 snap7.dll
-    if os.path.exists('snap7.dll'):
-        print("复制 snap7.dll...")
-        shutil.copy2('snap7.dll', dist_path)
+    if os.path.exists('dll/snap7.dll'):
+        shutil.copy2('dll/snap7.dll', f'{dist_path}/dll')
 
 def build_executable():
     """使用PyInstaller构建可执行文件"""
@@ -78,22 +96,18 @@ def build_executable():
         '--noconfirm',  # 覆盖输出目录
         '--add-data=app/data;app/data',  # 添加配置文件夹
         '--add-data=app/map_core/data;app/map_core/data',
-        '--hidden-import=snap7'
+        '--add-binary=dll/snap7.dll;dll/snap7.dll'
     ]
 
     # 添加图标如果存在
     if os.path.exists('ui/img/icon.ico'):
         pyinstaller_args.append('--icon=ui/img/icon.ico')
 
-    # 添加 snap7.dll 如果存在
-    if os.path.exists('snap7.dll'):
-        pyinstaller_args.append('--add-binary=snap7.dll;.')
-
     # 添加主程序入口
     pyinstaller_args.append('run.py')
 
     # 过滤掉空参数
-    # pyinstaller_args = [arg for arg in pyinstaller_args if arg]
+    pyinstaller_args = [arg for arg in pyinstaller_args if arg]
     
     # 执行PyInstaller命令
     try:
