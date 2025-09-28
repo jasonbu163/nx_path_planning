@@ -37,28 +37,28 @@ app = FastAPI(
 # app.include_router(
 #     v1_wms_router,
 #     prefix="/api/v1/wms",
-#     tags=[f"{settings.PROJECT_NAME}WMS-v1"]
+#     tags=[f"{settings.PROJECT_NAME} WMS-v1"]
 # )
 
 # # 包含 WCS 路由 (v1)
 # app.include_router(
 #     v1_wcs_router,
 #     prefix="/api/v1/wcs",
-#     tags=[f"{settings.PROJECT_NAME}WCS-v1"]
+#     tags=[f"{settings.PROJECT_NAME} WCS-v1"]
 # )
 
 # # 包含 WMS 路由 (v2)
 # app.include_router(
 #     v2_wms_router,
 #     prefix="/api/v2/wms",
-#     tags=[f"{settings.PROJECT_NAME}WMS-v2"]
+#     tags=[f"{settings.PROJECT_NAME} WMS-v2"]
 # )
 
 # 包含 WCS 路由 (v2)
 app.include_router(
     v2_wcs_router,
     prefix="/api/v2/wcs",
-    tags=[f"{settings.PROJECT_NAME}WCS-v2"]
+    tags=[f"{settings.PROJECT_NAME} WCS-v2"]
 )
 
 @app.get("/")
