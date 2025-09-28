@@ -300,6 +300,12 @@ class DevicesController(DevicesLogger):
         # step 0: 准备工作
         ############################################################
 
+        # 判断任务坐标是否合法
+        disable_location = ["6,3,1", "6,3,2", "6,3,3", "6,3,4"]
+        if target_location in disable_location:
+            self.logger.error("❌ 任务坐标错误")
+            return [False, "❌ 任务坐标错误"]
+        
         # 获取穿梭车位置 -> 坐标: 如, "6,3,2" 楼层: 如, 2
         car_location =  self.car.car_current_location()
         self.logger.info(f"🚗 穿梭车当前坐标: {car_location}")
@@ -342,13 +348,16 @@ class DevicesController(DevicesLogger):
         self.logger.info("🚧 移动空载电梯到1层")
 
         if self.plc.plc_checker():
-            if self.plc._lift_move_by_layer(task_no+1, 1):
-                self.logger.info("✅ 电梯运行正常")
+            
+            self.logger.info("🚧 电梯开始移动...")
 
+            if self.plc.lift_move_by_layer_sync(task_no+1, 1):
+                self.logger.info("✅ 电梯工作指令发送成功")
             else:
                 self.plc.disconnect()
-                self.logger.error("❌ 电梯运行错误")
-                return [False, "❌ 电梯运行错误"]
+                self.logger.error("❌ 电梯工作指令发送失败")
+                return [False, "❌ 电梯工作指令发送失败"]
+            
         else:
             self.plc.disconnect()
             self.logger.error("❌ PLC错误")
@@ -376,7 +385,23 @@ class DevicesController(DevicesLogger):
             self.plc.disconnect()
             self.logger.error("❌ PLC运行错误")
             return [False, "❌ PLC运行错误"]
+        
+        # 等待电梯到达
+        if self.plc.plc_checker():
+            
+            self.logger.info(f"⌛️ 等待电梯到达{1}层")
 
+            if self.plc.wait_lift_move_complete_by_location_sync():
+                self.logger.info(f"✅ 电梯已到达{1}层")
+            else:
+                self.plc.disconnect()
+                self.logger.error(f"❌ 电梯未到达{1}层")
+                return [False, f"❌ 电梯未到达{1}层"]
+        
+        else:
+            self.plc.disconnect()
+            self.logger.error("❌ PLC错误")
+            return [False, "❌ PLC错误"]
 
         ############################################################
         # step 4: 电梯送货到目标层
@@ -385,18 +410,29 @@ class DevicesController(DevicesLogger):
         self.logger.info(f"🚧 移动电梯载货到目标楼层 {target_layer}层")
         
         if self.plc.plc_checker():
-            if self.plc._lift_move_by_layer(task_no+2, target_layer):
-                self.logger.info("✅ 电梯运行正常")
 
+            self.logger.info("🚧 电梯开始移动...")
+
+            if self.plc.lift_move_by_layer_sync(task_no+2, target_layer):
+                self.logger.info("✅ 电梯工作指令发送成功")
             else:
                 self.plc.disconnect()
-                self.logger.error("❌ 电梯运行错误")
-                return [False, "❌ 电梯运行错误"]
+                self.logger.error("❌ 电梯工作指令发送失败")
+                return [False, "❌ 电梯工作指令发送失败"]
+            
+            self.logger.info(f"⌛️ 等待电梯到达{target_layer}层")
+
+            if self.plc.wait_lift_move_complete_by_location_sync():
+                self.logger.info(f"✅ 电梯已到达{target_layer}层")
+            else:
+                self.plc.disconnect()
+                self.logger.error(f"❌ 电梯未到达{target_layer}层")
+                return [False, f"❌ 电梯未到达{target_layer}层"]
+            
         else:
             self.plc.disconnect()
             self.logger.error("❌ PLC错误")
             return [False ,"❌ PLC错误"]
-
         
         ############################################################
         # step 5: 货物进入目标层
@@ -430,7 +466,7 @@ class DevicesController(DevicesLogger):
             return [False, "❌ PLC运行错误"]
         
         ############################################################
-        # step 4: 穿梭车移动到接驳位
+        # step 6: 穿梭车移动到接驳位
         ############################################################
         self.logger.info("🚧 穿梭车移动到接驳位")
 
@@ -461,7 +497,6 @@ class DevicesController(DevicesLogger):
         if self.plc.plc_checker():
             self.plc.pick_in_process(target_layer)
             self.logger.info(f"✅ 信号已发送给PLC")
-
         else:
             self.plc.disconnect()
             self.logger.error("❌ PLC接收取货信号异常")
@@ -483,7 +518,6 @@ class DevicesController(DevicesLogger):
         
         if self.car.car_current_location() == target_location:
             self.logger.info(f"✅ 货物已到达 目标位置 {target_location}")
-        
         else:
             self.plc.disconnect()
             self.logger.error(f"❌ 货物未到达 目标位置 {target_location}")
@@ -498,7 +532,6 @@ class DevicesController(DevicesLogger):
         if self.plc.plc_checker():
             self.plc.pick_complete(target_layer)
             self.logger.info(f"✅ 入库完成")
-
         else:
             self.plc.disconnect()
             self.logger.error("❌ PLC 运行错误")
@@ -517,7 +550,6 @@ class DevicesController(DevicesLogger):
             return [False, "❌ PLC未连接"]
 
         return [True, "✅ 入库完成"]
-
 
     ############################################################
     ############################################################
@@ -546,6 +578,12 @@ class DevicesController(DevicesLogger):
         # step 0: 准备工作
         ############################################################
 
+        # 判断任务坐标是否合法
+        disable_location = ["6,3,1", "6,3,2", "6,3,3", "6,3,4"]
+        if target_location in disable_location:
+            self.logger.error("❌ 任务坐标错误")
+            return [False, "❌ 任务坐标错误"]
+        
         # 获取穿梭车位置 -> 坐标: 如, "6,3,2" 楼层: 如, 2
         car_location = self.car.car_current_location()
         self.logger.info(f"🚗 穿梭车当前坐标: {car_location}")
@@ -588,18 +626,20 @@ class DevicesController(DevicesLogger):
         self.logger.info(f"🚧 移动空载电梯到 {target_layer} 层")
 
         if self.plc.plc_checker():
-            if self.plc._lift_move_by_layer(task_no+1, target_layer):
-                self.logger.info("✅ 电梯运行正常")
-            
+
+            self.logger.info("🚧 电梯开始移动...")
+
+            if self.plc.lift_move_by_layer_sync(task_no+1, target_layer):
+                self.logger.info("✅ 电梯工作指令发送成功")
             else:
                 self.plc.disconnect()
-                self.logger.error("❌ 电梯运行错误")
-                return [False, "❌ 电梯运行错误"]
+                self.logger.error("❌ 电梯工作指令发送失败")
+                return [False, "❌ 电梯工作指令发送失败"]
+            
         else:
             self.plc.disconnect()
             self.logger.error("❌ PLC错误")
             return [False ,"❌ PLC错误"]
-        
         
         ############################################################
         # step 1: 穿梭车前往货物位置
@@ -621,7 +661,24 @@ class DevicesController(DevicesLogger):
             else:
                 self.plc.disconnect()
                 self.logger.error(f"❌ 穿梭车未到达 货物位置 {target_location}")
-                return [False, "❌ 穿梭车运行错误"]
+                return [False, f"❌ 穿梭车未到达 货物位置 {target_location}"]
+            
+        # 等待电梯到达
+        if self.plc.plc_checker():
+            
+            self.logger.info(f"⌛️ 等待电梯到达{target_layer}层")
+
+            if self.plc.wait_lift_move_complete_by_location_sync():
+                self.logger.info(f"✅ 电梯已到达{target_layer}层")
+            else:
+                self.plc.disconnect()
+                self.logger.error(f"❌ 电梯未到达{target_layer}层")
+                return [False, f"❌ 电梯未到达{target_layer}层"]
+        
+        else:
+            self.plc.disconnect()
+            self.logger.error("❌ PLC错误")
+            return [False, "❌ PLC错误"]
 
         ############################################################
         # step 2: 发送放货进行中信号给PLC
@@ -632,12 +689,10 @@ class DevicesController(DevicesLogger):
         if self.plc.plc_checker():
             self.plc.feed_in_process(target_layer)
             self.logger.info(f"✅ 信号已发送给PLC")
-
         else:
             self.plc.disconnect()
             self.logger.error("❌ PLC 运行错误")
             return [False, "❌ PLC 运行错误"]
-        
         
         ############################################################
         # step 3: 穿梭车将货物移动到楼层接驳位
@@ -656,7 +711,6 @@ class DevicesController(DevicesLogger):
         
         if self.car.car_current_location() == target_lift_pre_location and self.car.car_status()['car_status'] == CarStatus.READY.value:
             self.logger.info(f"✅ 货物已到达 楼层接驳输送线位置 {target_lift_pre_location}")
-        
         else:
             self.plc.disconnect()
             self.logger.error(f"❌ 货物未到达 楼层接驳输送线位置 {target_lift_pre_location}")
@@ -693,15 +747,26 @@ class DevicesController(DevicesLogger):
 
         self.logger.info(f"🚧 移动电梯载货到1层")
         
-        
         if self.plc.plc_checker():
-            if self.plc._lift_move_by_layer(task_no+4, 1):
-                self.logger.info("✅ 电梯运行正常")
 
+            self.logger.info("🚧 电梯开始移动...")
+
+            if self.plc.lift_move_by_layer_sync(task_no+4, 1):
+                self.logger.info("✅ 电梯运行正常")
             else:
                 self.plc.disconnect()
                 self.logger.error("❌ 电梯运行错误")
                 return [False, "❌ 电梯运行错误"]
+            
+            self.logger.info(f"⌛️ 等待电梯到达{1}层")
+
+            if self.plc.wait_lift_move_complete_by_location_sync():
+                self.logger.info(f"✅ 电梯已到达{1}层")
+            else:
+                self.plc.disconnect()
+                self.logger.error(f"❌ 电梯未到达{1}层")
+                return [False, f"❌ 电梯未到达{1}层"]
+            
         else:
             self.plc.disconnect()
             self.logger.error("❌ PLC错误")
