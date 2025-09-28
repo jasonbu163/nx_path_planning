@@ -12,7 +12,7 @@ def download_snap7_dll():
     snap7_url = "https://sourceforge.net/projects/snap7/files/1.4.2/snap7-full-1.4.2.7z/download"
     download_path = "snap7-full-1.4.2.7z"
     extract_dir = "snap7_temp"
-    # win64_dll_path = "release\\Windows\\Win64" # 此处调整路径，找到解压后到这个路径
+    # win64_dll_path = "snap7-full-1.4.2\\release\\Windows\\Win64" # 此处调整路径，找到解压后到这个路径
 
     try:
         # 如果存在则不用重复下载
