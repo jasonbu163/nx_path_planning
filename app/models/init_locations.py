@@ -6,6 +6,7 @@ from sqlalchemy.orm import sessionmaker
 
 from .base_model import LocationList
 from .init_db import init_db
+from .base_enum import LocationStatus
 
 def init_locations():
     """初始化库位数据，生成库位列表(LocationList)。"""
@@ -30,7 +31,6 @@ def init_locations():
     Session = sessionmaker(bind=engine)
     session = Session()
 
-
     # 清空现有数据
     session.query(LocationList).delete()
 
@@ -39,13 +39,13 @@ def init_locations():
     for idx, location in enumerate(map_config['nodes'], start=1):
         # 先检查lift节点
         if location in LIFT_NODES:
-            status = "lift"
+            status = LocationStatus.LIFT.value
         # 再检查highway节点
         elif location in HIGHWAY_NODES:
-            status = "highway"
+            status = LocationStatus.HIGHWAY.value
         # 其他节点设为free
         else:
-            status = "free"
+            status = LocationStatus.FREE.value
             
         locations.append(LocationList(
             id=idx,

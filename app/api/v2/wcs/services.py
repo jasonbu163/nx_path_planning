@@ -1,6 +1,6 @@
 # api/v2/wcs/services.py
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List, Tuple, Union, Dict, Any
 from random import randint
 import time
 import asyncio
@@ -12,6 +12,7 @@ from app.models.base_model import TaskList as TaskModel
 from app.models.base_model import LocationList as LocationModel
 from app.models.base_enum import LocationStatus
 from . import schemas
+from app.core.devices_logger import DevicesLogger
 
 from app.map_core import PathCustom
 # from app.devices.service_asyncio import DevicesService, DB_12
@@ -34,61 +35,11 @@ from app.core.config import settings
 # hbm = HeartbeatManager(network, bulid)
 # threading.Thread(target=hbm.start, daemon=True).start()
 
-class Services:
-
-    # def __init__(self, thread_pool: ThreadPoolExecutor):
-    def __init__(self):
-        # self.thread_pool = thread_pool
-        self._loop = None # 延迟初始化的事件循环引用
-        self.path_planner = PathCustom()
-        self.plc_service = PLCController(settings.PLC_IP)
-        self.car_service = AsyncSocketCarController(settings.CAR_IP, settings.CAR_PORT)
-        self.device_service = DevicesControllerByStep(settings.PLC_IP, settings.CAR_IP, settings.CAR_PORT)
-
-        # 设备操作锁
-        self.operation_lock = asyncio.Lock()
-        self.operation_in_progress = False
-
-    # @property
-    # def loop(self):
-    #     """获取当前运行的事件循环（线程安全）"""
-    #     if self._loop is None:
-    #         self._loop = asyncio.get_running_loop()
-    #     return self._loop
-
-
-    #################################################
-    # 电梯锁锁服务
-    #################################################
-
-    async def acquire_lock(self):
-        """获取电梯操作锁"""
-        # 检查锁是否已经被占用
-        if self.operation_in_progress:
-            return False
-            
-        acquired = await self.operation_lock.acquire()
-        if acquired:
-            self.operation_in_progress = True
-            return True
-        return False
-
-    def release_lock(self):
-        """释放电梯操作锁"""
-        self.operation_in_progress = False
-        if self.operation_lock.locked():
-            self.operation_lock.release()
-
-    def is_operation_in_progress(self):
-        """检查是否有电梯操作正在进行"""
-        return self.operation_in_progress
-    
-    #################################################
-    # 任务服务
-    #################################################
+class TaskServices:
+    """任务服务"""
 
     def create_task(self, db: Session, task: schemas.TaskCreate):
-        """创建新任务服务"""
+        """创建新任务。"""
         task_id = datetime.now().strftime("%Y%m%d%H%M%S")
         creation_time = datetime.now().strftime("%Y%m%d%H%M%S")
         
@@ -104,11 +55,11 @@ class Services:
         return db_task
 
     def get_tasks(self, db: Session, skip: int = 0, limit: int = 100):
-        """获取任务列表服务"""
+        """获取任务列表。"""
         return db.query(TaskModel).offset(skip).limit(limit).all()
 
     def update_task_status(self, db: Session, task_id: str, new_status: Optional[str]):
-        """更新任务状态服务"""
+        """更新任务状态。"""
         task = db.query(TaskModel).filter(TaskModel.id == task_id).first()
         if not task:
             return False
@@ -120,192 +71,552 @@ class Services:
         return task
 
 
-    #################################################
-    # 库位服务
-    #################################################
+class LocationServices:
+    """库位服务"""
+    def __init__(self) -> None:
+        self.location_logger = DevicesLogger(self.__class__.__name__)
 
-    def get_locations(self, db: Session):
+    # 禁用的库位坐标
+    DISABLE_LOCATION_LIST = {
+        "4,1,1", "4,2,1", "4,3,1", "4,4,1", "4,5,1", "4,6,1", "4,7,1", "5,3,1", "6,3,1",
+        "4,1,2", "4,2,2", "4,3,2", "4,4,2", "4,5,2", "4,6,2", "4,7,2", "5,3,2", "6,3,2",
+        "4,1,3", "4,2,3", "4,3,3", "4,4,3", "4,5,3", "4,6,3", "4,7,3", "5,3,3", "6,3,3",
+        "4,1,4", "4,2,4", "4,3,4", "4,4,4", "4,5,4", "4,6,4", "4,7,4", "5,3,4", "6,3,4",
+    }
+
+    def _validate_location(self, location: str) -> bool:
+        """校验库位坐标是否有效。
+        
+        Args:
+            location: 库位坐标，如"1,1,1"。
+        
+        Returns:
+            bool: True表示库位坐标有效，False表示库位坐标无效。
         """
-        获取所有库位信息服务
+        if location in self.DISABLE_LOCATION_LIST:
+            return False
+        return True
+
+    # 禁用的库位ID
+    DISABLE_ID_LIST = {
+        22, 23, 24, 25, 26, 27, 28, 30, 35,
+        63, 64, 65, 66, 67, 68, 69, 71, 76,
+        104, 105, 106, 107, 108, 109, 110, 112, 117,
+        145, 146, 147, 148, 149, 150, 151, 153, 158
+    }
+    
+    def _validate_id(self, location_id: int) -> bool:
+        """校验库位ID是否可用。
+        
+        Args:
+            db: Session
+            location_id: 库位ID，如1。
+        
+        Returns:
+            bool: True表示库位ID可用，False表示库位ID不可用。
+        """
+        if location_id in self.DISABLE_ID_LIST:
+            return False
+        return True
+
+    def get_locations(
+            self,
+            db: Session
+    ) -> Tuple[bool, Union[str, List[LocationModel]]]:
+        """获取所有库位信息。
+
+        Args:
+            db: Session
+        
+        Returns:
+            Tuple: 操作状态，库位信息或错误信息。
         """
         location_floor_info = db.query(LocationModel).all()
         if not location_floor_info:
-            return False
-        return location_floor_info
+            return False, "无库位信息"
+        return True, location_floor_info
     
-    def get_location_by_id(self, db: Session, LOCATION_ID: int):
+    def get_location_by_id(
+            self,
+            db: Session,
+            location_id: int
+    ) -> Tuple[bool, Union[str, LocationModel]]:
+        """根据库位ID，获取库位信息。
+        
+        Args:
+            db: Session
+            location_id: 库位ID，如1。
+        
+        Returns:
+            Tuple: 操作状态，库位信息或错误信息。
         """
-        根据库位ID, 获取库位信息服务
-        """
-        location_info = db.query(LocationModel).get(LOCATION_ID)
+        location_info = db.query(LocationModel).get(location_id)
         if not location_info:
-            return False
-        return location_info
+            return False, "无库位信息"
+        return True, location_info
 
-    def get_location_by_loc(self, db: Session, LOCATION: str):
+    def get_location_by_loc(
+            self,
+            db: Session,
+            location: str
+    ) -> Tuple[bool, Union[str, LocationModel]]:
+        """根据库位坐标，获取库位信息。
+
+        Args:
+            location: 库位坐标，如"1,1,1"。
+        
+        Returns:
+            Tuple: 操作状态，库位信息或错误信息。
         """
-        根据库位坐标, 获取库位信息服务
-        """
-        location_info = db.query(LocationModel).filter(LocationModel.location == LOCATION).first()
+        location_info = db.query(LocationModel).filter(LocationModel.location == location).first()
         if not location_info:
-            return False
-        return location_info
+            return False, "无库位信息"
+        return True, location_info
 
-    def get_location_by_pallet_id(self, db: Session, PALLET_ID: str):
+    def get_location_by_pallet_id(
+            self,
+            db: Session,
+            pallet_id: str
+    ) -> Tuple[bool, Union[str, LocationModel]]:
+        """根据托盘号，获取库位信息。
+
+        Args:
+            db: Session
+            pallet_id: 托盘号，如"T1233"。
+        
+        Returns:
+            Tuple: 操作状态，库位信息或错误信息。
         """
-        根据托盘号, 获取库位信息
-        """
-        location_info = db.query(LocationModel).filter(LocationModel.pallet_id == PALLET_ID).first()
+        location_info = db.query(LocationModel).filter(LocationModel.pallet_id == pallet_id).first()
         if not location_info:
-            return False
-        return location_info
+            return False, "无库位信息"
+        return True, location_info
 
-    def get_location_by_status(self, db: Session, STATUS: str):
+    def get_location_by_status(
+            self,
+            db: Session,
+            status: str
+    ) -> Tuple[bool, Union[str, List[LocationModel]]]:
+        """通过库位状态，获取库位信息。
+
+        Args:
+            status: 库位状态，如"free"、"occupied"、"highway"、"lift"。
+        
+        Returns:
+            Tuple: 操作状态，库位信息或错误信息。
         """
-        通过托盘号获取库位信息
-        """
-        location_info = db.query(LocationModel).filter(LocationModel.status == STATUS).all()
+        location_info = db.query(LocationModel).filter(LocationModel.status == status).all()
         if not location_info:
-            return False
-        return location_info
+            return False, "无库位信息"
+        return True, location_info
 
-    def get_location_by_start_to_end(self, db: Session, START_ID: int, END_ID: int):
-        """
-        根据起始节点获取库位信息服务
+    def get_location_by_start_to_end(
+            self,
+            db: Session,
+            start_id: int,
+            end_id: int
+    ) -> Tuple[bool, Union[str, List[LocationModel]]]:
+        """根据起始节点，获取库位信息。
+
+        Args:
+            start_id: 起始节点ID，如1。
+            end_id: 结束节点ID，如10。
+        
+        Returns:
+            Tuple: 操作状态，库位信息或错误信息。
         """
         location_floor_info = db.query(LocationModel).filter(
-            LocationModel.id >= START_ID,
-            LocationModel.id <= END_ID
+            LocationModel.id >= start_id,
+            LocationModel.id <= end_id
         ).all()
         if not location_floor_info:
-            return False
-        return location_floor_info
+            return False, "无库位信息"
+        return True, location_floor_info
 
-    def update_pallet_by_id(self, db: Session, LOCATION_ID: int, PALLET_ID: str):
-        """
-        用库位ID, 更新库位托盘号服务
-        """
-        disable_id_list = [
-            22, 23, 24, 25, 26, 27, 28, 30, 35,
-            63, 64, 65, 66, 67, 68, 69, 71, 76,
-            104, 105, 106, 107, 108, 109, 110, 112, 117,
-            145, 146, 147, 148, 149, 150, 151, 153, 158
-            ]
-        if LOCATION_ID in disable_id_list:
-            return False
+    def update_pallet_by_id(
+            self,
+            db: Session,
+            location_id: int,
+            pallet_id: str
+    ) -> Tuple[bool, Union[str, LocationModel]]:
+        """根据库位ID, 更新库位托盘号。
         
+        Args:
+            db: Session
+            location_id: 库位ID，如1。
+            pallet_id: 托盘号，如"T1233"。
+        
+        Returns:
+            Tuple: 操作状态，库位信息或错误信息。
+        """
+        
+        # 验证库位ID
+        # Check if location ID is valid
+        if not self._validate_id(location_id):
+            return False, f"库位ID {location_id} 不可用"
+        
+        # 查询库位信息
         # Check if location exists
-        location_info = db.query(LocationModel).filter(LocationModel.id == LOCATION_ID).first()
+        location_info = db.query(LocationModel).filter(LocationModel.id == location_id).first()
         if not location_info:
-            return False
+            return False, "库位信息不存在"
         
-        # Update pallet ID and status
-        db.query(LocationModel).filter(LocationModel.id == LOCATION_ID).update({
-            LocationModel.pallet_id: PALLET_ID, 
-            LocationModel.status: LocationStatus.OCCUPIED.value
-            })
+        try:
+            # 更新托盘号和状态
+            # Update pallet ID and status
+            db.query(LocationModel).filter(LocationModel.id == location_id).update({
+                LocationModel.pallet_id: pallet_id, 
+                LocationModel.status: LocationStatus.OCCUPIED.value
+                })
+            
+            # 提交更改和刷新
+            # Commit changes and refresh
+            db.commit()
+            db.refresh(location_info)
+            return True, location_info
         
-        # Commit changes and refresh
-        db.commit()
-        db.refresh(location_info)
-        return location_info
+        except Exception as e:
+            # 回滚事务并返回错误信息
+            # Rollback transaction and return error message
+            db.rollback()
+            return False, f"更新失败: {str(e)}"
 
-    def delete_pallet_by_id(self, db: Session, LOCATION_ID: int):
+    def delete_pallet_by_id(
+            self,
+            db: Session,
+            location_id: int
+    ) -> Tuple[bool, Union[str, LocationModel]]:
+        """根据库位ID, 删除库位托盘号。
+
+        Args:
+            db: Session
+            location_id: 库位ID，如1。
+
+        Returns:
+            Tuple: 操作状态，库位信息或错误信息。
         """
-        用库位ID, 删除库位托盘号服务
-        """
-        disable_id_list = [
-            22, 23, 24, 25, 26, 27, 28, 30, 35,
-            63, 64, 65, 66, 67, 68, 69, 71, 76,
-            104, 105, 106, 107, 108, 109, 110, 112, 117,
-            145, 146, 147, 148, 149, 150, 151, 153, 158
-            ]
-        if LOCATION_ID in disable_id_list:
-            return False
         
+        # 验证库位ID
+        # Check if location ID is valid
+        if not self._validate_id(location_id):
+            return False, f"库位ID {location_id} 不可用"
+        
+        # 查询库位信息
         # Check if location exists
-        location_info = db.query(LocationModel).filter(LocationModel.id == LOCATION_ID).first()
+        location_info = db.query(LocationModel).filter(LocationModel.id == location_id).first()
         if not location_info:
-            return False
+            return False, "库位信息不存在"
         
-        # Update pallet ID and status
-        db.query(LocationModel).filter(LocationModel.id == LOCATION_ID).update({
-            LocationModel.pallet_id: None, 
-            LocationModel.status: LocationStatus.FREE.value
-            })
+        try:
+            # 更新托盘号和状态
+            # Update pallet ID and status
+            db.query(LocationModel).filter(LocationModel.id == location_id).update({
+                LocationModel.pallet_id: None, 
+                LocationModel.status: LocationStatus.FREE.value
+                })
+            
+            # 提交更改和刷新
+            # Commit changes and refresh
+            db.commit()
+            db.refresh(location_info)
+            return True, location_info
         
-        # Commit changes and refresh
-        db.commit()
-        db.refresh(location_info)
-        return location_info
+        except Exception as e:
+            # 回滚事务并返回错误信息
+            # Rollback transaction and return error message
+            db.rollback()
+            return False, f"更新失败: {str(e)}"
 
-    def update_pallet_by_loc(self, db: Session, LOCATION: str, PALLET_ID: str):
-        """
-        用库位坐标, 更新库位托盘号服务
-        """
-        disable_locations = [
-            "4,1,1", "4,2,1", "4,3,1", "4,4,1", "4,5,1", "4,6,1", "4,7,1", "5,3,1", "6,3,1",
-            "4,1,2", "4,2,2", "4,3,2", "4,4,2", "4,5,2", "4,6,2", "4,7,2", "5,3,2", "6,3,2",
-            "4,1,3", "4,2,3", "4,3,3", "4,4,3", "4,5,3", "4,6,3", "4,7,3", "5,3,3", "6,3,3",
-            "4,1,4", "4,2,4", "4,3,4", "4,4,4", "4,5,4", "4,6,4", "4,7,4", "5,3,4", "6,3,4",
-            ]
-        if LOCATION in disable_locations:
-            return False
+    def update_pallet_by_loc(
+            self,
+            db: Session,
+            location: str,
+            palette_id: str
+    ) -> Tuple[bool, Union[str, LocationModel]]:
+        """根据库位坐标, 更新库位托盘号。
         
-        # 查询库位信息 匹配是否存在
-        location_info = db.query(LocationModel).filter(LocationModel.location == LOCATION).first()
+        Args:
+            db: 数据库会话对象
+            location: 库位坐标
+            palette_id: 托盘号
+
+        Returns:
+            Tuple: 操作状态，库位信息或错误信息。
+        """
+
+        # 验证库位坐标
+        # Check if location is valid
+        if not self._validate_location(location):
+            return False, f"库位坐标 {location} 不可用"
+        
+        # 查询库位信息
+        # Check if location exists
+        location_info = db.query(LocationModel).filter(LocationModel.location == location).first()
         if not location_info:
-            return False
+            return False, "库位信息不存在"
         
-        # 写入库位托盘号
-        db.query(LocationModel).filter(LocationModel.location == LOCATION).update({
-            LocationModel.pallet_id: PALLET_ID,
-            LocationModel.status: LocationStatus.OCCUPIED.value
-            })
+        try: 
+            # 写入库位托盘号
+            # Update pallet ID and status
+            location_info.pallet_id = palette_id
+            location_info.status = LocationStatus.OCCUPIED.value
 
-        # Commit changes and refresh
-        db.commit()
-        db.refresh(location_info)
-        return location_info
+            # 提交更改和刷新
+            # Commit changes and refresh
+            db.commit()
+            db.refresh(location_info)
+            return True, location_info
+        
+        except Exception as e:
+            # 回滚事务并返回错误信息
+            # Rollback transaction and return error message
+            db.rollback()
+            return False, f"更新失败: {str(e)}"
+    
+    def bulk_update_pallets(
+            self,
+            db: Session,
+            updates: List[Dict[str, Any]]
+    ) -> Tuple[bool, Union[str, List[LocationModel]]]:
+        """批量更新库位托盘号。
+        
+        Args:
+            db: 数据库会话对象
+            updates: 批量更新数据，包含location和palette_id的字典列表
+
+        Returns:
+            Tuple: 操作状态，库位信息或错误信息。
+        """
+        
+        # 创建一个空列表用于存储成功更新的库位信息
+        # Create an empty list to store the updated location information
+        successful_locations = []
+
+        # 创建一个空列表用于存储错误信息
+        # Create an empty list to store error messages
+        errors = []
+
+        # 遍历批量更新数据
+        # Iterate through the batch update data
+        for update_data in updates:
+            location = update_data.get("location")
+            new_pallet_id = update_data.get("new_pallet_id")
+
+            # 验证库位坐标
+            # Check if location is valid
+            if not location or not new_pallet_id:
+                errors.append(f"更新数据缺少必要参数: {update_data}")
+                continue
+            if not self._validate_location(location):
+                errors.append(f"位置 {location} 是禁用位置")
+                continue
+
+            # 查询记录
+            # Check if location exists
+            location_info = db.query(LocationModel).filter(
+                LocationModel.location == location
+            ).first()
+            if not location_info:
+                errors.append(f"位置 {location} 不存在")
+                continue
+
+            try:
+                # 更新托盘号和状态
+                # Update pallet ID and status
+                location_info.pallet_id = new_pallet_id
+                location_info.status = LocationStatus.OCCUPIED.value
+                successful_locations.append(location)
+            except Exception as e:
+                errors.append(f"更新位置 {location} 时发生错误: {str(e)}")
+                continue
+
+        # 如果没有成功更新任何记录，则返回错误信息
+        # If no records were successfully updated, return error message
+        if not successful_locations:
+            error_msg = "所有更新均失败" + "; ".join(errors) if errors else "没有有效的更新数据"
+            return False, error_msg
+        
+        try:
+            # 提交所有更改
+            # Commit changes
+            db.commit()
+            
+            # 查询所有成功更新的库位信息
+            updated_locations = db.query(LocationModel).filter(
+                LocationModel.location.in_(successful_locations)
+            ).all()
+
+            # 如果有错误但部份成功
+            # If there are errors but some updates succeeded
+            if errors:
+                warning_msg = f"部分更新成功，{'; '.join(errors)}"
+                # 也可以返回警告信息，但是仍然返回成功
+                # Also return warning message, but still return success
+                self.location_logger.logger.warning(warning_msg)
+                return True, updated_locations
+
+            return True, updated_locations
+        
+        except Exception as e:
+            # 回滚事务并返回错误信息
+            # Rollback transaction and return error message
+            db.rollback()
+            error_msg = f"提交更新时发生错误: {str(e)}"
+            if errors:
+                error_msg += f"; 其他错误: {'; '.join(errors)}"
+            return False, error_msg
+    
+    def delete_pallet_by_loc(
+            self,
+            db: Session,
+            location: str
+    ) -> Tuple[bool, Union[str, LocationModel]]:
+        """根据库位坐标, 删除库位托盘号。
+
+        Args:
+            db: Session
+            location: 库位坐标，如"4,1,1"。
+
+        Returns:
+            Tuple: 操作状态，库位信息或错误信息。
+        """
+        
+        # 验证库位坐标
+        # Check if location is valid
+        if not self._validate_location(location):
+            return False, f"库位坐标 {location} 不可用"
+        
+        # 查询库位信息
+        # Check if location exists
+        location_info = db.query(LocationModel).filter(LocationModel.location == location).first()
+        if not location_info:
+            return False, "库位信息不存在"
+        
+        try: 
+            # 更新托盘号和状态
+            # Update pallet ID and status
+            location_info.pallet_id = None 
+            location_info.status = LocationStatus.FREE.value
+            
+            # 提交更改和刷新
+            # Commit changes and refresh
+            db.commit()
+            db.refresh(location_info)
+            return True, location_info
+        
+        except Exception as e:
+            # 回滚事务并返回错误信息
+            # Rollback transaction and return error message
+            db.rollback()
+            return False, f"更新失败: {str(e)}"
+
+    def bulk_delete_pallets(
+            self,
+            db: Session,
+            locations: List[str]
+    ) -> Tuple[bool, Union[str, List[LocationModel]]]:
+        """批量删除库位托盘号。
+        
+        Args:
+            db: 数据库会话对象
+            locations: 需要删除托盘号的库位坐标列表
+
+        Returns:
+            Tuple: 操作状态，库位信息或错误信息。
+        """
+        
+        # 创建一个空列表用于存储成功更新的库位信息
+        # Create an empty list to store the updated location information
+        successful_locations = []
+
+        # 创建一个空列表用于存储错误信息
+        # Create an empty list to store error messages
+        errors = []
+
+        # 遍历批量更新数据
+        # Iterate through the batch update data
+        for location in locations:
+
+            # 验证库位坐标
+            # Check if location is valid
+            if not location:
+                errors.append("接收到空的库位坐标")
+                continue
+            if not self._validate_location(location):
+                errors.append(f"位置 {location} 是禁用位置")
+                continue
+
+            # 查询记录
+            # Check if location exists
+            location_info = db.query(LocationModel).filter(
+                LocationModel.location == location
+            ).first()
+            if not location_info:
+                errors.append(f"位置 {location} 不存在")
+                continue
+
+            # 检查是否已经有托盘号（可选，根据业务需求）
+            # Check if there is already a pallet ID (optional, depending on business requirements)
+            if not location_info.pallet_id:
+                errors.append(f"位置 {location} 没有托盘号，无需删除")
+                continue
+
+            try:
+                # 删除托盘号和更新状态
+                # Delete pallet ID and update status
+                location_info.pallet_id = None
+                location_info.status = LocationStatus.FREE.value
+                successful_locations.append(location)
+            except Exception as e:
+                errors.append(f"更新位置 {location} 时发生错误: {str(e)}")
+                continue
+
+        # 如果没有成功删除任何记录，则返回错误信息
+        # If no records were successfully updated, return error message
+        if not successful_locations:
+            error_msg = "所有更新均失败" + "; ".join(errors) if errors else "没有有效的更新数据"
+            return False, error_msg
+        
+        try:
+            # 提交所有更改
+            # Commit changes
+            db.commit()
+            
+            # 查询所有成功更新的库位信息
+            updated_locations = db.query(LocationModel).filter(
+                LocationModel.location.in_(successful_locations)
+            ).all()
+
+            # 如果有错误但部份成功
+            # If there are errors but some updates succeeded
+            if errors:
+                warning_msg = f"部分更新成功，{'; '.join(errors)}"
+                # 也可以返回警告信息，但是仍然返回成功
+                # Also return warning message, but still return success
+                self.location_logger.logger.warning(warning_msg)
+                return True, updated_locations
+
+            return True, updated_locations
+        
+        except Exception as e:
+            # 回滚事务并返回错误信息
+            # Rollback transaction and return error message
+            db.rollback()
+            error_msg = f"提交更新时发生错误: {str(e)}"
+            if errors:
+                error_msg += f"; 其他错误: {'; '.join(errors)}"
+            return False, error_msg
     
 
-    def delete_pallet_by_loc(self, db: Session, LOCATION: str):
-        """
-        用库位ID, 删除库位托盘号服务
-        """
-        disable_locations = [
-            "4,1,1", "4,2,1", "4,3,1", "4,4,1", "4,5,1", "4,6,1", "4,7,1", "5,3,1", "6,3,1",
-            "4,1,2", "4,2,2", "4,3,2", "4,4,2", "4,5,2", "4,6,2", "4,7,2", "5,3,2", "6,3,2",
-            "4,1,3", "4,2,3", "4,3,3", "4,4,3", "4,5,3", "4,6,3", "4,7,3", "5,3,3", "6,3,3",
-            "4,1,4", "4,2,4", "4,3,4", "4,4,4", "4,5,4", "4,6,4", "4,7,4", "5,3,4", "6,3,4",
-            ]
-        if LOCATION in disable_locations:
-            return False
-        
-        # Check if location exists
-        location_info = db.query(LocationModel).filter(LocationModel.location == LOCATION).first()
-        if not location_info:
-            return False
-        
-        # Update pallet ID and status
-        db.query(LocationModel).filter(LocationModel.location == LOCATION).update({
-            LocationModel.pallet_id: None, 
-            LocationModel.status: LocationStatus.FREE.value
-            })
-        
-        # Commit changes and refresh
-        db.commit()
-        db.refresh(location_info)
-        return location_info
 
-    #################################################
-    # 路径服务
-    #################################################
+class PathServices:
+    """路径服务"""
+
+    def __init__(self):
+        self.path_planner = PathCustom()
 
     # async def get_path(self, source: str, target: str):
-    #     """
-    #     异步 - 获取路径服务 (线程池)
-    #     """
+    #     """[异步] 获取路径 (线程池)。"""
     #     path = await self.loop.run_in_executor(
     #         self.thread_pool,
     #         self.path_planner.find_shortest_path,
@@ -316,9 +627,7 @@ class Services:
     #     return path
     
     async def get_path(self, source: str, target: str):
-        """
-        异步 - 获取路径服务
-        """
+        """[异步] 获取路径。"""
         path = self.path_planner.find_shortest_path(source, target)
         if not path:
             return False
@@ -398,6 +707,59 @@ class Services:
             return False
         return segments
 
+
+class DeviceServices:
+    """设备服务"""
+
+    # def __init__(self, thread_pool: ThreadPoolExecutor):
+    def __init__(self):
+        # self.thread_pool = thread_pool
+        self._loop = None # 延迟初始化的事件循环引用
+        self.path_planner = PathCustom()
+        self.location_service = LocationServices()
+        self.plc_service = PLCController(settings.PLC_IP)
+        self.car_service = AsyncSocketCarController(settings.CAR_IP, settings.CAR_PORT)
+        self.device_service = DevicesControllerByStep(settings.PLC_IP, settings.CAR_IP, settings.CAR_PORT)
+
+        # 设备操作锁
+        self.operation_lock = asyncio.Lock()
+        self.operation_in_progress = False
+
+    # @property
+    # def loop(self):
+    #     """获取当前运行的事件循环（线程安全）"""
+    #     if self._loop is None:
+    #         self._loop = asyncio.get_running_loop()
+    #     return self._loop
+
+
+    #################################################
+    # 电梯锁服务
+    #################################################
+
+    async def acquire_lock(self):
+        """获取电梯操作锁"""
+        # 检查锁是否已经被占用
+        if self.operation_in_progress:
+            return False
+            
+        acquired = await self.operation_lock.acquire()
+        if acquired:
+            self.operation_in_progress = True
+            return True
+        return False
+
+    def release_lock(self):
+        """释放电梯操作锁"""
+        self.operation_in_progress = False
+        if self.operation_lock.locked():
+            self.operation_lock.release()
+
+    def is_operation_in_progress(self):
+        """检查是否有电梯操作正在进行"""
+        return self.operation_in_progress
+
+    
     #################################################
     # 穿梭车服务
     #################################################
@@ -908,7 +1270,6 @@ class Services:
 
         finally:
             self.release_lock()
-        
     
     async def do_task_outband(
             self,
@@ -967,13 +1328,13 @@ class Services:
         # 获取当前层所有库位信息
         node_status = dict()
         if start_layer == 1:
-            all_nodes = self.get_location_by_start_to_end(db, START_ID=124,END_ID=164)
+            all_nodes = self.location_service.get_location_by_start_to_end(db=db, start_id=124, end_id=164)
         elif start_layer == 2:
-            all_nodes = self.get_location_by_start_to_end(db, START_ID=83,END_ID=123)
+            all_nodes = self.location_service.get_location_by_start_to_end(db=db, start_id=83, end_id=123)
         elif start_layer == 3:
-            all_nodes = self.get_location_by_start_to_end(db, START_ID=42,END_ID=82)
+            all_nodes = self.location_service.get_location_by_start_to_end(db=db, start_id=42, end_id=82)
         elif start_layer == 4:
-            all_nodes = self.get_location_by_start_to_end(db, START_ID=1,END_ID=41)
+            all_nodes = self.location_service.get_location_by_start_to_end(db=db, start_id=1, end_id=41)
         else:
             self.plc_service.logger.error("❌ 未找到符合条件的库位信息")
             return [False, "❌ 未找到符合条件的库位信息"]
@@ -1023,7 +1384,7 @@ class Services:
 
             self.device_service.logger.info(f"[base 1] 获取入库口托盘信息，并校验托盘信息")
 
-            sql_qrcode_info = self.get_location_by_pallet_id(db, NEW_PALLET_ID)
+            sql_qrcode_info = self.location_service.get_location_by_pallet_id(db, NEW_PALLET_ID)
             if sql_qrcode_info and sql_qrcode_info.pallet_id in [NEW_PALLET_ID]:
                 return [False, "❌ 订单托盘已在库内"]
             self.device_service.logger.info(f"[订单托盘号校验] - ✅ 订单托盘不在库内")
@@ -1069,7 +1430,7 @@ class Services:
                 ]
             if TARGET_LOCATION in buffer_list:
                 return [False, f"❌ {TARGET_LOCATION} 位置为接驳位，不能直接使用此功能操作"]
-            location_info = self.get_location_by_loc(db, TARGET_LOCATION)
+            location_info = self.location_service.get_location_by_loc(db, TARGET_LOCATION)
             if location_info:
                 if location_info.status in ["occupied", "lift", "highway"]:
                     return [False, f"❌ 入库目标错误，目标状态为{location_info.status}"]
@@ -1214,7 +1575,7 @@ class Services:
             update_pallet_id = inband_qrcode_info # 生产用
             # update_pallet_id = NEW_PALLET_ID # 测试用
             
-            sql_info = self.update_pallet_by_loc(db, TARGET_LOCATION, update_pallet_id)
+            sql_info = self.location_service.update_pallet_by_loc(db, TARGET_LOCATION, update_pallet_id)
             if sql_info:
                 sql_returen = {
                     "id": sql_info.id,
@@ -1254,7 +1615,7 @@ class Services:
 
             self.device_service.logger.info(f"[base 1] 解析订单托盘信息，并且校验托盘信息")
 
-            sql_qrcode_info = self.get_location_by_pallet_id(db, NEW_PALLET_ID)
+            sql_qrcode_info = self.location_service.get_location_by_pallet_id(db, NEW_PALLET_ID)
             if sql_qrcode_info and sql_qrcode_info.pallet_id in [NEW_PALLET_ID]:
                 self.device_service.logger.info(f"[订单托盘校验] - ✅ 订单托盘在库内")
             else:
@@ -1288,7 +1649,7 @@ class Services:
             if TARGET_LOCATION in buffer_list:
                 return [False, f"❌ {TARGET_LOCATION} 位置为接驳位/缓冲位，不能使用此功能操作"]
             
-            location_info = self.get_location_by_loc(db, TARGET_LOCATION)
+            location_info = self.location_service.get_location_by_loc(db, TARGET_LOCATION)
             if location_info:
                 if location_info.status in ["free", "lift", "highway"]:
                     return [False, f"❌ 出库目标错误，目标状态为{location_info.status}"]
@@ -1430,7 +1791,7 @@ class Services:
 
             self.device_service.logger.info(f"[step 6] 数据库更新信息")
             
-            sql_info = self.delete_pallet_by_loc(db, TARGET_LOCATION)
+            sql_info = self.location_service.delete_pallet_by_loc(db, TARGET_LOCATION)
             if sql_info:
                 sql_returen = {
                     "id": sql_info.id,
@@ -1471,7 +1832,7 @@ class Services:
 
             self.device_service.logger.info(f"[base 1] 解析订单托盘信息，并且校验托盘信息")
 
-            sql_qrcode_info = self.get_location_by_pallet_id(db, PALLET_ID)
+            sql_qrcode_info = self.location_service.get_location_by_pallet_id(db, PALLET_ID)
             
             if sql_qrcode_info and sql_qrcode_info.pallet_id in [PALLET_ID]:
                 self.device_service.logger.info(f"[订单托盘校验] - ✅ 订单托盘在库内")
@@ -1512,7 +1873,7 @@ class Services:
             if START_LOCATION in buffer_list:
                 return [False, f"❌ {START_LOCATION} 位置为接驳位/缓冲位，不能使用此功能操作"]
             
-            location_info = self.get_location_by_loc(db, START_LOCATION)
+            location_info = self.location_service.get_location_by_loc(db, START_LOCATION)
             if location_info:
                 if location_info.status in ["free", "lift", "highway"]:
                     return [False, f"移动目标错误，目标状态为{location_info.status}"]
@@ -1526,7 +1887,7 @@ class Services:
             if END_LOCATION in buffer_list:
                 return [False, f"❌ {END_LOCATION} 位置为接驳位/缓冲位，不能使用此功能操作"]
             
-            location_info = self.get_location_by_loc(db, END_LOCATION)
+            location_info = self.location_service.get_location_by_loc(db, END_LOCATION)
             if location_info:
                 if location_info.status in ["occupied", "lift", "highway"]:
                     return [False, f"移动目标错误，目标状态为{location_info.status}"]
@@ -1680,7 +2041,7 @@ class Services:
             
             return_list = []
             
-            sql_info_start = self.delete_pallet_by_loc(db, START_LOCATION)
+            sql_info_start = self.location_service.delete_pallet_by_loc(db, START_LOCATION)
             if sql_info_start:
                 sql_start_returen = {
                     "id": sql_info_start.id,
@@ -1692,7 +2053,7 @@ class Services:
             else:
                 return [False, f"❌ 更新托盘号到({START_LOCATION})失败"]
             
-            sql_info_end = self.update_pallet_by_loc(db, END_LOCATION, PALLET_ID)
+            sql_info_end = self.location_service.update_pallet_by_loc(db, END_LOCATION, PALLET_ID)
             if sql_info_end:
                 sql_end_returen = {
                     "id": sql_info_end.id,

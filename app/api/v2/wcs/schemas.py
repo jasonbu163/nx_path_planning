@@ -1,7 +1,7 @@
 # api/v2/wcs/schemas.py
 from pydantic import BaseModel, Field
 from datetime import datetime
-from typing import Optional, Generic, TypeVar
+from typing import Optional, Generic, TypeVar, List, Dict, Any
 
 T = TypeVar("T") # 通用类型变量
 
@@ -47,6 +47,7 @@ class LocationID(BaseModel):
     """库位ID"""
     id: Optional[int] = Field(default=1, examples=[1, 2, 3], description="库位ID")
 
+
 class Locations(BaseModel):
     """库位列表"""
     start_id: int = Field(default=1, examples=[1, 2, 3], description="起始库位ID")
@@ -80,6 +81,22 @@ class UpdateStatusByLocation(LocationPosition):
     """更新托盘号 - 根据位置坐标"""
     new_status: Optional[str] = Field(..., examples=["free"], description="新状态")
 
+class BulkUpdatePallets(BaseModel):
+    """批量更新托盘号 - 根据位置坐标"""
+    updates: List[UpdatePalletByLocation] = Field(
+        ...,
+        examples=[[{"location": "1,1,1", "new_pallet_id": "P1001"}, {"location": "1,1,2", "new_pallet_id": "P1002"}]], 
+        description="更新列表，包含位置和对应的新托盘号"
+    )
+
+class BulkDeletePallets(BaseModel):
+    """批量删除托盘号 - 根据位置坐标"""
+    locations: List[str] = Field(
+        ..., 
+        examples=[["1,1,1", "1,1,2", "1,1,3"]], 
+        description="需要删除托盘号的库位坐标列表"
+    )
+
 class GoodTask(BaseModel):
     """WCS带托盘号入库"""
     location: str = Field(..., examples=["1,1,4"], description="库位坐标")
@@ -94,6 +111,7 @@ class GoodMoveTask(BaseModel):
 class Location(LocationBase):
     """WCS库位模型"""
     id: int
+    update_time: datetime = Field(..., examples=["2025-09-29T03:40:02.126657"], description="库位更新时间 (格式为UTC时间)")
 
     class Config:
         from_attributes = True

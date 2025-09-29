@@ -1,6 +1,7 @@
 # api/v2/wcs/routes.py
 import asyncio
 import random
+from typing import List
 
 from sqlalchemy.orm import Session
 from fastapi import APIRouter, HTTPException, Depends
@@ -13,51 +14,55 @@ from app.api.v2.common.decorators import standard_response, standard_response_sy
 # from .services.car_commander import CarCommander
 # from .services.task_service import TaskService
 from app.api.v2.wcs import schemas
-from app.api.v2.wcs.services import Services
+from app.api.v2.wcs.services import TaskServices, LocationServices, PathServices, DeviceServices
 from app.api.v2.core.dependencies import get_database
+from app.models import LocationStatus
 
 # 线程池使用以下方法
 # from app.api.v2.core.dependencies import get_database, get_services
 
 router = APIRouter()
-services = Services()
+task_services = TaskServices()
+location_services = LocationServices()
+path_services = PathServices()
+device_services = DeviceServices()
 
 #################################################
 # 任务接口
 #################################################
 
-@router.post("/tasks", response_model=schemas.Task)
-@standard_response
-async def create_task(
-    task: schemas.TaskCreate, 
-    db: Session = get_database()
-    ):
-    """创建新任务"""
-    return services.create_task(db, task)
+# @router.post("/tasks", response_model=schemas.Task)
+# @standard_response
+# async def create_task(
+#     task: schemas.TaskCreate, 
+#     db: Session = get_database()
+# ):
+#     """创建新任务"""
+#     return task_services.create_task(db, task)
 
-@router.get("/tasks", response_model=list[schemas.Task])
-@standard_response
-async def get_tasks(
-    skip: int = 0, 
-    limit: int = 100,
-    db: Session = get_database()
-    ):
-    """获取任务列表"""
-    tasks = services.get_tasks(db, skip=skip, limit=limit)
-    return tasks
+# @router.get("/tasks", response_model=list[schemas.Task])
+# @standard_response
+# async def get_tasks(
+#     skip: int = 0, 
+#     limit: int = 100,
+#     db: Session = get_database()
+# ):
+#     """获取任务列表"""
+#     tasks = task_services.get_tasks(db, skip=skip, limit=limit)
+#     return tasks
 
-@router.patch("/tasks/{task_id}/status", response_model=schemas.Task)
-@standard_response
-async def update_task_status(
-    task_id: str, 
-    status_update: schemas.TaskStatusUpdate,
-    db: Session = get_database()
-    ):
-    """更新任务状态"""
-    task = services.update_task_status(db, task_id=task_id, new_status=status_update.status)
-    if not task:
-        raise HTTPException(status_code=404, detail="任务未找到")
-    return task
+# @router.patch("/tasks/{task_id}/status", response_model=schemas.Task)
+# @standard_response
+# async def update_task_status(
+#     task_id: str, 
+#     status_update: schemas.TaskStatusUpdate,
+#     db: Session = get_database()
+# ):
+#     """更新任务状态"""
+#     task = task_services.update_task_status(db, task_id=task_id, new_status=status_update.status)
+#     if not task:
+#         raise HTTPException(status_code=404, detail="任务未找到")
+#     return task
 
 # @router.post("/task", response_model=TaskOut)
 # def create_task(task: TaskCreate, db=Depends(get_db)):
@@ -76,124 +81,133 @@ async def update_task_status(
 # 库位接口
 #################################################
     
-@router.get("/read/locations", response_model=StandardResponse[list[schemas.Location]])
+@router.get("/read/locations", response_model=StandardResponse[List[schemas.Location]])
 @standard_response
 async def read_locations(
     db: Session = get_database()
-    ):
-    """
-    [读 - 库位信息] 根据所有库位信息
-    """
-    return services.get_locations(db)
+) -> StandardResponse[list[schemas.Location]]:
+    """获取所有库位信息。"""
     
-@router.post("/read/location", response_model=StandardResponse[schemas.Location])
+    success, location_info = location_services.get_locations(db)
+    
+    if success:    
+        return StandardResponse.isSuccess(data=location_info)
+    else:
+        return StandardResponse.isError(message=f"{location_info}")
+    
+@router.post("/read/location_by_id", response_model=StandardResponse[schemas.Location])
 @standard_response
 async def read_location_by_id(
     request: schemas.LocationID,
     db: Session = get_database()
-    ):
-    """
-    [读 - 库位信息] 根据库位ID, 获取指定位置信息
-    """
+) -> StandardResponse[schemas.Location]:
+    """根据库位ID, 获取指定位置信息。"""
 
     if request.id is None:
         return StandardResponse.isError(message="库位ID不能为空")
-    location = services.get_location_by_id(db, request.id)
-    if location:    
-        return StandardResponse.isSuccess(data=location)
+    
+    success, location_info = location_services.get_location_by_id(db, request.id)
+    
+    if success:    
+        return StandardResponse.isSuccess(data=location_info)
     else:
-        return StandardResponse.isError(message="位置未找到")
+        return StandardResponse.isError(message=f"{location_info}")
     
 @router.post("/read/location_by_loc", response_model=StandardResponse[schemas.Location])
 @standard_response
 async def read_location_by_loc(
     request: schemas.LocationPosition,
     db: Session = get_database()
-    ):
-    """
-    [读 - 库位信息] 根据库位坐标, 获取指定位置信息
-    """
+) -> StandardResponse[schemas.Location]:
+    """根据库位坐标, 获取指定位置信息。"""
+    
     if request.location is None:
         return StandardResponse.isError(message="位置信息不能为空")
-    location_info = services.get_location_by_loc(db, request.location)
-    if location_info:    
-        return location_info
+    
+    success, location_info = location_services.get_location_by_loc(db, request.location)
+    
+    if success:    
+        return StandardResponse.isSuccess(data=location_info)
     else:
-        return StandardResponse.isError(message="位置未找到")
-
+        return StandardResponse.isError(message=f"{location_info}")
 
 @router.post("/read/location_by_pallet_id", response_model=StandardResponse[schemas.Location])
 @standard_response
 async def read_location_by_pallet_id(
     request: schemas.LocationPallet,
     db: Session = get_database()
-    ):
-    """
-    [读 - 库位信息] 根据库位坐标, 获取指定位置信息
-    """
+) -> StandardResponse[schemas.Location]:
+    """根据库位托盘号, 获取指定位置信息。"""
 
     if request.pallet_id is None:
         return StandardResponse.isError(message="托盘号不能为空")
-    location_info = services.get_location_by_pallet_id(db, request.pallet_id)
-    if location_info:    
-        return location_info
-    else:
-        return StandardResponse.isError(message="未找到托盘")
-
     
+    success, location_info = location_services.get_location_by_pallet_id(db, request.pallet_id)
+    
+    if success:    
+        return StandardResponse.isSuccess(data=location_info)
+    else:
+        return StandardResponse.isError(message=f"{location_info}")
+
 @router.post("/read/location_by_status", response_model=StandardResponse[list[schemas.Location]])
 @standard_response
 async def read_location_by_status(
     request: schemas.LocationStatus,
     db: Session = get_database()
-    ):
-    """
-    [读 - 库位信息] 根据库位坐标, 获取指定位置信息
+) -> StandardResponse[list[schemas.Location]]:
+    """根据库位状态, 获取指定位置信息。
 
-    库位状态: 
-        free - 可用库位, 
-        occupied - 库位已经使用, 
-        highway - 过道位置, 
-        lift - 为电梯位置
+    - 库位状态: 
+        - free - 可用库位, 
+        - occupied - 库位已经使用, 
+        - highway - 过道位置, 
+        - lift - 为电梯位置
     """
     
+    LOCATION_STATUS = {
+        LocationStatus.FREE.value,
+        LocationStatus.OCCUPIED.value,
+        LocationStatus.HIGHWAY.value,
+        LocationStatus.LIFT.value
+    }
+    if request.status not in LOCATION_STATUS:
+        return StandardResponse.isError(message="提交的状态参数错误")
+
     if request.status is None:
         return StandardResponse.isError(message="状态不能为空")
-    location_info = services.get_location_by_status(db, request.status)
-    if location_info:    
+    
+    success, location_info = location_services.get_location_by_status(db, request.status)
+    
+    if success:    
         return StandardResponse.isSuccess(data=location_info)
     else:
-        return StandardResponse.isError(message="未找状态节点")
-
+        return StandardResponse.isError(message=f"{location_info}")
 
 @router.post("/read/floor_info", response_model=StandardResponse[list[schemas.Location]])
 @standard_response
 async def read_floor_info(
     request: schemas.Locations,
     db: Session = get_database()
-    ):
-    """
-    [读 - 库位信息] 根据库位ID范围, 获取指定范围内的库位信息
-    """
+) -> StandardResponse[list[schemas.Location]]:
+    """根据库位ID范围, 获取指定范围内的库位信息。"""
 
     if request.start_id is None or request.end_id is None:
         return StandardResponse.isError(message="参数错误")
-    locations = services.get_location_by_start_to_end(db, request.start_id, request.end_id)
-    if locations:
-        return  StandardResponse.isSuccess(data=locations)
+    
+    success, location_info = location_services.get_location_by_start_to_end(db, request.start_id, request.end_id)
+    
+    if success:    
+        return StandardResponse.isSuccess(data=location_info)
     else:
-        return StandardResponse.isError(message="未找到指定范围内的库位")
-
+        return StandardResponse.isError(message=f"{location_info}")
 
 @router.post("/write/update_pallet_by_id", response_model=StandardResponse[schemas.Location])
 @standard_response
 async def write_update_pallet_by_id(
     request: schemas.UpdatePalletByID,
     db: Session = get_database()
-    ):
-    """
-    [更新 - 库位信息] - 通过位置ID修改托盘号, 并返回更新库位状态
-    """
+) -> StandardResponse[schemas.Location]:
+    """通过位置ID修改托盘号, 并返回更新库位状态。"""
 
     if request.id is None:
         return StandardResponse.isError(message="库位ID不能为空")
@@ -201,51 +215,39 @@ async def write_update_pallet_by_id(
     # 检查new_pallet_id是否为None
     if request.new_pallet_id is None:
         return StandardResponse.isError(message="托盘号不能为空")
-        
-    location_info = services.get_location_by_id(db, request.id)
-    if location_info:
-        new_location_info = services.update_pallet_by_id(db, request.id, request.new_pallet_id)
-        if new_location_info:
-            return StandardResponse.isSuccess(data=new_location_info)
-        else:
-            return StandardResponse.isError(message="更新位置信息失败")
-    else:
-        return StandardResponse.isError(message="位置未找到")
 
+    success, location_info = location_services.update_pallet_by_id(db, request.id, request.new_pallet_id)
     
+    if success:    
+        return StandardResponse.isSuccess(data=location_info)
+    else:
+        return StandardResponse.isError(message=f"{location_info}")
+
 @router.post("/write/delete_pallet_by_id", response_model=StandardResponse[schemas.Location])
 @standard_response
 async def write_delete_pallet_by_id(
     request: schemas.LocationID,
     db: Session = get_database()
-    ):
-    """
-    [更新 - 库位信息] - 通过位置ID删除托盘号, 并返回更新库位状态
-    """
+) -> StandardResponse[schemas.Location]:
+    """通过位置ID删除托盘号, 并返回更新库位状态。"""
 
     if request.id is None:
         return StandardResponse.isError(message="库位ID不能为空")
         
-    location_info = services.get_location_by_id(db, request.id)
-    if location_info:
-        new_location_info = services.delete_pallet_by_id(db, request.id)
-        if new_location_info:
-            return StandardResponse.isSuccess(data=new_location_info)
-        else:
-            return StandardResponse.isError(message="更新位置信息失败")
+    success, location_info = location_services.delete_pallet_by_id(db, request.id)
+    
+    if success:    
+        return StandardResponse.isSuccess(data=location_info)
     else:
-        return StandardResponse.isError(message="位置未找到")
-
+        return StandardResponse.isError(message=f"{location_info}")
 
 @router.post("/write/update_pallet_by_loc", response_model=StandardResponse[schemas.Location])
 @standard_response
 async def write_update_pallet_by_loc(
     request: schemas.UpdatePalletByLocation,
     db: Session = get_database()
-    ):
-    """
-    [更新 - 库位信息] - 通过位置ID修改托盘号, 并返回更新库位状态
-    """
+) -> StandardResponse[schemas.Location]:
+    """通过位置坐标修改托盘号, 并返回更新库位状态。"""
 
     if request.location is None:
         return StandardResponse.isError(message="库位坐标不能为空")
@@ -254,39 +256,66 @@ async def write_update_pallet_by_loc(
     if request.new_pallet_id is None:
         return StandardResponse.isError(message="托盘号不能为空")
         
-    location_info = services.get_location_by_loc(db, request.location)
-    if location_info:
-        new_location_info = services.update_pallet_by_loc(db, request.location, request.new_pallet_id)
-        if new_location_info:
-            return StandardResponse.isSuccess(data=new_location_info)
-        else:
-            return StandardResponse.isError(message="更新位置信息失败")
+    success, location_info = location_services.update_pallet_by_loc(db, request.location, request.new_pallet_id)
+    
+    if success:    
+        return StandardResponse.isSuccess(data=location_info)
     else:
-        return StandardResponse.isError(message="位置未找到")
+        return StandardResponse.isError(message=f"{location_info}")
+    
+@router.post("/write/bulk_update_pallets", response_model=StandardResponse[List[schemas.Location]])
+@standard_response
+async def write_bulk_update_pallets(
+    request: schemas.BulkUpdatePallets,
+    db: Session = get_database()
+) -> StandardResponse[List[schemas.Location]]:
+    """批量更新托盘号, 并返回更新库位状态。"""
 
+    # 将请求数据转换为服务层需要的格式
+    updates = [
+        {"location": item.location, "new_pallet_id": item.new_pallet_id}
+        for item in request.updates
+    ]
+        
+    success, location_info = location_services.bulk_update_pallets(db, updates)
+
+    if success:    
+        return StandardResponse.isSuccess(data=location_info)
+    else:
+        return StandardResponse.isError(message=f"{location_info}")
     
 @router.post("/write/delete_pallet_by_loc", response_model=StandardResponse[schemas.Location])
 @standard_response
 async def write_delete_pallet_by_loc(
     request: schemas.LocationPosition,
     db: Session = get_database()
-    ):
-    """
-    [更新 - 库位信息] - 通过位置ID删除托盘号, 并返回更新库位状态
-    """
+) -> StandardResponse[schemas.Location]:
+    """通过位置ID删除托盘号, 并返回更新库位状态。"""
 
     if request.location is None:
         return StandardResponse.isError(message="库位坐标不能为空")
         
-    location_info = services.get_location_by_loc(db, request.location)
-    if location_info:
-        new_location_info = services.delete_pallet_by_loc(db, request.location)
-        if new_location_info:
-            return StandardResponse.isSuccess(data=new_location_info)
-        else:
-            return StandardResponse.isError(message="更新位置信息失败")
+    success, location_info = location_services.delete_pallet_by_loc(db, request.location)
+    
+    if success:    
+        return StandardResponse.isSuccess(data=location_info)
     else:
-        return StandardResponse.isError(message="位置未找到")
+        return StandardResponse.isError(message=f"{location_info}")
+    
+@router.post("/write/bulk_delete_pallets", response_model=StandardResponse[List[schemas.Location]])
+@standard_response
+async def write_bulk_delete_pallets(
+    request: schemas.BulkDeletePallets,
+    db: Session = get_database()
+) -> StandardResponse[List[schemas.Location]]:
+    """批量删除托盘号, 并返回更新库位状态。"""
+        
+    success, location_info = location_services.bulk_delete_pallets(db, request.locations)
+    
+    if success:    
+        return StandardResponse.isSuccess(data=location_info)
+    else:
+        return StandardResponse.isError(message=f"{location_info}")
 
 
 #################################################
@@ -302,7 +331,7 @@ async def get_path(
     [生成 - 路径] 根据起点和终点查找最短路径
     """
 
-    return await services.get_path(request.source, request.target)
+    return await path_services.get_path(request.source, request.target)
 
 
 @router.post("/create/car_move_segments")
@@ -313,7 +342,7 @@ async def car_move_segments(
     """
     [生成 - 车移动任务路径] 根据起点和终点控制车辆移动
     """
-    return await services.get_car_move_segments(request.source, request.target)
+    return await path_services.get_car_move_segments(request.source, request.target)
 
 @router.post("/create/good_move_segments")
 @standard_response
@@ -323,7 +352,7 @@ async def good_move_segments(
     """
     [生成 - 货物任务路径] 根据起点和终点控制车辆载货移动
     """
-    return await services.get_good_move_segments(request.source, request.target)
+    return await path_services.get_good_move_segments(request.source, request.target)
 
 
 #################################################
@@ -340,7 +369,7 @@ async def get_car_location():
         穿梭车当前位置坐标
     """
 
-    msg = await services.get_car_current_location()
+    msg = await device_services.get_car_current_location()
     if msg == "error":
         return StandardResponse.isError(message="操作失败，穿梭车可能未连接", data=msg)
     return StandardResponse.isSuccess(data=msg)
@@ -360,7 +389,7 @@ async def change_car_location(
         目标位置格式为 "x,y,z"，如 "6,3,1"
     """
 
-    msg = await services.change_car_location_by_target(request.target)
+    msg = await device_services.change_car_location_by_target(request.target)
     if msg:
         return StandardResponse.isSuccess(data=msg)
     return StandardResponse.isError(message="操作失败，穿梭车可能未连接", data=msg)
@@ -375,7 +404,7 @@ async def car_move_control(
     [控制 - 穿梭车移动]
     """
 
-    msg = await services.car_move_by_target(request.target)
+    msg = await device_services.car_move_by_target(request.target)
     if msg:
         return StandardResponse.isSuccess(data=msg)
     return StandardResponse.isError(message="发送指令失败", data=msg)
@@ -390,7 +419,7 @@ async def good_move_control(
     [控制 - 货物移动]
     """
 
-    msg = await services.good_move_by_target(request.target)
+    msg = await device_services.good_move_by_target(request.target)
     if msg:
         return StandardResponse.isSuccess(data=msg)
     return StandardResponse.isError(message="发送指令失败", data=msg)
@@ -405,7 +434,7 @@ async def good_move_by_start_end_control(
     [控制 - 货物移动]
     """
 
-    msg = await services.good_move_by_start_end(request.start_location, request.end_location)
+    msg = await device_services.good_move_by_start_end(request.start_location, request.end_location)
     if msg:
         return StandardResponse.isSuccess(data=msg)
     return StandardResponse.isError(message="发送指令失败", data=msg)
@@ -424,7 +453,7 @@ async def lift_control(
     """
         
     task_no = random.randint(1, 100)
-    msg = await services.lift_by_id(task_no, request.layer)
+    msg = await device_services.lift_by_id(task_no, request.layer)
     if msg[0]:
         return StandardResponse.isSuccess(data=msg[1])
     return StandardResponse.isError(message=msg[1], data=msg[1])
@@ -441,7 +470,7 @@ async def lift_inband_control():
     物料进入提升机, 入库！！
     """
 
-    msg = await services.task_lift_inband()
+    msg = await device_services.task_lift_inband()
     if msg:
         return StandardResponse.isSuccess(data=msg)
     return StandardResponse.isError(message="操作失败", data=msg)
@@ -453,7 +482,7 @@ async def lift_outband_control():
     物料从提升机移动到库口，出库！
     """
     
-    msg = await services.task_lift_outband()
+    msg = await device_services.task_lift_outband()
     if msg:
         return StandardResponse.isSuccess(data=msg)
     return StandardResponse.isError(message="操作失败", data=msg)
@@ -466,7 +495,7 @@ async def task_in_lift(
     """
     物料从 库内 移动到 电梯 --》 出库！！
     """
-    msg = await services.feed_in_progress(request.layer)
+    msg = await device_services.feed_in_progress(request.layer)
     if msg:
         return StandardResponse.isSuccess(data=msg)
     return StandardResponse.isError(message="操作失败",data=msg)
@@ -479,7 +508,7 @@ async def task_feed_complete(
     """
     放下物料完成 --》 出库！！！
     """
-    msg = await services.feed_complete(request.layer)
+    msg = await device_services.feed_complete(request.layer)
     if msg:
         return StandardResponse.isSuccess(data=msg)
     return StandardResponse.isError(message="操作失败",data=msg)
@@ -492,7 +521,7 @@ async def task_out_lift(
     """
     物料从 电梯 移动到 库内 --》 入库！！！
     """
-    msg = await services.out_lift(request.layer)
+    msg = await device_services.out_lift(request.layer)
     if msg:
         return StandardResponse.isSuccess(data=msg)
     return StandardResponse.isError(message="操作失败",data=msg)
@@ -505,7 +534,7 @@ async def task_pick_complete(
     """
     取走物料完成 --》 入库！！！
     """
-    msg = await services.pick_complete(request.layer)
+    msg = await device_services.pick_complete(request.layer)
     if msg:
         return StandardResponse.isSuccess(data=msg)
     return StandardResponse.isError(message="操作失败",data=msg)
@@ -522,7 +551,7 @@ async def wait_car(
     """
     等待设备完成
     """
-    msg = await services.wait_car_by_target(request.target)
+    msg = await device_services.wait_car_by_target(request.target)
     if msg:
         return StandardResponse.isSuccess(data=msg)
     return StandardResponse.isError(message="操作失败",data=msg)
@@ -538,7 +567,7 @@ async def qrcode():
     """
     获取二维码
     """
-    msg = await services.get_qrcode()
+    msg = await device_services.get_qrcode()
     if msg == False:
         return StandardResponse.isError(message="操作失败", data=msg)
     return StandardResponse.isSuccess(data=msg)
@@ -557,7 +586,7 @@ async def control_car_cross_layer(
     [跨层接口] - 操作穿梭车联动电梯跨层
     """
     task_no = random.randint(1, 100)
-    msg = await services.do_car_cross_layer(
+    msg = await device_services.do_car_cross_layer(
         task_no,
         request.layer
         )
@@ -574,7 +603,7 @@ async def control_task_inband(
     [入库接口] - 操作穿梭车联动PLC系统入库 (无障碍检测功能)
     """
     task_no = random.randint(1, 100)
-    msg = await services.do_task_inband(
+    msg = await device_services.do_task_inband(
         task_no,
         request.target
         )
@@ -591,7 +620,7 @@ async def control_task_outband(
     [出库服务] - 操作穿梭车联动PLC系统出库 (无障碍检测功能)
     """
     task_no = random.randint(1, 100)
-    msg = await services.do_task_outband(
+    msg = await device_services.do_task_outband(
         task_no,
         request.target
         )
@@ -610,7 +639,7 @@ async def control_task_inband_with_solve_blocking(
     [入库服务接口 - 数据库] - 操作穿梭车联动PLC系统入库, 使用障碍检测功能
     """
     task_no = random.randint(1, 100)
-    msg = await services.do_task_inband_with_solve_blocking(
+    msg = await device_services.do_task_inband_with_solve_blocking(
         task_no,
         request.location,
         request.new_pallet_id,
@@ -630,7 +659,7 @@ async def control_task_outband_with_solve_blocking(
     [出库服务接口 - 数据库] - 操作穿梭车联动PLC系统出库, 使用障碍检测功能
     """
     task_no = random.randint(1, 100)
-    msg = await services.do_task_outband_with_solve_blocking(
+    msg = await device_services.do_task_outband_with_solve_blocking(
         task_no,
         request.location,
         request.new_pallet_id,
@@ -650,7 +679,7 @@ async def control_good_move_with_solve_blocking(
     [货物移动服务接口 - 数据库] - 操作穿梭车联动PLC系统移动货物, 使用障碍检测功能
     """
     task_no = random.randint(1, 100)
-    msg = await services.do_good_move_with_solve_blocking(
+    msg = await device_services.do_good_move_with_solve_blocking(
         task_no,
         request.pallet_id,
         request.start_location,
