@@ -10,7 +10,7 @@ import time
 
 from .res_protocol import RESProtocol, FrameType, ErrorHandler
 from .packet_builder import PacketBuilder
-from app.core.devices_logger import DevicesLogger
+from app.utils.devices_logger import DevicesLogger
 
 # ------------------------
 # 模块 5: 心跳管理器

@@ -7,7 +7,7 @@ import struct
 import time
 import random
 
-from app.plc_system.plc_enum import DB_11, DB_12, DB_5, FLOOR_CODE
+from app.plc_system.enum import DB_11, DB_12, DB_5, FLOOR_CODE
 from app.res_system import PacketBuilder, PacketParser
 from app.res_system.res_protocol import RESProtocol, FrameType
 from app.map_core import PathCustom

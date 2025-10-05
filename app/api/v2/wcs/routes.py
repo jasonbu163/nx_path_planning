@@ -1,7 +1,7 @@
 # api/v2/wcs/routes.py
 import asyncio
 import random
-from typing import List
+from typing import List, Optional, Any, Union, Dict
 
 from sqlalchemy.orm import Session
 from fastapi import APIRouter, HTTPException, Depends
@@ -14,7 +14,7 @@ from app.api.v2.common.decorators import standard_response, standard_response_sy
 # from .services.car_commander import CarCommander
 # from .services.task_service import TaskService
 from app.api.v2.wcs import schemas
-from app.api.v2.wcs.services import TaskServices, LocationServices, PathServices, DeviceServices
+from app.api.v2.wcs.services import TaskServices, LocationServices, PathServices, DeviceServices, InitializationService
 from app.api.v2.core.dependencies import get_database
 from app.models import LocationStatus
 
@@ -26,6 +26,7 @@ task_services = TaskServices()
 location_services = LocationServices()
 path_services = PathServices()
 device_services = DeviceServices()
+initialization_service = InitializationService()
 
 #################################################
 # 任务接口
@@ -76,6 +77,38 @@ device_services = DeviceServices()
 # @router.get("/tasks", response_model=List[TaskOut])
 # def list_tasks(db=Depends(get_db)):
 #     return db.query(Task).all()
+
+#################################################
+# 初始化库位接口
+#################################################
+
+@router.get("/init/locations", response_model=StandardResponse[List[schemas.Location]])
+@standard_response
+async def init_locations(
+    db: Session = get_database()
+) -> StandardResponse[list[schemas.Location]]:
+    """初始化库位信息。"""
+    
+    success, location_info = initialization_service.init_locations(db)
+    
+    if success:    
+        return StandardResponse.isSuccess(data=location_info)
+    else:
+        return StandardResponse.isError(message=f"{location_info}")
+    
+@router.get("/reset/locations", response_model=StandardResponse[List[schemas.Location]])
+@standard_response
+async def reset_locations(
+    db: Session = get_database()
+) -> StandardResponse[list[schemas.Location]]:
+    """重置库位信息。"""
+    
+    success, location_info = initialization_service.reset_to_initial_state(db)
+    
+    if success:    
+        return StandardResponse.isSuccess(data=location_info)
+    else:
+        return StandardResponse.isError(message=f"{location_info}")
 
 #################################################
 # 库位接口
@@ -316,148 +349,164 @@ async def write_bulk_delete_pallets(
         return StandardResponse.isSuccess(data=location_info)
     else:
         return StandardResponse.isError(message=f"{location_info}")
+    
+@router.post("/write/bulk_sync_locations", response_model=StandardResponse[List[schemas.Location]])
+@standard_response
+async def write_bulk_sync_locations(
+    request: schemas.BulkSyncLocations,
+    db: Session = get_database()
+) -> StandardResponse[List[schemas.Location]]:
+    """批量同步库位信息, 并返回更新库位状态。"""
+
+    # 将请求数据转换为服务层需要的格式
+    locations = [
+        {"location": item.location, "status": item.status, "pallet_id": item.pallet_id}
+        for item in request.data
+    ]
+
+    success, location_info = location_services.bulk_sync_locations(db, locations)
+    
+    if success:    
+        return StandardResponse.isSuccess(data=location_info)
+    else:
+        return StandardResponse.isError(message=f"{location_info}")
 
 
 #################################################
 # 路径接口
 #################################################
 
-@router.post("/create/path")
+@router.post("/create/path", response_model=StandardResponse[Union[List, Dict]])
 @standard_response
-async def get_path(
-    request: schemas.PathBase
-    ):
-    """
-    [生成 - 路径] 根据起点和终点查找最短路径
-    """
+async def create_path(request: schemas.PathBase) -> StandardResponse[Union[List, Dict]]:
+    """生成路径。根据起点和终点查找最短路径。"""
 
-    return await path_services.get_path(request.source, request.target)
+    success, path_info = await path_services.get_path(request.source, request.target)
 
+    if success:    
+        return StandardResponse.isSuccess(data=path_info)
+    else:
+        return StandardResponse.isError(message=f"{path_info}")
 
-@router.post("/create/car_move_segments")
+@router.post("/create/car_move_segments", response_model=StandardResponse[Union[List, Dict]])
 @standard_response
-async def car_move_segments(
-    request: schemas.PathBase
-    ):
-    """
-    [生成 - 车移动任务路径] 根据起点和终点控制车辆移动
-    """
-    return await path_services.get_car_move_segments(request.source, request.target)
+async def car_move_segments(request: schemas.PathBase) -> StandardResponse[Union[List, Dict]]:
+    """生成车移动任务路径。根据起点和终点控制车辆移动。"""
 
-@router.post("/create/good_move_segments")
+    success, path_info = await path_services.get_car_move_segments(request.source, request.target)
+
+    if success:    
+        return StandardResponse.isSuccess(data=path_info)
+    else:
+        return StandardResponse.isError(message=f"{path_info}")
+
+@router.post("/create/good_move_segments", response_model=StandardResponse[Union[List, Dict]])
 @standard_response
-async def good_move_segments(
-    request: schemas.PathBase
-    ):
-    """
-    [生成 - 货物任务路径] 根据起点和终点控制车辆载货移动
-    """
-    return await path_services.get_good_move_segments(request.source, request.target)
+async def good_move_segments(request: schemas.PathBase) -> StandardResponse[Union[List, Dict]]:
+    """生成货物任务路径。根据起点和终点控制车辆载货移动。"""
+
+    success, path_info = await path_services.get_good_move_segments(request.source, request.target)
+
+    if success:    
+        return StandardResponse.isSuccess(data=path_info)
+    else:
+        return StandardResponse.isError(message=f"{path_info}")
 
 
 #################################################
 # 穿梭车接口
 #################################################
 
-@router.get("/control/get_car_location")
+@router.get("/control/get_car_location", response_model=StandardResponse[Union[str, Dict]])
 @standard_response
-async def get_car_location():
-    """
-    [读 - 车辆信息] 获取穿梭车当前位置接口
+async def get_car_location() -> StandardResponse[Union[str, Dict]]:
+    """获取穿梭车当前位置。"""
 
-    ::: return :::
-        穿梭车当前位置坐标
-    """
+    success, car_info = await device_services.get_car_current_location()
 
-    msg = await device_services.get_car_current_location()
-    if msg == "error":
-        return StandardResponse.isError(message="操作失败，穿梭车可能未连接", data=msg)
-    return StandardResponse.isSuccess(data=msg)
-
+    if success:    
+        return StandardResponse.isSuccess(data=car_info)
+    else:
+        return StandardResponse.isError(message=f"{car_info}")
     
-@router.post("/control/change_car_location")
+@router.post("/control/change_car_location", response_model=StandardResponse[Union[str, Dict]])
 @standard_response
 async def change_car_location(
     request: schemas.CarMoveBase
-    ):
-    """
-    [更新 - 修改穿梭车位置]
+) -> StandardResponse[Union[str, Dict]]:
+    """修改穿梭车位置。
 
-    ::: param ::: 
-        request: 请求体
-        包含目标位置, 例如：{"target": "6,3,1"}
-        目标位置格式为 "x,y,z"，如 "6,3,1"
+    Args:
+        - 包含目标位置, 例如：{"target": "6,3,1"}
+        - 目标位置格式为 "x,y,z"，如 "6,3,1"
     """
 
-    msg = await device_services.change_car_location_by_target(request.target)
-    if msg:
-        return StandardResponse.isSuccess(data=msg)
-    return StandardResponse.isError(message="操作失败，穿梭车可能未连接", data=msg)
+    success, car_info = await device_services.change_car_location_by_target(request.target)
     
+    if success:    
+        return StandardResponse.isSuccess(data=car_info)
+    else:
+        return StandardResponse.isError(message=f"{car_info}")
 
-@router.post("/control/car_move")
+@router.post("/control/car_move", response_model=StandardResponse[Union[str, Dict]])
 @standard_response
 async def car_move_control(
     request: schemas.CarMoveBase
-    ):
-    """
-    [控制 - 穿梭车移动]
-    """
+) -> StandardResponse[Union[str, Dict]]:
+    """控制穿梭车移动。"""
 
-    msg = await device_services.car_move_by_target(request.target)
-    if msg:
-        return StandardResponse.isSuccess(data=msg)
-    return StandardResponse.isError(message="发送指令失败", data=msg)
+    success, car_info = await device_services.car_move_by_target(request.target)
+    
+    if success:    
+        return StandardResponse.isSuccess(data=car_info)
+    else:
+        return StandardResponse.isError(message=f"{car_info}")
 
-
-@router.post("/control/good_move")
+@router.post("/control/good_move", response_model=StandardResponse[Union[str, Dict]])
 @standard_response
 async def good_move_control(
     request: schemas.CarMoveBase
-    ):
-    """
-    [控制 - 货物移动]
-    """
+) -> StandardResponse[Union[str, Dict]]:
+    """控制货物移动。"""
 
-    msg = await device_services.good_move_by_target(request.target)
-    if msg:
-        return StandardResponse.isSuccess(data=msg)
-    return StandardResponse.isError(message="发送指令失败", data=msg)
+    success, car_info = await device_services.good_move_by_target(request.target)
+    
+    if success:    
+        return StandardResponse.isSuccess(data=car_info)
+    else:
+        return StandardResponse.isError(message=f"{car_info}")
 
-
-@router.post("/control/good_move_by_start_end_control")
+@router.post("/control/good_move_by_start_end_control", response_model=StandardResponse[Union[str, Dict]])
 @standard_response
 async def good_move_by_start_end_control(
     request: schemas.GoodMoveBase
-    ):
-    """
-    [控制 - 货物移动]
-    """
+) -> StandardResponse[Union[str, Dict]]:
+    """穿梭车到达货物起始位置，再控制货物移动至目标位置。"""
 
-    msg = await device_services.good_move_by_start_end(request.start_location, request.end_location)
-    if msg:
-        return StandardResponse.isSuccess(data=msg)
-    return StandardResponse.isError(message="发送指令失败", data=msg)
+    success, car_info = await device_services.good_move_by_start_end(request.start_location, request.end_location)
+    
+    if success:    
+        return StandardResponse.isSuccess(data=car_info)
+    else:
+        return StandardResponse.isError(message=f"{car_info}")
 
 #################################################
 # 电梯接口
 #################################################
 
-@router.post("/control/lift")
+@router.post("/control/lift", response_model=StandardResponse[Union[str, Dict]])
 @standard_response
 async def lift_control(
     request: schemas.LiftBase
-    ):
-    """
-    [控制 电梯] 电梯移动至目标楼层
-    """
+) -> StandardResponse[Union[str, Dict]]:
+    """控制电梯移动至目标楼层。"""
         
-    task_no = random.randint(1, 100)
-    msg = await device_services.lift_by_id(task_no, request.layer)
-    if msg[0]:
-        return StandardResponse.isSuccess(data=msg[1])
-    return StandardResponse.isError(message=msg[1], data=msg[1])
+    success, lift_info = await device_services.lift_by_id(request.layer)
 
+    if success:
+        return StandardResponse.isSuccess(data=lift_info)
+    else:
+        return StandardResponse.isError(message=f"{lift_info}")
 
 #################################################
 # 输送线接口

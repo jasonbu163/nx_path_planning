@@ -6,10 +6,10 @@ import asyncio
 
 import struct
 
-from .plc_connection_module import PLCConnectionBase
-from .plc_enum import DB_2, DB_9, DB_11, DB_12, FLOOR_CODE, LIFT_TASK_TYPE
+from .connection import ConnectionAsync
+from .enum import DB_2, DB_9, DB_11, DB_12, FLOOR_CODE, LIFT_TASK_TYPE
 
-class PLCController(PLCConnectionBase):
+class PLCController(ConnectionAsync):
     """PLC高级操作类"""
     
     def __init__(self, plc_ip: str):

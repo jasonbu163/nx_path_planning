@@ -11,7 +11,7 @@ from app.models.base_model import LocationList as LocationModel
 from . import schemas
 from app.map_core import PathCustom
 from app.devices.service_asyncio import DevicesService, DB_11, DB_12
-from app.plc_system import plc_enum
+from app.plc_system import enum
 
 path_planner = PathCustom()
 
@@ -156,7 +156,7 @@ async def lift_by_id(location_id: int):
     
     else:
         if lift_running==0 and lift_idle==1 and lift_no_cargo==1 and lift_has_cargo==0 and lift_has_car==0:
-            device_service.lift_move(plc_enum.LIFT_TASK_TYPE.IDEL, task_num, location_id)
+            device_service.lift_move(enum.LIFT_TASK_TYPE.IDEL, task_num, location_id)
                 ######################## 电梯清零 #################################
             # 确认电梯到位后，清除到位状态
             if device_service.read_bit(12, DB_12.TARGET_LAYER_ARRIVED.value) == 1:
@@ -168,7 +168,7 @@ async def lift_by_id(location_id: int):
             return True, "提升机运行结束"
         
         elif lift_running==0 and lift_idle==1 and lift_no_cargo==1 and lift_has_cargo==0 and lift_has_car==1:
-            device_service.lift_move(plc_enum.LIFT_TASK_TYPE.CAR, task_num, location_id)
+            device_service.lift_move(enum.LIFT_TASK_TYPE.CAR, task_num, location_id)
             # 确认电梯到位后，清除到位状态
             if device_service.read_bit(12, DB_12.TARGET_LAYER_ARRIVED.value) == 1:
                 device_service.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
@@ -179,7 +179,7 @@ async def lift_by_id(location_id: int):
             return True, "提升机运行结束"
 
         elif lift_running==0 and lift_idle==1 and lift_no_cargo==0 and lift_has_cargo==1 and lift_has_car==0:
-            device_service.lift_move(plc_enum.LIFT_TASK_TYPE.GOOD, task_num, location_id)
+            device_service.lift_move(enum.LIFT_TASK_TYPE.GOOD, task_num, location_id)
             # 确认电梯到位后，清除到位状态
             if device_service.read_bit(12, DB_12.TARGET_LAYER_ARRIVED.value) == 1:
                 device_service.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)

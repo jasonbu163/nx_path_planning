@@ -37,8 +37,8 @@ class LocationBase(BaseModel):
     """库位基础模型"""
     location: str = Field(..., examples=["1,1,4"], description="库位坐标")
     status: Optional[str] = Field(
-        default="free",
-        examples=["free", "occupied", "highway", "lift"],
+        default="occupied",
+        examples=["occupied", "free", "highway", "lift"],
         description="库位状态: free - 可用库位, occupied - 库位已经使用, highway - 过道位置, lift - 为电梯位置"
         )
     pallet_id: Optional[str] = Field(None, examples=["P1001"], description="托盘号")
@@ -97,6 +97,15 @@ class BulkDeletePallets(BaseModel):
         description="需要删除托盘号的库位坐标列表"
     )
 
+class BulkSyncLocations(BaseModel):
+    """批量同步库位 - 根据位置坐标"""
+    data: List[LocationBase] = Field(
+        ..., 
+        examples=[[{"location": "1,1,1", "status": "free", "pallet_id": None}, {"location": "1,1,2", "status": "occupied", "pallet_id": "P1001"}]], 
+        description="需要同步的库位列表"
+    )
+
+
 class GoodTask(BaseModel):
     """WCS带托盘号入库"""
     location: str = Field(..., examples=["1,1,4"], description="库位坐标")
@@ -121,6 +130,10 @@ class PathBase(BaseModel):
     """WCS路径基础模型"""
     source: str = Field(..., examples=["1,1,1"], description="起始点")
     target: str = Field(..., examples=["6,3,1"], description="目标点")
+
+class ResponsePathBase(BaseModel):
+    """WCS路径模型"""
+    path: List[str] = Field(..., examples=[["1,1,1", "1,1,2", "1,1,3", "1,1,4"]], description="路径点列表")
 
 class CarMoveBase(BaseModel):
     """WCS穿梭车基础模型"""

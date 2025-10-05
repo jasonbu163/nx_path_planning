@@ -9,9 +9,9 @@ import random
 
 import app.core.config as config
 from app.devices.devices_controller import DevicesController
-from app.plc_system.plc_controller import PLCController
-from app.res_system.car_controller import CarController
-from app.plc_system.plc_enum import LIFT_TASK_TYPE, DB_12, DB_11, DB_2
+from app.plc_system.controller import PLCController
+from app.res_system.controller.controller_base import CarController
+from app.plc_system.enum import LIFT_TASK_TYPE, DB_12, DB_11, DB_2
 
 def test_plc_controller(plc_ip: str):
     """测试PLC控制器"""

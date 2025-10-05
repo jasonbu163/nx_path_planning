@@ -9,7 +9,7 @@ import socket
 import asyncio
 from typing import Union
 
-from app.core.devices_logger import DevicesLogger
+from app.utils.devices_logger import DevicesLogger
 
 # ------------------------
 # 模块 4: 通信处理器

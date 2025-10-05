@@ -1,41 +1,29 @@
 # /devices/plc_connection_module.py
-import asyncio
 import time
 from typing import Union, Callable, Any
 
 from snap7.client import Client
+from snap7.util import get_bool, set_bool
 
-from app.core.devices_logger import DevicesLogger
+from app.utils.devices_logger import DevicesLogger
 from app.core.config import settings
-from .plc_enum import DB_2, DB_11
+from ..enum import DB_2, DB_11
 
-class PLCConnectionBase(DevicesLogger):
-    """
-    PLC连接模块
-    """
-    def __init__(self, HOST: str):
-        """
-        [初始化PLC连接模块]\n
-        ::: param :::\n
-            HOST: 服务器主机地址, 如 "192.168.8.30"
+class ConnectionBase(DevicesLogger):
+    """PLC连接模块，基于同步通讯基础版"""
+    def __init__(self, host: str):
+        """初始化PLC连接模块
+
+        Args:
+            host: 服务器主机地址, 如 "192.168.8.30"
         """
         super().__init__(self.__class__.__name__)
-        self._ip = HOST
+        self._ip = host
         self.client = Client()
         self._connected = False
 
-        self._monitor_task = None  # 用于存储监控任务的引用
-        self._stop_monitor = asyncio.Event()  # 停止监控的事件标志
-
-    
-    #####################################################
-    ####################### 同步方法 #####################
-    #####################################################
-
     def connect(self, retry_count: int = 3, retry_interval: float = 2.0) -> bool:
-        """
-        [同步连接PLC]
-        """
+        """同步连接PLC"""
         # 双重检查连接状态
         if self._connected and self.client.get_connected():
             self.logger.info("[PLC] 连接已存在，无需重新连接")
@@ -93,9 +81,7 @@ class PLCConnectionBase(DevicesLogger):
         return False
     
     def disconnect(self) -> bool:
-        """
-        [断开PLC连接]
-        """
+        """断开PLC连接"""
         # 如果未连接，直接返回成功
         if not self._connected and not self.client.get_connected():        
             self.logger.info(f"⚠️ PLC连接已断开, 无需操作")
@@ -116,9 +102,7 @@ class PLCConnectionBase(DevicesLogger):
             self.client = Client()
     
     def is_connected(self) -> bool:
-        """
-        [检查PLC是否已连接]
-        """
+        """检查PLC是否已连接"""
         return self.client.get_connected() and self._connected
 
     def read_db(self, db_number: int, start: int, size: int) -> bytes:
@@ -149,13 +133,14 @@ class PLCConnectionBase(DevicesLogger):
         self.logger.info(f"📤 写入 DB{db_number}[{start}] 成功，长度: {len(data)} bytes")
 
     def read_bit(self, db_number: int, offset: Union[float, int], size: int = 1) -> int:
-        """
-        [读取指定位的值]\n
-        ::: param :::\n
-            db_number: DB块编号\n
-            offset: 偏移地址 (格式：字节.位 如 22.0)\n
-            size: 读取位数 (默认为1位)\n
-        ::: return :::\n
+        """读取指定位的值
+
+        Args:
+            db_number: DB块编号
+            offset: 偏移地址 (格式：字节.位 如 22.0)
+            size: 读取位数 (默认为1位)
+        
+        Returns:
             读取到的位值（0/1）或多位值（当size>1时返回整数）
         """
         if not isinstance(offset, float) and '.' not in str(offset):
@@ -181,12 +166,12 @@ class PLCConnectionBase(DevicesLogger):
             return (byte_value >> bit_offset) & mask
     
     def write_bit(self, db_number: int, offset: Union[float, int], value: Union[int, bool], size: int = 1) -> None:
-        """
-        [写入指定位的值]\n
-        ::: param :::\n
-            db_number: DB块编号\n
-            offset: 偏移地址 (格式：字节.位 如 22.0)\n
-            value: 要写入的值 (0/1或布尔值)\n
+        """写入指定位的值
+    
+        Args:
+            db_number: DB块编号
+            offset: 偏移地址 (格式：字节.位 如 22.0)
+            value: 要写入的值 (0/1或布尔值)
             size: 写入位数 (默认为1位)
         """
         if not isinstance(offset, float) and '.' not in str(offset):
@@ -225,18 +210,48 @@ class PLCConnectionBase(DevicesLogger):
         self.write_db(db_number, byte_offset, bytes([new_value]))
         self.logger.info(f"🔧 位写入成功 DB{db_number}[{offset}]: 值={value}")
 
+    def read_bit_standard(self, db_number: int, byte_index: int, bit_index: int) -> bool:
+        """使用 snap7.util 读取一个位（标准写法）
 
-    def wait_for_bit_change_sync(
+        Args:
+            db_number: DB块编号
+            byte_index: 字节索引（如 22）
+            bit_index: 位索引（0-7，如 0）
+
+        Returns:
+            bool: 位的布尔值
+        """
+        # 读取包含目标位的一个字节
+        data = self.client.db_read(db_number, byte_index, 1)
+        # 使用 get_bool 解析指定位
+        return get_bool(data, 0, bit_index)  # 注意：这里的字节偏移是相对于data的0
+
+    def write_bit_standard(self, db_number: int, byte_index: int, bit_index: int, value: bool) -> None:
+        """使用 snap7.util 写入一个位（标准写法）
+
+        Args:
+            db_number: DB块编号
+            byte_index: 字节索引（如 22）
+            bit_index: 位索引（0-7，如 0）
+            value: 要写入的值
+        """
+        # 读取包含目标位的一个字节
+        data = self.client.db_read(db_number, byte_index, 1)
+        # 使用 set_bool 修改指定位
+        set_bool(data, 0, bit_index, value)  # 注意：这里的字节偏移是相对于data的0
+        # 将修改后的整个字节写回
+        self.client.db_write(db_number, byte_index, data)
+
+    def wait_for_bit_change(
             self,
             DB_NUMBER: int,
             ADDRESS: float,
             TRAGET_VALUE: int,
             TIMEOUT: float = settings.PLC_ACTION_TIMEOUT
             ) -> bool:
-        """
-        [同步 - PLC等待器] 等待PLC指定的位状态变化为目标值
+        """[同步] 等待PLC指定的位状态变化为目标值
         
-        ::: param :::
+        Args:
             DB_NUMBER: DB块号 
             ADDRESS: 位地址 
             TRAGET_VALUE: 目标值 
@@ -261,188 +276,6 @@ class PLCConnectionBase(DevicesLogger):
                 
             # 等待一段时间再次检查
             time.sleep(0.5)
-
-    
-    #####################################################
-    ####################### 异步方法 #####################
-    #####################################################
-    
-    async def async_connect(self) -> bool:
-        """
-        [异步连接PLC]
-        """
-        loop = asyncio.get_running_loop()
-        try:
-            await loop.run_in_executor(None, self.connect)
-            if self._connected:
-                self.logger.info(f"🔌 PLC连接状态: 已连接到 {self._ip}")
-                return True
-            else:
-                self.logger.error("❌ 异步连接失败，未知原因")
-                return False
-        except Exception as e:
-            self.logger.error(f"🚨 异步连接异常: {str(e)}", exc_info=True)
-            return False
-
-    async def async_disconnect(self) -> bool:
-        """
-        [异步断开PLC连接]
-        """
-        loop = asyncio.get_running_loop()
-        try:
-            # 使用异步执行器调用同步的断开连接方法
-            return await loop.run_in_executor(None, self.disconnect)
-        except Exception as e:
-            self.logger.error(f"异步断开连接失败: {e}")
-            return False
-    
-    async def monitor_condition(
-        self,
-        MONITOR_DB: int,
-        MONITOR_OFFSET: float,
-        BITS: int,
-        TARGET_VALUE: int,
-        CALLBACK: Callable[[], Any],
-        POLL_INTERVAL: float = 0.5
-    ) -> None:
-        """
-        [监控PLC状态] - 监控PLC状态并执行回调
-        
-        ::: param :::
-            MONITOR_DB: 监控的DB块号
-            MONITOR_OFFSET: 监控的地址偏移 
-            BITS: 监控的位数
-            TARGET_VALUE: 要匹配的目标值
-            CALLBACK: 条件满足时的回调函数
-            POLL_INTERVAL: 轮询间隔(秒)
-        """
-        try:
-            self.logger.info(f"🔍 启动PLC监控: DB{MONITOR_DB}[{MONITOR_OFFSET}] {BITS}位 == 0x{TARGET_VALUE:02X}")
-            
-            while not self._stop_monitor.is_set():
-                # 异步读取PLC状态
-                try:
-                    current_value = await asyncio.to_thread(
-                        self.read_bit, MONITOR_DB, MONITOR_OFFSET, BITS
-                    )
-                except Exception as e:
-                    self.logger.error(f"读取PLC状态失败: {e}")
-                    await asyncio.sleep(POLL_INTERVAL)
-                    continue
-                
-                # 检查条件是否满足
-                if current_value == TARGET_VALUE:
-                    self.logger.info("🎯 条件满足! 执行回调函数")
-                    try:
-                        # 执行回调函数
-                        if asyncio.iscoroutinefunction(CALLBACK):
-                            await CALLBACK()
-                        else:
-                            await asyncio.to_thread(CALLBACK)
-                        self.logger.info("✅ 回调执行完成")
-                        return
-                    except Exception as e:
-                        self.logger.error(f"回调执行失败: {e}")
-                        return
-                
-                await asyncio.sleep(POLL_INTERVAL)
-        except asyncio.CancelledError:
-            self.logger.info("⏹️ 监控任务已取消")
-        finally:
-            self._stop_monitor.clear()
-
-    async def start_monitoring(
-        self,
-        MONITOR_DB: int,
-        MONITOR_OFFSET: float,
-        BITS: int,
-        TARGET_VALUE: int,
-        CALLBACK: Callable[[], Any],
-        POLL_INTERVAL: float = 0.5
-    ) -> asyncio.Task:
-        """
-        [启动监控任务] - 启动监控任务
-
-        ::: param :::
-            MONITOR_DB: 监控的DB块号
-            MONITOR_OFFSET: 监控的偏移地址
-            BITS: 监控的位数
-            TARGET_VALUE: 要匹配的目标值
-            CALLBACK: 条件满足时执行的回调函数
-            POLL_INTERVAL: 轮询间隔(秒)
-
-        ::: return :::
-            asyncio.Task: 监控任务对象 - 返回asyncio.Task类型
-        """
-        # 停止现有监控任务
-        await self.stop_monitoring()
-        
-        # 创建新监控任务
-        self._monitor_task = asyncio.create_task(
-            self.monitor_condition(
-                MONITOR_DB,
-                MONITOR_OFFSET,
-                BITS,
-                TARGET_VALUE,
-                CALLBACK,
-                POLL_INTERVAL
-            )
-        )
-        return self._monitor_task
-
-    async def stop_monitoring(self) -> None:
-        """
-        [停止监控任务] - 停止当前正在运行的监控任务
-        """
-        if self._monitor_task and not self._monitor_task.done():
-            self._stop_monitor.set()
-            self._monitor_task.cancel()
-            try:
-                await self._monitor_task
-            except asyncio.CancelledError:
-                pass
-            finally:
-                self._monitor_task = None
-                self._stop_monitor.clear()
-
-    
-    async def wait_for_bit_change(
-            self,
-            DB_NUMBER: int,
-            ADDRESS: float,
-            TRAGET_VALUE: int,
-            TIMEOUT: float = settings.PLC_ACTION_TIMEOUT
-            ) -> bool:
-        """
-        [异步 - PLC等待器] 等待PLC指定的位状态变化为目标值
-        
-        ::: param :::
-            DB_NUMBER: DB块号 
-            ADDRESS: 位地址 
-            TRAGET_VALUE: 目标值 
-            TIMEOUT: 超时时间（秒）
-        """
-        await asyncio.sleep(2)
-        start_time = asyncio.get_event_loop().time()
-        
-        while True:
-            # 读取当前值
-            # Address = f"{byte_offset}.{bit_offset}"
-            current_value = await asyncio.to_thread(self.read_bit, DB_NUMBER, ADDRESS, 1)
-            
-            if current_value == TRAGET_VALUE:
-                # self.logger.info(f"✅ PLC动作完成: DB{db_number}[{byte_offset}.{bit_offset}] == {target_value}")
-                self.logger.info(f"✅ PLC动作完成: DB{DB_NUMBER}[{ADDRESS}] == {TRAGET_VALUE}")
-                return True
-                
-            # 检查超时
-            elapsed = asyncio.get_event_loop().time() - start_time
-            if elapsed > TIMEOUT:
-                self.logger.info(f"❌ 超时错误: 等待PLC动作超时 ({TIMEOUT}s)")
-                return False
-                
-            # 等待一段时间再次检查
-            await asyncio.sleep(0.5)
 
 
 ###############################################################
