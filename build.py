@@ -88,6 +88,19 @@ def download_snap7_dll():
         if os.path.exists(extract_dir):
             shutil.rmtree(extract_dir)
         return False
+
+def ensure_log_directory():
+    """确保日志目录存在并包含占位文件"""
+    log_dir = "app/logs"
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir, exist_ok=True)
+    
+    # 创建占位文件
+    placeholder_file = os.path.join(log_dir, ".keep")
+    if not os.path.exists(placeholder_file):
+        with open(placeholder_file, 'w') as f:
+            f.write("This file ensures the logs directory is packaged")
+        print("已创建日志目录占位文件")
     
 def clean_build_folders():
     """清理构建文件夹"""
@@ -113,6 +126,9 @@ def copy_resources():
     if os.path.exists('app/map_core/data'):
         shutil.copytree('app/map_core/data', f'{dist_path}/app/map_core/data', dirs_exist_ok=True)
 
+    if os.path.exists('app/logs'):
+        shutil.copytree('app/logs', f'{dist_path}/app/logs', dirs_exist_ok=True)
+
     # 复制 snap7.dll
     if os.path.exists('snap7.dll'):
         shutil.copy2('snap7.dll', f'{dist_path}/snap7.dll')
@@ -128,7 +144,7 @@ def build_executable():
         '--noconfirm',  # 覆盖输出目录
         '--add-data=app/data;app/data',  # 添加配置文件夹
         '--add-data=app/map_core/data;app/map_core/data',
-        '--add-data'
+        '--add-data=app/logs;app/logs'
         '--hidden-import=snap7',  # 添加snap7模块'
     ]
 
@@ -158,6 +174,9 @@ def main():
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     
     print("=== 开始打包 nx_path_planning 应用 ===")
+
+    # 确保日志目录存在
+    ensure_log_directory()
 
     # 检查并下载 snap7.dll
     if not os.path.exists('snap7.dll'):
