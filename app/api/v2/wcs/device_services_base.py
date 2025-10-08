@@ -1209,7 +1209,7 @@ class DeviceServicesBase(DevicesLogger):
             if not success:
                 return False, f"{location_info}"
             else:
-                if isinstance(location_info, List):
+                if isinstance(location_info, LocationModel):
                     if location_info.status in ["occupied", "lift", "highway"]:
                         return False, f"❌ 入库目标错误，目标状态为{location_info.status}"
                     else:
@@ -1346,7 +1346,7 @@ class DeviceServicesBase(DevicesLogger):
                 self.logger.error(f"[SYSTEM] ❌ {sql_info}")
                 return False, f"{sql_info}"
             else:
-                if isinstance(sql_info, List):
+                if isinstance(sql_info, LocationModel):
                     sql_returen = {
                         "id": sql_info.id,
                         "location": sql_info.location,
@@ -1422,7 +1422,7 @@ class DeviceServicesBase(DevicesLogger):
             if not success:
                 return False, f"{location_info}"
             else:
-                if isinstance(location_info, List):
+                if isinstance(location_info, LocationModel):
                     if location_info.status in ["free", "lift", "highway"]:
                         return False, f"❌ 出库目标错误，目标状态为{location_info.status}"
                     else:
@@ -1556,7 +1556,7 @@ class DeviceServicesBase(DevicesLogger):
                 self.logger.error(f"❌ {sql_info}")
                 return False, f"{sql_info}"
             else:
-                if isinstance(sql_info, List):
+                if isinstance(sql_info, LocationModel):
                     sql_returen = {
                         "id": sql_info.id,
                         "location": sql_info.location,
@@ -1636,7 +1636,7 @@ class DeviceServicesBase(DevicesLogger):
                 self.logger.error(f"[初始位置校验] - ❌ {location_info}")
                 return False, f"❌ {location_info}"
             else:
-                if isinstance(location_info, List):
+                if isinstance(location_info, LocationModel):
                     if location_info.status in ["free", "lift", "highway"]:
                         return False, f"移动目标错误，目标状态为{location_info.status}"
                     else:
@@ -1654,7 +1654,7 @@ class DeviceServicesBase(DevicesLogger):
                 self.logger.error(f"[目标位置校验] ❌ {location_info}")
                 return False, f"❌ {location_info}"
             else:
-                if isinstance(location_info, List):
+                if isinstance(location_info, LocationModel):
                     if location_info.status in ["occupied", "lift", "highway"]:
                         return False, f"移动目标错误，目标状态为{location_info.status}"
                     else:
@@ -1812,7 +1812,7 @@ class DeviceServicesBase(DevicesLogger):
                 self.logger.error(f"[SYSTEM] ❌ {sql_info_start}")
                 return False, f"❌ {sql_info_start}"
             else:
-                if isinstance(sql_info_start, List):
+                if isinstance(sql_info_start, LocationModel):
                     sql_start_returen = {
                         "id": sql_info_start.id,
                         "location": sql_info_start.location,
@@ -1828,7 +1828,7 @@ class DeviceServicesBase(DevicesLogger):
                 self.logger.error(f"[SYSTEM] ❌ {sql_info_end}，更新托盘号到({end_location})失败")
                 return False, f"❌ {sql_info_end}"
             else:
-                if isinstance(sql_info_end, List):
+                if isinstance(sql_info_end, LocationModel):
                     sql_end_returen = {
                         "id": sql_info_end.id,
                         "location": sql_info_end.location,
