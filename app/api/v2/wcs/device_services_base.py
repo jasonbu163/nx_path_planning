@@ -1388,7 +1388,7 @@ class DeviceServicesBase(DevicesLogger):
                 self.logger.error(f"[订单托盘校验] - ❌ 订单托盘不在库内")
                 return False, f"❌ {sql_qrcode_info}"
             else:
-                if isinstance(sql_qrcode_info, List):
+                if isinstance(sql_qrcode_info, LocationModel):
                     
                     self.logger.info(f"[订单托盘校验] - ✅ 订单托盘在库内")
               
@@ -1598,7 +1598,7 @@ class DeviceServicesBase(DevicesLogger):
                 self.logger.error(f"[订单托盘校验] - ❌ 订单托盘不在库内")
                 return False, f"❌ {sql_qrcode_info}"
             else:
-                if isinstance(sql_qrcode_info, List):
+                if isinstance(sql_qrcode_info, LocationModel):
 
                     self.logger.info(f"[订单托盘校验] - ✅ 订单托盘在库内")
                 
