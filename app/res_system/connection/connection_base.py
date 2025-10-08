@@ -54,7 +54,6 @@ class ConnectionBase(DevicesLogger):
                 else:
                     self.logger.error(f"[CAR] 已达到最大重连次数（{retry_count}），连接终止")
 
-        
         self._connected = False
         return False
     

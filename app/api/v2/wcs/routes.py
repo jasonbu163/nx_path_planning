@@ -15,6 +15,7 @@ from app.api.v2.common.decorators import standard_response, standard_response_sy
 # from .services.task_service import TaskService
 from app.api.v2.wcs import schemas
 from app.api.v2.wcs.services import TaskServices, LocationServices, PathServices, DeviceServices, InitializationService
+from app.api.v2.wcs.device_services_base import DeviceServicesBase
 from app.api.v2.core.dependencies import get_database
 from app.models import LocationStatus
 
@@ -26,6 +27,7 @@ task_services = TaskServices()
 location_services = LocationServices()
 path_services = PathServices()
 device_services = DeviceServices()
+device_services_base = DeviceServicesBase()
 initialization_service = InitializationService()
 
 #################################################
@@ -483,7 +485,8 @@ async def good_move_by_start_end_control(
 ) -> StandardResponse[Union[str, Dict]]:
     """穿梭车到达货物起始位置，再控制货物移动至目标位置。"""
 
-    success, car_info = await device_services.good_move_by_start_end(request.start_location, request.end_location)
+    # success, car_info = await device_services.good_move_by_start_end(request.start_location, request.end_location)
+    success, car_info = await device_services_base.good_move_by_start_end(request.start_location, request.end_location)
     
     if success:    
         return StandardResponse.isSuccess(data=car_info)
@@ -588,23 +591,6 @@ async def task_pick_complete(
         return StandardResponse.isSuccess(data=msg)
     return StandardResponse.isError(message="操作失败",data=msg)
 
-#################################################
-# 设备运行监控接口
-#################################################
-
-@router.post("/control/wait_car")
-@standard_response
-async def wait_car(
-    request: schemas.CarMoveBase
-    ):
-    """
-    等待设备完成
-    """
-    msg = await device_services.wait_car_by_target(request.target)
-    if msg:
-        return StandardResponse.isSuccess(data=msg)
-    return StandardResponse.isError(message="操作失败",data=msg)
-
 
 #################################################
 # 出入口二维码接口
@@ -628,54 +614,36 @@ async def qrcode():
 
 @router.post("/control/car_cross_layer")
 @standard_response
-async def control_car_cross_layer(
-    request: schemas.LiftBase
-    ):
-    """
-    [跨层接口] - 操作穿梭车联动电梯跨层
-    """
+async def control_car_cross_layer(request: schemas.LiftBase):
+    """[跨层接口] 操作穿梭车联动电梯跨层。"""
     task_no = random.randint(1, 100)
-    msg = await device_services.do_car_cross_layer(
-        task_no,
-        request.layer
-        )
-    if msg:
+    success, msg = await device_services_base.do_car_cross_layer(task_no, request.layer)
+    if success:
         return StandardResponse.isSuccess(data=msg)
-    return StandardResponse.isError(message=msg[1], data=msg[0])
+    else:
+        return StandardResponse.isError(message=f"{msg}")
 
 @router.post("/control/task_inband")
 @standard_response
-async def control_task_inband(
-    request: schemas.CarMoveBase
-    ):
-    """
-    [入库接口] - 操作穿梭车联动PLC系统入库 (无障碍检测功能)
-    """
+async def control_task_inband(request: schemas.CarMoveBase):
+    """[入库接口] 操作穿梭车联动PLC系统入库 (无障碍检测功能)。"""
     task_no = random.randint(1, 100)
-    msg = await device_services.do_task_inband(
-        task_no,
-        request.target
-        )
-    if msg:
+    success, msg = await device_services_base.do_task_inband(task_no, request.target)
+    if success:
         return StandardResponse.isSuccess(data=msg)
-    return StandardResponse.isError(message=msg[1], data=msg[0])
+    else:
+        return StandardResponse.isError(message=f"{msg}")
 
 @router.post("/control/task_outband")
 @standard_response
-async def control_task_outband(
-    request: schemas.CarMoveBase
-    ):
-    """
-    [出库服务] - 操作穿梭车联动PLC系统出库 (无障碍检测功能)
-    """
+async def control_task_outband(request: schemas.CarMoveBase):
+    """[出库服务] 操作穿梭车联动PLC系统出库 (无障碍检测功能)。"""
     task_no = random.randint(1, 100)
-    msg = await device_services.do_task_outband(
-        task_no,
-        request.target
-        )
-    if msg:
+    success, msg = await device_services_base.do_task_outband(task_no, request.target)
+    if success:
         return StandardResponse.isSuccess(data=msg)
-    return StandardResponse.isError(message=msg[1], data=msg[0])
+    else:
+        return StandardResponse.isError(message=f"{msg}")
 
 
 @router.post("/control/task_inband_with_solve_blocking")
@@ -684,19 +652,17 @@ async def control_task_inband_with_solve_blocking(
     request: schemas.GoodTask,
     db: Session = get_database()
     ):
-    """
-    [入库服务接口 - 数据库] - 操作穿梭车联动PLC系统入库, 使用障碍检测功能
-    """
+    """[入库服务接口 - 数据库] 操作穿梭车联动PLC系统入库, 使用障碍检测功能。"""
     task_no = random.randint(1, 100)
-    msg = await device_services.do_task_inband_with_solve_blocking(
+    success, msg = await device_services_base.do_task_inband_with_solve_blocking(
         task_no,
         request.location,
         request.new_pallet_id,
         db
         )
-    if msg[0]:
-        return StandardResponse.isSuccess(data=msg[1])
-    return StandardResponse.isError(message=f"{msg[1]}", data=f"{msg[0]}")
+    if success:
+        return StandardResponse.isSuccess(data=msg)
+    return StandardResponse.isError(message=f"{msg}")
 
 @router.post("/control/task_outband_with_solve_blocking")
 @standard_response
@@ -704,19 +670,17 @@ async def control_task_outband_with_solve_blocking(
     request: schemas.GoodTask,
     db: Session = get_database()
     ):
-    """
-    [出库服务接口 - 数据库] - 操作穿梭车联动PLC系统出库, 使用障碍检测功能
-    """
+    """[出库服务接口 - 数据库] 操作穿梭车联动PLC系统出库, 使用障碍检测功能。"""
     task_no = random.randint(1, 100)
-    msg = await device_services.do_task_outband_with_solve_blocking(
+    success, msg = await device_services_base.do_task_outband_with_solve_blocking(
         task_no,
         request.location,
         request.new_pallet_id,
         db
         )
-    if msg[0]:
-        return StandardResponse.isSuccess(data=msg[1])
-    return StandardResponse.isError(message=f"{msg[1]}", data=msg[0])
+    if success:
+        return StandardResponse.isSuccess(data=msg)
+    return StandardResponse.isError(message=f"{msg}")
 
 @router.post("/control/good_move_with_solve_blocking")
 @standard_response
@@ -724,17 +688,15 @@ async def control_good_move_with_solve_blocking(
     request: schemas.GoodMoveTask,
     db: Session = get_database()
     ):
-    """
-    [货物移动服务接口 - 数据库] - 操作穿梭车联动PLC系统移动货物, 使用障碍检测功能
-    """
+    """[货物移动服务接口 - 数据库] 操作穿梭车联动PLC系统移动货物, 使用障碍检测功能。"""
     task_no = random.randint(1, 100)
-    msg = await device_services.do_good_move_with_solve_blocking(
+    success, msg = await device_services_base.do_good_move_with_solve_blocking(
         task_no,
         request.pallet_id,
         request.start_location,
         request.end_location,
         db
         )
-    if msg[0]:
-        return StandardResponse.isSuccess(data=msg[1])
-    return StandardResponse.isError(message=f"{msg[1]}", data=msg[0])
+    if success:
+        return StandardResponse.isSuccess(data=msg)
+    return StandardResponse.isError(message=f"{msg}")

@@ -219,47 +219,6 @@ class AsyncSocketCarController(ConnectionBackup):
             # 等待一段时间再次检查
             await asyncio.sleep(1)
 
-    async def wait_car_move_complete_by_location_sync(
-            self,
-            LOCATION: str,
-            TIMEOUT: float = settings.CAR_ACTION_TIMEOUT
-            ) -> bool:
-        """
-        [同步 - 穿梭车等待器] 等待穿梭车移动到指定位置
-
-        ::: param :::
-            LOCATION: 目标位置 如 "6,3,1"
-
-        ::: return :::
-            用于确认等到的标志 bool
-        """
-        
-        target_loc = list(map(int, LOCATION.split(',')))
-        target_x, target_y, target_z = target_loc[0], target_loc[1], target_loc[2]
-        self.logger.info(f"[CAR] ⏳ 等待小车移动到位置: {LOCATION}")
-
-        time.sleep(2)
-        start_time = time.time()
-        
-        while True:
-            # 获取小车当前位置
-            car_location = await self.car_current_location()
-            car_cur_loc = list(map(int, car_location.split(',')))
-            car_x, car_y, car_z = car_cur_loc[0], car_cur_loc[1], car_cur_loc[2]
-            
-            if (car_x == target_x) and (car_y == target_y) and (car_z == target_z):
-                self.logger.info(f"[CAR] ✅ 小车已到达目标位置 {LOCATION}")
-                return True
-            
-            # 检查超时
-            elapsed = asyncio.get_event_loop().time() - start_time
-            if elapsed > TIMEOUT:
-                self.logger.info(f"❌ 超时错误: 等待🚗动作超时 ({TIMEOUT}s)")
-                return False
-            
-            # 等待一段时间再次检查
-            time.sleep(1)
-
     
     ########################################
     # 发送任务包 - 操作穿梭车

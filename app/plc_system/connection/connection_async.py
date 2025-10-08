@@ -65,10 +65,12 @@ class ConnectionAsync(DevicesLogger):
                 # 简单验证连接（可选）
                 try:
                     # 读取一个测试值验证连接
-                    data = self.client.db_read(11, DB_11.WEIGHT.value, 1)
-                    self.logger.info(f"读取DB_11.WEIGHT成功，数据: {data}")
+                    # data = self.client.get_cpu_info()
+                    # self.logger.info(f"✉️ 读取CPU信息数据: {data}")
+                    data = self.client.db_read(11, 44, 1)
+                    self.logger.info(f"✉️ 读取验证信息数据: {data}")
                 except Exception as test_e:
-                    self.logger.error(f"连接验证失败: {test_e}")
+                    self.logger.error(f"❌ 连接验证失败: {test_e}")
                     self._connected = False
                     continue
                 

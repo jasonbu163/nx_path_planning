@@ -612,8 +612,7 @@ class AsyncDevicesController(DevicesLogger):
         return [True, last_location]
     
 class DevicesControllerByStep(DevicesLogger):
-    """
-    [异步 - 设备控制器] - 联合PLC控制系统和穿梭车控制系统, 实现立体仓库设备自动化控制
+    """[异步] 联合PLC控制系统和穿梭车控制系统, 实现立体仓库设备自动化控制
     
     !!! 注意：此为设备安全与人生安全操作首要原则，必须遵守 !!!
 
@@ -621,8 +620,7 @@ class DevicesControllerByStep(DevicesLogger):
     """
     
     def __init__(self, PLC_IP: str, CAR_IP: str, CAR_PORT: int):
-        """
-        [初始化设备控制服务]
+        """初始化设备
 
         ::: param :::
             PLC_IP: plc地址, 如 “192.168.8.10”

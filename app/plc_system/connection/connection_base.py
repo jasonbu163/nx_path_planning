@@ -3,7 +3,7 @@ import time
 from typing import Union, Callable, Any
 
 from snap7.client import Client
-from snap7.util import get_bool, set_bool
+from snap7.util import get_bool, set_bool, get_int, set_int
 
 from app.utils.devices_logger import DevicesLogger
 from app.core.config import settings
@@ -26,18 +26,18 @@ class ConnectionBase(DevicesLogger):
         """同步连接PLC"""
         # 双重检查连接状态
         if self._connected and self.client.get_connected():
-            self.logger.info("[PLC] 连接已存在，无需重新连接")
+            self.logger.info("✅ 连接已存在，无需重新连接")
             return True
         
         # 如果已有连接但状态不一致，先断开
         if self._connected or self.client.get_connected():
-            self.logger.warning("[PLC] 连接状态不一致，先关闭现有连接")
-            self.disconnect()
+            self.logger.warning("⚠️ 连接状态不一致，先关闭现有连接")
+            self.client.disconnect()
 
         for attempt in range(1, retry_count + 1):
             try:
                 self.logger.info(f"🔌 正在连接到 PLC: {self._ip} (rack=0, slot=1)")
-                self.logger.info(f"[PLC] 尝试连接 {attempt}/{retry_count} {self._ip}")
+                self.logger.info(f"⌛️ 尝试连接 {attempt}/{retry_count} {self._ip}")
                 
                 # 创建新的Client实例（避免重用问题连接）
                 self.client = Client()
@@ -50,21 +50,20 @@ class ConnectionBase(DevicesLogger):
                     self.logger.error("❌ PLC返回连接失败")
                     continue
 
-                # 简单验证连接（可选）
                 try:
                     # 读取一个测试值验证连接
-                    data = self.client.db_read(11, DB_11.WEIGHT.value, 1)
-                    self.logger.info(f"读取DB_11.WEIGHT成功，数据: {data}")
+                    data = self.client.get_cpu_info()
+                    self.logger.info(f"✉️ 读取CPU信息数据: {data}")
                 except Exception as test_e:
-                    self.logger.error(f"连接验证失败: {test_e}")
+                    self.logger.error(f"❌ 连接验证失败: {test_e}")
                     self._connected = False
                     continue
                 
-                self.logger.info(f"✅ 成功连接 PLC: {self._ip}")
+                self.logger.info(f"✅ 成功连接PLC: {self._ip}")
                 return True
             
             except Exception as e:
-                self.logger.error(f"❌ PLC连接失败{attempt}/{retry_count}:{str(e)}", exc_info=True)
+                self.logger.error(f"❌ PLC连接失败({attempt}/{retry_count}): {str(e)}", exc_info=True)
                 self._connected = False
 
                 # 清理（如果连接部分成功）
@@ -210,38 +209,6 @@ class ConnectionBase(DevicesLogger):
         self.write_db(db_number, byte_offset, bytes([new_value]))
         self.logger.info(f"🔧 位写入成功 DB{db_number}[{offset}]: 值={value}")
 
-    def read_bit_standard(self, db_number: int, byte_index: int, bit_index: int) -> bool:
-        """使用 snap7.util 读取一个位（标准写法）
-
-        Args:
-            db_number: DB块编号
-            byte_index: 字节索引（如 22）
-            bit_index: 位索引（0-7，如 0）
-
-        Returns:
-            bool: 位的布尔值
-        """
-        # 读取包含目标位的一个字节
-        data = self.client.db_read(db_number, byte_index, 1)
-        # 使用 get_bool 解析指定位
-        return get_bool(data, 0, bit_index)  # 注意：这里的字节偏移是相对于data的0
-
-    def write_bit_standard(self, db_number: int, byte_index: int, bit_index: int, value: bool) -> None:
-        """使用 snap7.util 写入一个位（标准写法）
-
-        Args:
-            db_number: DB块编号
-            byte_index: 字节索引（如 22）
-            bit_index: 位索引（0-7，如 0）
-            value: 要写入的值
-        """
-        # 读取包含目标位的一个字节
-        data = self.client.db_read(db_number, byte_index, 1)
-        # 使用 set_bool 修改指定位
-        set_bool(data, 0, bit_index, value)  # 注意：这里的字节偏移是相对于data的0
-        # 将修改后的整个字节写回
-        self.client.db_write(db_number, byte_index, data)
-
     def wait_for_bit_change(
             self,
             DB_NUMBER: int,
@@ -277,6 +244,261 @@ class ConnectionBase(DevicesLogger):
             # 等待一段时间再次检查
             time.sleep(0.5)
 
+class Connection(DevicesLogger):
+    """PLC连接基类，改良版"""
+    def __init__(self, host: str):
+        """初始化PLC连接。
+        
+        Args:
+            host: PLC IP地址
+        """
+        super().__init__(self.__class__.__name__)
+        self._ip = host
+        self._rack = 0
+        self._slot = 1
+
+        self._client = Client()
+        self._connected = False
+
+    def connect(self, retry_count: int = 3, retry_interval: float = 2.0) -> bool:
+        """[同步] 连接PLC
+        
+        Args:
+            retry_count: 重试次数。默认3次
+            retry_interval: 重试间隔时间。默认2秒
+        
+        Returns:
+            bool: 连接成功返回True，否则返回False
+        """
+        # 双重检查连接状态
+        if self._connected and self.client.get_connected():
+            self.logger.info("✅ 连接已存在，无需重新连接")
+            return True
+        
+        # 如果已有连接但状态不一致，先断开
+        if self._connected or self.client.get_connected():
+            self.logger.warning("⚠️ 连接状态不一致，先关闭现有连接")
+            self.client.disconnect()
+
+        for attempt in range(1, retry_count + 1):
+            try:
+                self.logger.info(f"🔌 正在连接到PLC: Host-{self._ip} Rack-{self._rack} Slot-{self._slot}")
+                self.logger.info(f"⌛️ 尝试连接({attempt}/{retry_count}): {self._ip}")
+                
+                # 创建新的Client实例（避免重用问题连接）
+                self.client = Client()
+                
+                # 尝试连接
+                self.client.connect(self._ip, self._rack, self._slot)
+                self._connected = self.client.get_connected()
+
+                if not self._connected:
+                    self.logger.error("❌ PLC返回连接失败")
+                    continue
+
+                try:
+                    # 读取一个测试值验证连接
+                    data = self.client.get_cpu_info()
+                    self.logger.info(f"✉️ 读取CPU信息数据: {data}")
+                except Exception as test_e:
+                    self.logger.error(f"❌ 连接验证失败: {test_e}")
+                    self._connected = False
+                    continue
+                
+                self.logger.info(f"✅ 成功连接PLC: {self._ip}")
+                return True
+            
+            except Exception as e:
+                self.logger.error(f"❌ PLC连接失败({attempt}/{retry_count}): {str(e)}", exc_info=True)
+                self._connected = False
+
+                # 清理（如果连接部分成功）
+                try:
+                    self.client.disconnect()
+                except:
+                    pass
+                
+                # 等待（最后一次尝试不等待）
+                if attempt < retry_count:
+                    time.sleep(retry_interval)
+
+        self._connected = False
+        return False
+    
+    def disconnect(self) -> bool:
+        """断开PLC连接
+        
+        Returns:
+            bool: 断开成功返回True，否则返回False
+        """
+        # 如果未连接，直接返回成功
+        if not self._connected and not self.client.get_connected():        
+            self.logger.info(f"⚠️ PLC连接已断开, 无需操作")
+            return True
+        
+        try:
+            # 尝试断开连接
+            self.client.disconnect()
+            self.logger.info(f"⛓️‍💥 PLC已断开连接")
+            return True
+        except Exception as e:
+            self.logger.error(f"❌ 断开连接失败: {e}", exc_info=True)
+            return False
+        finally:
+            # 无论成功与否，更新状态
+            self._connected = False
+            # 重置客户端实例
+            self.client = Client()
+
+    def read_db(self, db_number: int, start: int, size: int) -> bytearray:
+        """使用 snap7.client.Client 读取DB块数据
+        
+        Args:
+            db_number: DB块编号
+            start: 起始字节索引
+            size: 读取字节数量
+        
+        Returns:
+            bytearray: 读取到的数据
+        """
+        return self.client.db_read(db_number, start, size)
+    
+    def write_db(self, db_number: int, start: int, data: bytes) -> bool:
+        """使用 snap7.client.Client 写入DB块数据
+        
+        Args:
+            db_number: DB块编号
+            start: 起始字节索引
+            data: 要写入的数据
+        
+        Returns:
+            bool: 写入成功返回True，否则返回False
+        """
+        self.client.db_write(db_number, start, data)
+
+        size = len(data)
+        flag = self.read_db(db_number, start, size)
+        if flag == data:
+            self.logger.info(f"✅ 写入 DB{db_number}@{start} 成功，长度: {size} bytes")
+            return True
+        else:
+            self.logger.error(f"❌ 写入 DB{db_number}@{start} 失败")
+            return False
+
+    def read_bit(self, db_number: int, byte_address: int, bit_address: int) -> bool:
+        """使用 snap7.util 读取一个位（标准写法）
+
+        Args:
+            db_number: DB块编号
+            byte_address: 字节地址。如 22
+            bit_address: 位地址(0-7)。如 0
+
+        Returns:
+            bool: 位的布尔值
+        """
+        # 读取包含目标位的一个字节
+        data = self.client.db_read(db_number, byte_address, 1)
+        # 使用 get_bool 解析指定位
+        return get_bool(data, 0, bit_address)  # 注意：这里的字节偏移是相对于data的0
+
+    def write_bit(self, db_number: int, byte_address: int, bit_address: int, value: bool) -> bool:
+        """使用 snap7.util 写入一个位（标准写法）
+
+        Args:
+            db_number: DB块编号
+            byte_address: 字节地址。如 22
+            bit_address: 位地址(0-7)。如 0
+            value: 要写入的值
+
+        Returns:
+            bool: 成功写入返回True，否则返回False
+        """
+        # 读取包含目标位的一个字节
+        data = self.client.db_read(db_number, byte_address, 1)
+        # 使用 set_bool 修改指定位
+        set_bool(data, 0, bit_address, value)  # 注意：这里的字节偏移是相对于data的0
+        # 将修改后的整个字节写回
+        self.client.db_write(db_number, byte_address, data)
+
+        flag = self.read_bit(db_number, byte_address, bit_address)
+        if flag == value:
+            self.logger.info(f"✅ 写入BD块的位成功 - DB{db_number}@{byte_address}.{bit_address} = {value}")
+            return True
+        else:
+            self.logger.error(f"❌ 写入BD块的位失败")
+            return False
+        
+    def read_int(self, db_number: int, start: int) -> int:
+        """使用 snap7.util 读取一个整数（标准写法）
+        
+        Args:
+            db_number: DB块编号
+            start: 起始字节索引
+        
+        Returns:
+            int: 读取到的整数值
+        """
+        data = self.client.db_read(db_number, start, 2)
+        return get_int(data, 0)
+    
+    def write_int(self, db_number: int, start: int, value: int) -> bool:
+        """使用 snap7.util 写入一个整数（标准写法）
+        
+        Args:
+            db_number: DB块编号
+            start: 起始字节索引
+            value: 要写入的整数值
+        
+        Returns:
+            bool: 写入成功返回True，否则返回False
+        """
+        data = self.client.db_read(db_number, start, 2)
+        set_int(data, 0, value)
+        self.client.db_write(db_number, start, data)
+
+        flag = self.read_int(db_number, start)
+        if flag == value:
+            self.logger.info(f"✅ 写入DB块的整数成功 - DB{db_number}@{start} = {value}")
+            return True
+        else:
+            self.logger.error(f"❌ 写入DB块的整数失败")
+            return False
+        
+    def wait_for_bit_change(
+            self,
+            db_number: int,
+            byte_address: int,
+            bit_address: int,
+            target_value: int,
+            timeout: float = settings.PLC_ACTION_TIMEOUT
+            ) -> bool:
+        """[同步] 等待PLC指定的位状态变化为目标值
+        
+        Args:
+            db_number: DB块编号
+            byte_address: 字节地址。如 22
+            bit_address: 位地址(0-7)。如 0
+            target_value: 目标值 
+            timeout: 超时时间（秒）
+        """
+        start_time = time.time()
+        
+        while True:
+            # 读取当前值
+            current_value = self.read_bit(db_number, byte_address, bit_address)
+            
+            if current_value == target_value:
+                self.logger.info(f"✅ PLC动作完成: DB{db_number}@{byte_address}.{bit_address} = {current_value}")
+                return True
+                
+            # 检查超时
+            elapsed = time.time() - start_time
+            if elapsed > timeout:
+                self.logger.info(f"❌ 超时错误: 等待PLC动作超时 ({timeout}s)")
+                return False
+                
+            # 等待一段时间再次检查
+            time.sleep(0.5)
 
 ###############################################################
 # 在FastAPI中这样使用：

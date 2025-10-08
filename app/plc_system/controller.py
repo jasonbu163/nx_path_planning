@@ -194,6 +194,8 @@ class PLCController(ConnectionAsync):
         else:
             self.logger.error("[LIFT] ❌ 电梯工作失败")
             return False
+        
+        time.sleep(4)
 
         # 读取提升机是否空闲
         if self.read_bit(11, DB_11.IDLE.value):
@@ -215,6 +217,44 @@ class PLCController(ConnectionAsync):
         
         self.logger.info(f"[LIFT] 电梯到达 {self.get_lift()} 层")
 
+        return True
+    
+    async def wait_lift_move_complete_by_location(self) -> bool:
+        """[异步] 电梯工作等待器。
+
+        Returns:
+            bool: 等待状态
+        """
+        self.logger.info("[LIFT] 🚧 电梯工作中...")
+                
+        if await self.wait_for_bit_change(11, DB_11.RUNNING.value, 0):
+            self.logger.info(f"[LIFT] ✅ 电梯工作完毕")
+        else:
+            self.logger.error("[LIFT] ❌ 电梯工作失败")
+            return False
+        
+        await asyncio.sleep(4)
+
+        # 读取提升机是否空闲
+        if self.read_bit(11, DB_11.IDLE.value):
+            self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 1)
+            self.logger.info(f"[LIFT] ✅ 写入电梯到位状态")
+            await asyncio.sleep(1)
+        else:
+            self.logger.error("[LIFT] ❌ 提升机非空闲状态")
+            return False
+        
+        # 确认电梯到位后，清除到位状态
+        if self.read_bit(12, DB_12.TARGET_LAYER_ARRIVED.value) == 1:
+            self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
+            self.logger.info(f"[LIFT] ✅ 清除电梯到位状态")
+            await asyncio.sleep(3)
+        else:
+            self.logger.error("[LIFT] ❌ 电梯非到位状态")
+            return False
+        
+        self.logger.info(f"[LIFT] 电梯到达 {self.get_lift()} 层")
+        
         return True
             
     async def lift_move_by_layer(

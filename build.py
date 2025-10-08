@@ -128,6 +128,7 @@ def build_executable():
         '--noconfirm',  # 覆盖输出目录
         '--add-data=app/data;app/data',  # 添加配置文件夹
         '--add-data=app/map_core/data;app/map_core/data',
+        '--add-data'
         '--hidden-import=snap7',  # 添加snap7模块'
     ]
 
