@@ -47,3 +47,8 @@ icon = "⬇️"
 path = "tool_pages/car_cross_layer_by_step.py"
 name = "单步 - 穿梭车跨层操作"
 icon = "🚚" 
+
+[[pages]]
+path = "tool_pages/location_update.py"
+name = "仓库位置信息更新(数据库)"
+icon = "🛠️"
