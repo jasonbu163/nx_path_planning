@@ -2,10 +2,12 @@
 import time
 from enum import Enum, auto
 from typing import Tuple, Dict, Any
+import logging
+logger = logging.getLogger(__name__)
 
 from abc import ABC, abstractmethod
 
-from app.utils.devices_logger import DevicesLogger
+# from app.utils.devices_logger import DevicesLogger
 from app.plc_system.controller import PLCController
 from app.plc_system.enum import DB_11, DB_12, LIFT_TASK_TYPE, FLOOR_CODE
 from app.res_system.controller import ControllerBase as CarController
@@ -36,11 +38,11 @@ class CrossLayerState(Enum):
     ERROR = auto()                  # 错误状态
 
 
-class BaseTask(ABC, DevicesLogger):
+class BaseTask(ABC):
     """任务基类，定义公共接口和共享方法。"""
 
     def __init__(self, task_type: TaskType, plc_controller: PLCController, car_controller: CarController):
-        super().__init__(self.__class__.__name__)
+        # super().__init__(self.__class__.__name__)
         self.task_type = task_type
         self.plc = plc_controller
         self.car = car_controller
@@ -111,18 +113,18 @@ class CrossLayerTask(BaseTask):
             'start_time': start_time
         }
         
-        self.logger.info(f"🚀 开始穿梭车跨层任务，目标楼层: {target_layer}层，任务号: {task_no}")
+        logger.info(f"🚀 开始穿梭车跨层任务，目标楼层: {target_layer}层，任务号: {task_no}")
         
         # 状态机主循环
         while current_state not in (CrossLayerState.COMPLETED, CrossLayerState.ERROR):
             # 检查超时
             if time.time() - start_time > timeout:
-                self.logger.error("⏰ 任务执行超时")
+                logger.error("⏰ 任务执行超时")
                 current_state = CrossLayerState.ERROR
                 context['error_message'] = "任务执行超时"
                 break
                 
-            self.logger.info(f"🔄 当前状态: {current_state.name}")
+            logger.info(f"🔄 当前状态: {current_state.name}")
             
             # 使用match-case集中管理状态逻辑
             match current_state:
@@ -152,15 +154,15 @@ class CrossLayerTask(BaseTask):
                     
                 case _:
                     # 未知状态处理
-                    self.logger.error(f"❌ 遇到未知状态: {current_state}")
+                    logger.error(f"❌ 遇到未知状态: {current_state}")
                     success, msg, next_state = False, "未知状态", CrossLayerState.ERROR
             
             # 处理状态执行结果
             if success:
-                self.logger.info(f"✅ {msg}")
+                logger.info(f"✅ {msg}")
                 current_state = next_state
             else:
-                self.logger.error(f"❌ 状态{current_state.name}执行失败: {msg}")
+                logger.error(f"❌ 状态{current_state.name}执行失败: {msg}")
                 context['error_message'] = msg
                 current_state = CrossLayerState.ERROR
                 self._cleanup_on_error(context)
@@ -168,7 +170,7 @@ class CrossLayerTask(BaseTask):
         # 返回最终结果
         if current_state == CrossLayerState.COMPLETED:
             duration = time.time() - start_time
-            self.logger.info(f"🎉 跨层任务完成，总耗时: {duration:.2f}秒")
+            logger.info(f"🎉 跨层任务完成，总耗时: {duration:.2f}秒")
             return True, "跨层任务完成"
         else:
             return False, f"跨层任务失败: {context['error_message']}"
@@ -184,8 +186,8 @@ class CrossLayerTask(BaseTask):
             context['car_current_floor'] = car_cur_loc[2]
             context['car_start_location'] = car_location
             
-            self.logger.info(f"🚗 穿梭车初始位置: {car_location}, 当前楼层: {context['car_current_floor']}层")
-            self.logger.info(f"🎯 目标楼层: {context['target_layer']}层")
+            logger.info(f"🚗 穿梭车初始位置: {car_location}, 当前楼层: {context['car_current_floor']}层")
+            logger.info(f"🎯 目标楼层: {context['target_layer']}层")
             
             return True, "初始化完成", CrossLayerState.PLC_CONNECTING
             
@@ -196,7 +198,7 @@ class CrossLayerTask(BaseTask):
         """处理PLC连接状态"""
         try:
             if self.plc.connect():
-                self.logger.info("🔌 PLC连接成功")
+                logger.info("🔌 PLC连接成功")
                 return True, "PLC连接成功", CrossLayerState.LIFT_MOVING_TO_CAR
             else:
                 return False, "PLC连接失败", CrossLayerState.ERROR
@@ -215,7 +217,7 @@ class CrossLayerTask(BaseTask):
             if self.plc.lift_move_by_layer_sync(task_no, current_floor):
                 # 等待电梯到达
                 if self.plc.wait_lift_move_complete_by_location_sync():
-                    self.logger.info(f"✅ 电梯已到达{current_floor}层")
+                    logger.info(f"✅ 电梯已到达{current_floor}层")
                     return True, f"电梯到达{current_floor}层", CrossLayerState.CAR_TO_LIFT_ENTRANCE
                 else:
                     return False, f"电梯未到达{current_floor}层", CrossLayerState.ERROR
@@ -234,13 +236,13 @@ class CrossLayerTask(BaseTask):
             
             # 检查是否已经在预备位置
             if self.car.car_current_location() == lift_pre_location:
-                self.logger.info(f"✅ 穿梭车已在电梯预备位置: {lift_pre_location}")
+                logger.info(f"✅ 穿梭车已在电梯预备位置: {lift_pre_location}")
                 return True, "穿梭车已在预备位置", CrossLayerState.CAR_ENTERING_LIFT
             
             # 移动穿梭车到预备位置
             if self.car.car_move(task_no, lift_pre_location):
                 if self.car.wait_car_move_complete_by_location_sync(lift_pre_location):
-                    self.logger.info(f"✅ 穿梭车已到达电梯预备位置: {lift_pre_location}")
+                    logger.info(f"✅ 穿梭车已到达电梯预备位置: {lift_pre_location}")
                     return True, "穿梭车到达预备位置", CrossLayerState.CAR_ENTERING_LIFT
                 else:
                     return False, f"穿梭车未到达预备位置: {lift_pre_location}", CrossLayerState.ERROR
@@ -259,13 +261,13 @@ class CrossLayerTask(BaseTask):
             
             # 检查是否已经在电梯内
             if self.car.car_current_location() == lift_location:
-                self.logger.info(f"✅ 穿梭车已在电梯内: {lift_location}")
+                logger.info(f"✅ 穿梭车已在电梯内: {lift_location}")
                 return True, "穿梭车已在电梯内", CrossLayerState.LIFT_MOVING_WITH_CAR
             
             # 移动穿梭车进入电梯
             if self.car.car_move(task_no, lift_location):
                 if self.car.wait_car_move_complete_by_location_sync(lift_location):
-                    self.logger.info(f"✅ 穿梭车已进入电梯: {lift_location}")
+                    logger.info(f"✅ 穿梭车已进入电梯: {lift_location}")
                     return True, "穿梭车进入电梯", CrossLayerState.LIFT_MOVING_WITH_CAR
                 else:
                     return False, f"穿梭车未进入电梯: {lift_location}", CrossLayerState.ERROR
@@ -291,7 +293,7 @@ class CrossLayerTask(BaseTask):
                     # 更新穿梭车坐标到目标层
                     target_lift_location = f"6,3,{target_layer}"
                     self.car.change_car_location(task_no + 1, target_lift_location)
-                    self.logger.info(f"✅ 电梯已到达目标层{target_layer}层，穿梭车坐标已更新")
+                    logger.info(f"✅ 电梯已到达目标层{target_layer}层，穿梭车坐标已更新")
                     return True, f"电梯到达目标层{target_layer}", CrossLayerState.CAR_LEAVING_LIFT
                 else:
                     return False, f"电梯未到达目标层{target_layer}", CrossLayerState.ERROR
@@ -311,7 +313,7 @@ class CrossLayerTask(BaseTask):
             # 移动穿梭车离开电梯
             if self.car.car_move(task_no, target_pre_location):
                 if self.car.wait_car_move_complete_by_location_sync(target_pre_location):
-                    self.logger.info(f"✅ 穿梭车已到达目标层接驳位: {target_pre_location}")
+                    logger.info(f"✅ 穿梭车已到达目标层接驳位: {target_pre_location}")
                     return True, "穿梭车到达目标层", CrossLayerState.PLC_DISCONNECTING
                 else:
                     return False, f"穿梭车未到达接驳位: {target_pre_location}", CrossLayerState.ERROR
@@ -325,18 +327,18 @@ class CrossLayerTask(BaseTask):
         """处理PLC断开连接状态"""
         try:
             if self.plc.disconnect():
-                self.logger.info("🔌 PLC断开连接成功")
+                logger.info("🔌 PLC断开连接成功")
                 return True, "PLC断开连接", CrossLayerState.COMPLETED
             else:
-                self.logger.warning("⚠️ PLC断开连接异常，但任务继续完成")
+                logger.warning("⚠️ PLC断开连接异常，但任务继续完成")
                 return True, "PLC断开连接异常忽略", CrossLayerState.COMPLETED
         except Exception as e:
-            self.logger.warning(f"⚠️ PLC断开连接异常: {str(e)}，但任务继续完成")
+            logger.warning(f"⚠️ PLC断开连接异常: {str(e)}，但任务继续完成")
             return True, "PLC断开连接异常忽略", CrossLayerState.COMPLETED
 
     def _cleanup_on_error(self, context: Dict[str, Any]):
         """错误状态下的清理操作"""
-        self.logger.warning("🧹 执行错误清理操作...")
+        logger.warning("🧹 执行错误清理操作...")
         try:
             self.plc.disconnect()
         except:
@@ -346,7 +348,7 @@ class CrossLayerTask(BaseTask):
     
     def car_cross_layer(self, task_no: int, target_layer: int) -> Tuple[bool, str]:
         """保持向后兼容的原始方法（委托给状态机版本）"""
-        self.logger.info("🔀 使用状态机版本执行跨层任务")
+        logger.info("🔀 使用状态机版本执行跨层任务")
         return self.execute(task_no, target_layer)
     
 
@@ -356,7 +358,7 @@ class InboundTask(BaseTask):
 
     def execute(self, task_id: int, target_location: str, goods_info: dict) -> Tuple[bool, str]:
         """执行入库任务的具体流程。"""
-        self.logger.info(f"开始执行入库任务 {task_id}")
+        logger.info(f"开始执行入库任务 {task_id}")
         # 1. 检查目标货位状态
         # 2. 调度穿梭车取货
         # 3. 协同提升机将货物运至目标楼层
@@ -372,7 +374,7 @@ class OutboundTask(BaseTask):
 
     def execute(self, task_id: int, source_location: str) -> Tuple[bool, str]:
         """执行出库任务的具体流程。"""
-        self.logger.info(f"开始执行出库任务 {task_id}")
+        logger.info(f"开始执行出库任务 {task_id}")
         # 1. 根据WMS指令定位货物 [1](@ref)
         # 2. 调度穿梭车至目标货位取货
         # 3. 协同提升机将货物运至出口层

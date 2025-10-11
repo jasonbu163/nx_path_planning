@@ -40,7 +40,7 @@ class DevicesLogger:
         """
         logger = logging.getLogger(self._name)
         logger.setLevel(logging.INFO)
-        formatter = logging.Formatter('[%(asctime)s -  %(levelname)s] %(message)s')
+        formatter = logging.Formatter('[%(asctime)s - %(levelname)s] %(message)s')
         
         # 检查是否已经存在handler，避免重复添加导致日志重复输出
         if not logger.handlers:

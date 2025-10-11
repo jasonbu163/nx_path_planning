@@ -7,17 +7,19 @@ RES+3.1 穿梭车通信协议上位机系统 - 模块化设计
 
 import threading
 import time
+import logging
+logger = logging.getLogger(__name__)
 
 from .res_protocol import RESProtocol, FrameType, ErrorHandler
 from .packet_builder import PacketBuilder
-from app.utils.devices_logger import DevicesLogger
+# from app.utils.devices_logger import DevicesLogger
 
 # ------------------------
 # 模块 5: 心跳管理器
 # 职责: 维护心跳机制和小车状态
 # 维护者: 核心系统工程师
 # ------------------------
-class HeartbeatManager(DevicesLogger):
+class HeartbeatManager():
     def __init__(
             self,
             NETTWORK_MANAGER,
@@ -30,7 +32,7 @@ class HeartbeatManager(DevicesLogger):
             NETTWORK_MANAGER: 网络管理实例
             PACKET_BUILDER: 数据包构造器实例
         """
-        super().__init__(self.__class__.__name__)
+        # super().__init__(self.__class__.__name__)
         self.network = NETTWORK_MANAGER
         self.builder = PACKET_BUILDER if PACKET_BUILDER else PacketBuilder()
         self.last_heartbeat_time = 0
@@ -54,7 +56,7 @@ class HeartbeatManager(DevicesLogger):
     
     def _heartbeat_loop(self):
         """心跳发送循环"""
-        self.logger.info("[心跳] 开始运行心跳线程")
+        logger.info("[心跳] 开始运行心跳线程")
         while self.heartbeat_active:
             try:
                 # 带电量心跳每5次发送一次
@@ -69,7 +71,7 @@ class HeartbeatManager(DevicesLogger):
                 # 等待间隔
                 time.sleep(RESProtocol.HEARTBEAT_INTERVAL.value)
             except Exception as e:
-                self.logger.error(f"[心跳] 发生异常: {str(e)}", exc_info=True)
+                logger.error(f"[心跳] 发生异常: {str(e)}", exc_info=True)
                 time.sleep(5)
     
     def update_status(self, data):

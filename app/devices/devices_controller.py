@@ -1,14 +1,16 @@
 # app/devices/devices_controller.py
 import time
 from typing import Tuple, Union
+import logging
+logger = logging.getLogger(__name__)
 
-from app.utils.devices_logger import DevicesLogger
+# from app.utils.devices_logger import DevicesLogger
 from app.plc_system.controller import PLCController
 from app.plc_system.enum import DB_11, DB_12, LIFT_TASK_TYPE, FLOOR_CODE
 from app.res_system.controller import ControllerBase as CarController
 from app.res_system.enum import CarStatus
 
-class DevicesController(DevicesLogger):
+class DevicesController():
     """同步设备控制器。
     
     联合PLC控制系统和穿梭车控制系统, 实现立体仓库设备自动化控制
@@ -26,7 +28,7 @@ class DevicesController(DevicesLogger):
             car_ip: 穿梭车地址, 如 “192.168.8.30”
             car_port: 穿梭车端口, 如 2504
         """
-        super().__init__(self.__class__.__name__)
+        # super().__init__(self.__class__.__name__)
         self._plc_ip = plc_ip
         self._car_ip = car_ip
         self._car_port = car_port
@@ -39,11 +41,7 @@ class DevicesController(DevicesLogger):
     ############################################################
     ############################################################
     
-    def car_cross_layer(
-            self,
-            task_no: int,
-            target_layer: int
-    ) -> Tuple[bool, str]:
+    def car_cross_layer(self, task_no: int, target_layer: int) -> Tuple[bool, str]:
         """穿梭车跨层。
         
         穿梭车系统联合PLC电梯系统, 控制穿梭车去到目标楼层。
@@ -62,58 +60,58 @@ class DevicesController(DevicesLogger):
         # 获取穿梭车位置 -> 坐标: 如, "6,3,2" 楼层: 如, 2
         car_location = self.car.car_current_location()
         if car_location == "error":
-            self.logger.error("❌ 获取穿梭车位置错误")
+            logger.error("❌ 获取穿梭车位置错误")
             return False, "❌ 获取穿梭车位置错误"
         else:
-            self.logger.info(f"🚗 穿梭车当前坐标: {car_location}")
+            logger.info(f"🚗 穿梭车当前坐标: {car_location}")
         
         car_cur_loc = list(map(int, car_location.split(',')))
         car_current_floor = car_cur_loc[2]
-        self.logger.info(f"🚗 穿梭车当前楼层: {car_current_floor} 层")
+        logger.info(f"🚗 穿梭车当前楼层: {car_current_floor} 层")
 
         # 获取目标位置 -> 坐标: 如, "1,1,1" 楼层: 如, 1
-        self.logger.info(f"🧭 穿梭车目的楼层: {target_layer} 层")
+        logger.info(f"🧭 穿梭车目的楼层: {target_layer} 层")
         
         ############################################################
         # step 1: 连接PLC
         ############################################################
 
-        self.logger.info("🚧 连接PLC")
+        logger.info("🚧 连接PLC")
         
         if self.plc.connect():
-            self.logger.info("✅ PLC连接正常")
+            logger.info("✅ PLC连接正常")
         else:
             self.plc.disconnect()
-            self.logger.error("❌ PLC连接错误")
+            logger.error("❌ PLC连接错误")
             return False ,"❌ PLC连接错误"
         
         ############################################################
         # step 2: 电梯移动到穿梭车楼层
         ############################################################
 
-        self.logger.info("🚧 电梯移动到穿梭车楼层")
+        logger.info("🚧 电梯移动到穿梭车楼层")
         
         if self.plc.plc_checker():
 
             last_task_no = self.plc.get_lift_last_taskno()
             if last_task_no == task_no:
                 task_no += 1
-                self.logger.info(f"🚧 任务号: {task_no}")
+                logger.info(f"🚧 任务号: {task_no}")
             else:
-                self.logger.info(f"🚧 任务号: {task_no}")
+                logger.info(f"🚧 任务号: {task_no}")
 
-            self.logger.info("🚧 电梯开始移动...")
+            logger.info("🚧 电梯开始移动...")
             
             if self.plc.lift_move_by_layer_sync(task_no, car_current_floor):
-                self.logger.info("✅ 电梯工作指令发送成功")
+                logger.info("✅ 电梯工作指令发送成功")
             else:
                 self.plc.disconnect()
-                self.logger.error("❌ 电梯工作指令发送失败")
+                logger.error("❌ 电梯工作指令发送失败")
                 return False ,"❌ 电梯工作指令发送失败"
         
         else:
             self.plc.disconnect()
-            self.logger.error("❌ PLC错误")
+            logger.error("❌ PLC错误")
             return False, "❌ PLC错误"
         
         ############################################################
@@ -123,153 +121,153 @@ class DevicesController(DevicesLogger):
 
         # 无论车和电梯是不是同层，都要先让电梯去到当前车所在层
         if car_current_floor != target_layer:
-            self.logger.info("🚧 移动空载电梯到电机口")
+            logger.info("🚧 移动空载电梯到电机口")
         else:
             self.plc.disconnect()
-            self.logger.info(f"✅ 穿梭车已在: {car_current_floor} 层")
+            logger.info(f"✅ 穿梭车已在: {car_current_floor} 层")
             return True, f"✅ 穿梭车已在: {car_current_floor} 层"
 
         car_location = self.car.car_current_location()
         if car_location == "error":
             self.plc.disconnect()
-            self.logger.error("❌ 获取穿梭车位置错误")
+            logger.error("❌ 获取穿梭车位置错误")
             return False, "❌ 获取穿梭车位置错误"
         else:
-            self.logger.info(f"🚗 穿梭车当前坐标: {car_location}")
+            logger.info(f"🚗 穿梭车当前坐标: {car_location}")
 
         car_current_lift_pre_location = f"5,3,{car_current_floor}"
         
         if car_location != car_current_lift_pre_location:
             
-            self.logger.info("⏳ 穿梭车开始移动...")
+            logger.info("⏳ 穿梭车开始移动...")
 
             if self.car.car_move(task_no+1, car_current_lift_pre_location):
-                self.logger.info("✅ 穿梭车移动指令发送成功")
+                logger.info("✅ 穿梭车移动指令发送成功")
             else:
                 self.plc.disconnect()
-                self.logger.error("❌ 穿梭车移动指令发送错误")
+                logger.error("❌ 穿梭车移动指令发送错误")
                 return False, "❌ 穿梭车移动指令发送错误"
             
-            self.logger.info(f"⏳ 等待穿梭车前往 {car_current_lift_pre_location} 位置...")
+            logger.info(f"⏳ 等待穿梭车前往 {car_current_lift_pre_location} 位置...")
                 
             if self.car.wait_car_move_complete_by_location_sync(car_current_lift_pre_location):
-                self.logger.info(f"✅ 穿梭车已到达 {car_current_lift_pre_location} 位置")    
+                logger.info(f"✅ 穿梭车已到达 {car_current_lift_pre_location} 位置")    
             else:
                 self.plc.disconnect()
-                self.logger.error(f"❌ 穿梭车未到达 {car_current_lift_pre_location} 位置")
+                logger.error(f"❌ 穿梭车未到达 {car_current_lift_pre_location} 位置")
                 return False, f"❌ 穿梭车未到达 {car_current_lift_pre_location} 位置"
             
         else:
-            self.logger.info(f"✅ 穿梭车已在（{car_current_lift_pre_location}）等待")
+            logger.info(f"✅ 穿梭车已在（{car_current_lift_pre_location}）等待")
             
         # 等待电梯到达
         if self.plc.plc_checker():
             
-            self.logger.info(f"⌛️ 等待电梯到达{car_current_floor}层")
+            logger.info(f"⌛️ 等待电梯到达{car_current_floor}层")
 
             if self.plc.wait_lift_move_complete_by_location_sync():
-                self.logger.info(f"✅ 电梯已到达{car_current_floor}层")
+                logger.info(f"✅ 电梯已到达{car_current_floor}层")
             else:
                 self.plc.disconnect()
-                self.logger.error(f"❌ 电梯未到达{car_current_floor}层")
+                logger.error(f"❌ 电梯未到达{car_current_floor}层")
                 return False, f"❌ 电梯未到达{car_current_floor}层"
         
         else:
             self.plc.disconnect()
-            self.logger.error("❌ PLC错误")
+            logger.error("❌ PLC错误")
             return False, "❌ PLC错误"
         
         ############################################################
         # step 4: 穿梭车进入电梯
         ############################################################
 
-        self.logger.info("🚧 穿梭车进入电梯")
+        logger.info("🚧 穿梭车进入电梯")
         
         car_location = self.car.car_current_location()
         if car_location == "error":
             self.plc.disconnect()
-            self.logger.error("❌ 获取穿梭车位置错误")
+            logger.error("❌ 获取穿梭车位置错误")
             return False, "❌ 获取穿梭车位置错误"
         else:
-            self.logger.info(f"🚗 穿梭车当前坐标: {car_location}")
+            logger.info(f"🚗 穿梭车当前坐标: {car_location}")
 
         car_current_lift_location = f"6,3,{car_current_floor}"
         
         if car_location != car_current_lift_location:
             
-            self.logger.info("⏳ 穿梭车开始移动...")
+            logger.info("⏳ 穿梭车开始移动...")
             
             if self.car.car_move(task_no+2, car_current_lift_location):
-                self.logger.info("✅ 穿梭车工作指令发送成功")
+                logger.info("✅ 穿梭车工作指令发送成功")
             else:
                 self.plc.disconnect()
-                self.logger.error(f"❌ 穿梭车移动指令发送错误")
+                logger.error(f"❌ 穿梭车移动指令发送错误")
                 return False, f"❌ 穿梭车移动指令发送错误"
             
-            self.logger.info(f"⏳ 等待穿梭车前往 电梯内 {car_current_lift_location} 位置...")
+            logger.info(f"⏳ 等待穿梭车前往 电梯内 {car_current_lift_location} 位置...")
                 
             if self.car.wait_car_move_complete_by_location_sync(car_current_lift_location):
-                self.logger.info(f"✅ 穿梭车已到达 电梯内 {car_current_lift_location} 位置")
+                logger.info(f"✅ 穿梭车已到达 电梯内 {car_current_lift_location} 位置")
             else:
                 self.plc.disconnect()
-                self.logger.error(f"❌ 穿梭车未到达电梯内 {car_current_lift_location} 位置")
+                logger.error(f"❌ 穿梭车未到达电梯内 {car_current_lift_location} 位置")
                 return False, f"❌ 穿梭车未到达电梯内 {car_current_lift_location} 位置"
         
         else:
             self.plc.disconnect()
-            self.logger.error(f"❌ 穿梭车当前位置不在（{car_current_lift_location}），不满足电梯移动条件")
+            logger.error(f"❌ 穿梭车当前位置不在（{car_current_lift_location}），不满足电梯移动条件")
             return False, f"❌ 穿梭车当前位置不在（{car_current_lift_location}），不满足电梯移动条件"
 
         ############################################################
         # step 5: 电梯送车到目标层
         ############################################################
 
-        self.logger.info("🚧 移动电梯载车到目标楼层")
+        logger.info("🚧 移动电梯载车到目标楼层")
         
         if self.plc.plc_checker():
             
-            self.logger.info("🚧 电梯开始移动...")
+            logger.info("🚧 电梯开始移动...")
 
             if self.plc.lift_move_by_layer_sync(task_no+3, target_layer):
-                self.logger.info("✅ 电梯工作指令发送成功")
+                logger.info("✅ 电梯工作指令发送成功")
             else:
                 self.plc.disconnect()
-                self.logger.error("❌ 电梯工作指令发送失败")
+                logger.error("❌ 电梯工作指令发送失败")
                 return False,"❌ 电梯工作指令发送失败"
         
         else:
             self.plc.disconnect()
-            self.logger.error("❌ PLC错误")
+            logger.error("❌ PLC错误")
             return False ,"❌ PLC错误"
 
         ############################################################
         # step 6: 更新穿梭车坐标（楼层）
         ############################################################
 
-        self.logger.info("🚧 更新穿梭车坐标（楼层）")
+        logger.info("🚧 更新穿梭车坐标（楼层）")
 
         if self.plc.plc_checker():
 
             car_target_lift_location = f"6,3,{target_layer}"
             if self.car.change_car_location(task_no+4, car_target_lift_location):
-                self.logger.info(f"✅ 更新穿梭车位置: {car_target_lift_location}")
+                logger.info(f"✅ 更新穿梭车位置: {car_target_lift_location}")
             else:
                 self.plc.disconnect()
-                self.logger.error(f"❌ 穿梭车更新位置指令发送错误")
+                logger.error(f"❌ 穿梭车更新位置指令发送错误")
                 return False, f"❌ 穿梭车更新位置指令发送错误"
             
-            self.logger.info(f"⌛️ 等待电梯到达{target_layer}层")
+            logger.info(f"⌛️ 等待电梯到达{target_layer}层")
 
             if self.plc.wait_lift_move_complete_by_location_sync():
-                self.logger.info(f"✅ 电梯已到达{target_layer}层")
+                logger.info(f"✅ 电梯已到达{target_layer}层")
             else:
                 self.plc.disconnect()
-                self.logger.error(f"❌ 电梯未到达{target_layer}层")
+                logger.error(f"❌ 电梯未到达{target_layer}层")
                 return False, f"❌ 电梯未到达{target_layer}层"
         
         else:
             self.plc.disconnect()
-            self.logger.error("❌ PLC未连接")
+            logger.error("❌ PLC未连接")
             return False, "❌ PLC未连接"
         
         ############################################################
@@ -278,39 +276,39 @@ class DevicesController(DevicesLogger):
 
         target_lift_pre_location = f"5,3,{target_layer}"
         
-        self.logger.info(f"🚧 穿梭车开始离开电梯进入接驳位 {target_lift_pre_location}")
+        logger.info(f"🚧 穿梭车开始离开电梯进入接驳位 {target_lift_pre_location}")
         
-        self.logger.info("⏳ 穿梭车开始移动...")
+        logger.info("⏳ 穿梭车开始移动...")
         
         if self.car.car_move(task_no+5, target_lift_pre_location):
-            self.logger.info("✅ 穿梭车移动指令发送成功")
+            logger.info("✅ 穿梭车移动指令发送成功")
         else:
             self.plc.disconnect()
-            self.logger.error(f"❌ 穿梭车移动指令发送错误")
+            logger.error(f"❌ 穿梭车移动指令发送错误")
             return False, f"❌ 穿梭车移动指令发送错误"
         
-        self.logger.info(f"⏳ 等待穿梭车前往 接驳位 {target_lift_pre_location} 位置...")
+        logger.info(f"⏳ 等待穿梭车前往 接驳位 {target_lift_pre_location} 位置...")
             
         if self.car.wait_car_move_complete_by_location_sync(target_lift_pre_location):
-            self.logger.info(f"✅ 穿梭车已到达指定楼层 {target_layer} 层")    
+            logger.info(f"✅ 穿梭车已到达指定楼层 {target_layer} 层")    
         else:
             self.plc.disconnect()
-            self.logger.error(f"❌ 穿梭车未到达指定楼层 {target_layer} 层")
+            logger.error(f"❌ 穿梭车未到达指定楼层 {target_layer} 层")
             return False, f"❌ 穿梭车未到达指定楼层 {target_layer} 层"
         
         ############################################################
         # step 8: 断开PLC连接
         ############################################################
         
-        self.logger.info("🚧 断开PLC连接")
+        logger.info("🚧 断开PLC连接")
         
         if self.plc.disconnect():
-            self.logger.info("✅ PLC已断开")
+            logger.info("✅ PLC已断开")
         else:
-            self.logger.error("❌ PLC断开连接错误")
+            logger.error("❌ PLC断开连接错误")
             return False, "❌ PLC断开连接错误"
         
-        self.logger.info("✅ 跨层完成")
+        logger.info("✅ 跨层完成")
         return True, "✅ 跨层完成"
 
     ############################################################
@@ -319,11 +317,7 @@ class DevicesController(DevicesLogger):
     ############################################################
     ############################################################
 
-    def task_inband(
-            self,
-            task_no: int,
-            target_location: str
-    ) -> Tuple[bool, str]:
+    def task_inband(self, task_no: int, target_location: str) -> Tuple[bool, str]:
         """任务入库。
         
         穿梭车系统联合PLC电梯输送线系统, 执行入库任务。
@@ -343,155 +337,155 @@ class DevicesController(DevicesLogger):
         # 判断任务坐标是否合法
         disable_location = ["6,3,1", "6,3,2", "6,3,3", "6,3,4"]
         if target_location in disable_location:
-            self.logger.error("❌ 任务坐标错误")
+            logger.error("❌ 任务坐标错误")
             return False, "❌ 任务坐标错误"
         
         # 获取穿梭车位置 -> 坐标: 如, "6,3,2" 楼层: 如, 2
         car_location = self.car.car_current_location()
         if car_location == "error":
-            self.logger.error("❌ 获取穿梭车位置错误")
+            logger.error("❌ 获取穿梭车位置错误")
             return False, "❌ 获取穿梭车位置错误"
         else:
-            self.logger.info(f"🚗 穿梭车当前坐标: {car_location}")
+            logger.info(f"🚗 穿梭车当前坐标: {car_location}")
 
-        self.logger.info(f"🚗 穿梭车当前坐标: {car_location}")
+        logger.info(f"🚗 穿梭车当前坐标: {car_location}")
         car_loc = list(map(int, car_location.split(',')))
         car_layer = car_loc[2]
-        self.logger.info(f"🚗 穿梭车当前楼层: {car_layer}")
+        logger.info(f"🚗 穿梭车当前楼层: {car_layer}")
         
         # 拆解目标位置 -> 坐标: 如, "1,3,1" 楼层: 如, 1
-        self.logger.info(f"📦 货物目标坐标: {target_location}")
+        logger.info(f"📦 货物目标坐标: {target_location}")
         target_loc = list(map(int, target_location.split(',')))
         target_layer = target_loc[2]
-        self.logger.info(f"📦 货物目标楼层: {target_layer}")
+        logger.info(f"📦 货物目标楼层: {target_layer}")
 
         # 穿梭车不在任务层, 操作穿梭车到达任务楼层等待
         if car_layer != target_layer:
 
-            self.logger.info("🚧 穿梭车务楼层不一致, 移动穿梭车到任务楼层")
+            logger.info("🚧 穿梭车务楼层不一致, 移动穿梭车到任务楼层")
 
             car_info = self.car_cross_layer(task_no, target_layer)
             if car_info[0]:
-                self.logger.info(f"{car_info[1]}")
+                logger.info(f"{car_info[1]}")
             else:
-                self.logger.error(f"{car_info[1]}")
+                logger.error(f"{car_info[1]}")
                 return False, f"{car_info[1]}"
             
         else:
-            self.logger.info("✅ 穿梭车已在任务楼层")
+            logger.info("✅ 穿梭车已在任务楼层")
 
         ############################################################
         # step 1: 连接PLC
         ############################################################
 
-        self.logger.info("连接PLC")
+        logger.info("连接PLC")
         
         if self.plc.connect():
-            self.logger.info("✅ PLC连接正常")
+            logger.info("✅ PLC连接正常")
         else:
             self.plc.disconnect()
-            self.logger.error("❌ PLC连接错误")
+            logger.error("❌ PLC连接错误")
             return False ,"❌ PLC连接错误"
         
         ############################################################
         # step 2: 移动空载电梯到1层
         ############################################################
         
-        self.logger.info("🚧 移动空载电梯到1层")
+        logger.info("🚧 移动空载电梯到1层")
 
         if self.plc.plc_checker():
 
             last_task_no = self.plc.get_lift_last_taskno()
             if last_task_no == task_no:
                 task_no += 1
-                self.logger.info(f"🚧 任务号: {task_no}")
+                logger.info(f"🚧 任务号: {task_no}")
             else:
-                self.logger.info(f"🚧 任务号: {task_no}")
+                logger.info(f"🚧 任务号: {task_no}")
             
-            self.logger.info("🚧 电梯开始移动...")
+            logger.info("🚧 电梯开始移动...")
 
             if self.plc.lift_move_by_layer_sync(task_no+1, 1):
-                self.logger.info("✅ 电梯工作指令发送成功")
+                logger.info("✅ 电梯工作指令发送成功")
             else:
                 self.plc.disconnect()
-                self.logger.error("❌ 电梯工作指令发送失败")
+                logger.error("❌ 电梯工作指令发送失败")
                 return False, "❌ 电梯工作指令发送失败"
             
         else:
             self.plc.disconnect()
-            self.logger.error("❌ PLC错误")
+            logger.error("❌ PLC错误")
             return False ,"❌ PLC错误"
         
         ############################################################
         # step 3: 货物进入电梯
         ############################################################
         
-        self.logger.info("▶️ 入库开始")
+        logger.info("▶️ 入库开始")
 
         # 人工放货到入口完成后, 输送线将货物送入电梯
         if self.plc.plc_checker():
 
-            self.logger.info(f"⌛️ 等待电梯到达{1}层")
+            logger.info(f"⌛️ 等待电梯到达{1}层")
 
             if self.plc.wait_lift_move_complete_by_location_sync():
-                self.logger.info(f"✅ 电梯已到达{1}层")
+                logger.info(f"✅ 电梯已到达{1}层")
             else:
                 self.plc.disconnect()
-                self.logger.error(f"❌ 电梯未到达{1}层")
+                logger.error(f"❌ 电梯未到达{1}层")
                 return False, f"❌ 电梯未到达{1}层"
 
-            self.logger.info("📦 货物开始进入电梯...")
+            logger.info("📦 货物开始进入电梯...")
             
             if self.plc.inband_to_lift():
-                self.logger.info("✅ PLC工作指令发送成功")
+                logger.info("✅ PLC工作指令发送成功")
             else:
                 self.plc.disconnect()
-                self.logger.error("❌ PLC工作指令发送失败")
+                logger.error("❌ PLC工作指令发送失败")
                 return False, "❌ PLC工作指令发送失败"
 
-            self.logger.info("⏳ 输送线移动中...")
+            logger.info("⏳ 输送线移动中...")
             
             if self.plc.wait_for_bit_change_sync(11, DB_11.PLATFORM_PALLET_READY_1020.value, 1):
-                self.logger.info("✅ 货物到达电梯")
+                logger.info("✅ 货物到达电梯")
             else:
                 self.plc.disconnect()
-                self.logger.error("❌ 输送线未移动完成")
+                logger.error("❌ 输送线未移动完成")
                 return False, "❌ 输送线未移动完成"
 
         else:
             self.plc.disconnect()
-            self.logger.error("❌ PLC运行错误")
+            logger.error("❌ PLC运行错误")
             return False, "❌ PLC运行错误"
 
         ############################################################
         # step 4: 电梯送货到目标层
         ############################################################
 
-        self.logger.info(f"🚧 移动电梯载货到目标楼层 {target_layer}层")
+        logger.info(f"🚧 移动电梯载货到目标楼层 {target_layer}层")
         
         if self.plc.plc_checker():
 
-            self.logger.info("🚧 电梯开始移动...")
+            logger.info("🚧 电梯开始移动...")
 
             if self.plc.lift_move_by_layer_sync(task_no+2, target_layer):
-                self.logger.info("✅ 电梯工作指令发送成功")
+                logger.info("✅ 电梯工作指令发送成功")
             else:
                 self.plc.disconnect()
-                self.logger.error("❌ 电梯工作指令发送失败")
+                logger.error("❌ 电梯工作指令发送失败")
                 return False, "❌ 电梯工作指令发送失败"
             
-            self.logger.info(f"⌛️ 等待电梯到达{target_layer}层")
+            logger.info(f"⌛️ 等待电梯到达{target_layer}层")
 
             if self.plc.wait_lift_move_complete_by_location_sync():
-                self.logger.info(f"✅ 电梯已到达{target_layer}层")
+                logger.info(f"✅ 电梯已到达{target_layer}层")
             else:
                 self.plc.disconnect()
-                self.logger.error(f"❌ 电梯未到达{target_layer}层")
+                logger.error(f"❌ 电梯未到达{target_layer}层")
                 return False, f"❌ 电梯未到达{target_layer}层"
             
         else:
             self.plc.disconnect()
-            self.logger.error("❌ PLC错误")
+            logger.error("❌ PLC错误")
             return False ,"❌ PLC错误"
         
         ############################################################
@@ -499,184 +493,184 @@ class DevicesController(DevicesLogger):
         ############################################################
 
         # 电梯载货到到目标楼层, 电梯输送线将货物送入目标楼层
-        self.logger.info("▶️ 货物进入楼层")
+        logger.info("▶️ 货物进入楼层")
         
         if self.plc.plc_checker():
 
-            self.logger.info("📦 货物开始进入楼层...")
+            logger.info("📦 货物开始进入楼层...")
             
             if self.plc.lift_to_everylayer(target_layer):
-                self.logger.info("✅ PLC工作指令发送成功")
+                logger.info("✅ PLC工作指令发送成功")
             else:
                 self.plc.disconnect()
-                self.logger.error("❌ PLC工作指令发送失败")
+                logger.error("❌ PLC工作指令发送失败")
                 return False, "❌ PLC工作指令发送失败"
 
-            self.logger.info("⏳ 输送线移动中...")
+            logger.info("⏳ 输送线移动中...")
             
         else:
             self.plc.disconnect()
-            self.logger.error("❌ PLC运行错误")
+            logger.error("❌ PLC运行错误")
             return False, "❌ PLC运行错误"
         
         ############################################################
         # step 6: 穿梭车移动到接驳位
         ############################################################
-        self.logger.info("🚧 穿梭车移动到接驳位")
+        logger.info("🚧 穿梭车移动到接驳位")
 
         car_location = self.car.car_current_location()
         if car_location == "error":
             self.plc.disconnect()
-            self.logger.error("❌ 获取穿梭车位置错误")
+            logger.error("❌ 获取穿梭车位置错误")
             return False, "❌ 获取穿梭车位置错误"
         else:
-            self.logger.info(f"🚗 穿梭车当前坐标: {car_location}")
+            logger.info(f"🚗 穿梭车当前坐标: {car_location}")
 
         car_current_lift_pre_location = f"5,3,{target_layer}"
 
         if car_location != car_current_lift_pre_location:
             
-            self.logger.info("⏳ 穿梭车开始移动...")
+            logger.info("⏳ 穿梭车开始移动...")
             
             if self.car.car_move(task_no+3, car_current_lift_pre_location):
-                self.logger.info("✅ 穿梭车移动指令发送成功")
+                logger.info("✅ 穿梭车移动指令发送成功")
             else:
                 self.plc.disconnect()
-                self.logger.error(f"❌ 穿梭车移动指令发送错误")
+                logger.error(f"❌ 穿梭车移动指令发送错误")
                 return False, f"❌ 穿梭车移动指令发送错误"
             
-            self.logger.info(f"⏳ 等待穿梭车前往 5,3,{target_layer} 位置...")
+            logger.info(f"⏳ 等待穿梭车前往 5,3,{target_layer} 位置...")
             
             if self.car.wait_car_move_complete_by_location_sync(car_current_lift_pre_location):
-                self.logger.info(f"✅ 穿梭车已到达 {car_current_lift_pre_location} 位置")
+                logger.info(f"✅ 穿梭车已到达 {car_current_lift_pre_location} 位置")
             else:
                 self.plc.disconnect()
-                self.logger.error(f"❌ 穿梭车未到达 {car_current_lift_pre_location} 位置")
+                logger.error(f"❌ 穿梭车未到达 {car_current_lift_pre_location} 位置")
                 return False, "❌ 穿梭车运行错误"
             
         else:
-            self.logger.info(f"✅ 穿梭车已在 ({car_current_lift_pre_location}) 等待")
+            logger.info(f"✅ 穿梭车已在 ({car_current_lift_pre_location}) 等待")
 
         # 等待电梯输送线工作结束
         if self.plc.plc_checker():
 
             if target_layer == 1:
                 if self.plc.wait_for_bit_change_sync(11, DB_11.PLATFORM_PALLET_READY_1030.value, 1):
-                    self.logger.info(f"✅ 货物到达 {target_layer} 层接驳位")
+                    logger.info(f"✅ 货物到达 {target_layer} 层接驳位")
                 else:
                     self.plc.disconnect()
-                    self.logger.error("❌ 输送线未移动完成")
+                    logger.error("❌ 输送线未移动完成")
                     return False, "❌ 输送线未移动完成"
 
             elif target_layer == 2:
                 if self.plc.wait_for_bit_change_sync(11, DB_11.PLATFORM_PALLET_READY_1040.value, 1):
-                    self.logger.info(f"✅ 货物到达 {target_layer} 层接驳位")
+                    logger.info(f"✅ 货物到达 {target_layer} 层接驳位")
                 else:
                     self.plc.disconnect()
-                    self.logger.error("❌ 输送线未移动完成")
+                    logger.error("❌ 输送线未移动完成")
                     return False, "❌ 输送线未移动完成"
                 
             elif target_layer == 3:
                 if self.plc.wait_for_bit_change_sync(11, DB_11.PLATFORM_PALLET_READY_1050.value, 1):
-                    self.logger.info(f"✅ 货物到达 {target_layer} 层接驳位")
+                    logger.info(f"✅ 货物到达 {target_layer} 层接驳位")
                 else:
                     self.plc.disconnect()
-                    self.logger.error("❌ 输送线未移动完成")
+                    logger.error("❌ 输送线未移动完成")
                     return False, "❌ 输送线未移动完成"
                 
             elif target_layer == 4:
                 if self.plc.wait_for_bit_change_sync(11, DB_11.PLATFORM_PALLET_READY_1060.value, 1):
-                    self.logger.info(f"✅ 货物到达 {target_layer} 层接驳位")
+                    logger.info(f"✅ 货物到达 {target_layer} 层接驳位")
                 else:
                     self.plc.disconnect()
-                    self.logger.error("❌ 输送线未移动完成")
+                    logger.error("❌ 输送线未移动完成")
                     return False, "❌ 输送线未移动完成"
             
             else:
                 self.plc.disconnect()
-                self.logger.error("❌ 目标楼层错误")
+                logger.error("❌ 目标楼层错误")
                 return False, "❌ 目标楼层错误"
             
         else:
             self.plc.disconnect()
-            self.logger.error("❌ PLC运行错误")
+            logger.error("❌ PLC运行错误")
             return False, "❌ PLC运行错误"
 
         ############################################################
         # step 5: 发送取货信号给PLC
         ############################################################
         
-        self.logger.info("🚧 发送取货信号给PLC")
+        logger.info("🚧 发送取货信号给PLC")
         
         if self.plc.plc_checker():
 
             if self.plc.pick_in_process(target_layer):
-                self.logger.info("✅ PLC工作指令发送成功")
+                logger.info("✅ PLC工作指令发送成功")
             else:
                 self.plc.disconnect()
-                self.logger.error("❌ PLC工作指令发送失败")
+                logger.error("❌ PLC工作指令发送失败")
                 return False, "❌ PLC工作指令发送失败"
             
         else:
             self.plc.disconnect()
-            self.logger.error("❌ PLC接收取货信号异常")
+            logger.error("❌ PLC接收取货信号异常")
             return False, "❌ PLC接收取货信号异常"
         
         ############################################################
         # step 6: 穿梭车将货物移动到目标位置
         ############################################################
         
-        self.logger.info(f"🚧 穿梭车将货物移动到目标位置 {target_location}")
+        logger.info(f"🚧 穿梭车将货物移动到目标位置 {target_location}")
         
-        self.logger.info("⏳ 穿梭车开始移动...")
+        logger.info("⏳ 穿梭车开始移动...")
 
         if self.car.good_move(task_no+4, target_location):
-            self.logger.info("✅ 穿梭车移动指令发送成功")
+            logger.info("✅ 穿梭车移动指令发送成功")
         else:
             self.plc.disconnect()
-            self.logger.error("❌ 穿梭车移动指令发送错误")
+            logger.error("❌ 穿梭车移动指令发送错误")
             return False, "❌ 穿梭车移动指令发送错误"
         
-        self.logger.info(f"⏳ 等待穿梭车前往 {target_location} 位置...")
+        logger.info(f"⏳ 等待穿梭车前往 {target_location} 位置...")
 
         if self.car.wait_car_move_complete_by_location_sync(target_location):
-            self.logger.info(f"✅ 货物已到达 目标位置 {target_location}")
+            logger.info(f"✅ 货物已到达 目标位置 {target_location}")
         else:
             self.plc.disconnect()
-            self.logger.error(f"❌ 货物未到达 目标位置 {target_location}")
+            logger.error(f"❌ 货物未到达 目标位置 {target_location}")
             return False, "❌ 穿梭车运行错误"
         
         ############################################################
         # step 7: 发送取货完成信号给PLC
         ############################################################
 
-        self.logger.info("🚧 发送取货完成信号给PLC")
+        logger.info("🚧 发送取货完成信号给PLC")
 
         if self.plc.plc_checker():
             if self.plc.pick_complete(target_layer):
-                self.logger.info("✅ PLC工作指令发送成功")
+                logger.info("✅ PLC工作指令发送成功")
             else:
                 self.plc.disconnect()
-                self.logger.error("❌ PLC工作指令发送失败")
+                logger.error("❌ PLC工作指令发送失败")
                 return False, "❌ PLC工作指令发送失败"
         else:
             self.plc.disconnect()
-            self.logger.error("❌ PLC 运行错误")
+            logger.error("❌ PLC 运行错误")
             return False, "❌ PLC 运行错误"
         
         ############################################################
         # step 8: 断开PLC连接
         ############################################################
         
-        self.logger.info("🚧 断开PLC连接")
+        logger.info("🚧 断开PLC连接")
         
         if self.plc.disconnect():
-            self.logger.info("✅ PLC已断开")
+            logger.info("✅ PLC已断开")
         else:
-            self.logger.error("❌ PLC断开连接错误")
+            logger.error("❌ PLC断开连接错误")
             return False, "❌ PLC断开连接错误"
         
-        self.logger.info(f"✅ 入库完成")
+        logger.info(f"✅ 入库完成")
         return True, "✅ 入库完成"
 
     ############################################################
@@ -685,11 +679,7 @@ class DevicesController(DevicesLogger):
     ############################################################
     ############################################################
 
-    def task_outband(
-            self,
-            task_no: int,
-            target_location: str
-    ) -> Tuple[bool, str]:
+    def task_outband(self, task_no: int, target_location: str) -> Tuple[bool, str]:
         """任务出库。
         
         穿梭车系统联合PLC电梯输送线系统, 执行出库任务。
@@ -709,159 +699,159 @@ class DevicesController(DevicesLogger):
         # 判断任务坐标是否合法
         disable_location = ["6,3,1", "6,3,2", "6,3,3", "6,3,4"]
         if target_location in disable_location:
-            self.logger.error("❌ 任务坐标错误")
+            logger.error("❌ 任务坐标错误")
             return False, "❌ 任务坐标错误"
         
         # 获取穿梭车位置 -> 坐标: 如, "6,3,2" 楼层: 如, 2
         car_location = self.car.car_current_location()
         if car_location == "error":
-            self.logger.error("❌ 获取穿梭车位置错误")
+            logger.error("❌ 获取穿梭车位置错误")
             return False, "❌ 获取穿梭车位置错误"
         else:
-            self.logger.info(f"🚗 穿梭车当前坐标: {car_location}")
+            logger.info(f"🚗 穿梭车当前坐标: {car_location}")
 
         car_loc = list(map(int, car_location.split(',')))
         car_layer = car_loc[2]
-        self.logger.info(f"🚗 穿梭车当前楼层: {car_layer}")
+        logger.info(f"🚗 穿梭车当前楼层: {car_layer}")
         
         # 拆解目标位置 -> 坐标: 如, "1,3,1" 楼层: 如, 1
-        self.logger.info(f"📦 目标货物坐标: {target_location}")
+        logger.info(f"📦 目标货物坐标: {target_location}")
         target_loc = list(map(int, target_location.split(',')))
         target_layer = target_loc[2]
-        self.logger.info(f"📦 目标货物楼层: {target_layer}")
+        logger.info(f"📦 目标货物楼层: {target_layer}")
             
         # 穿梭车不在任务层, 操作穿梭车到达任务楼层等待
         if car_layer != target_layer:
 
-            self.logger.info("🚧 穿梭车务楼层不一致, 移动穿梭车到任务楼层")
+            logger.info("🚧 穿梭车务楼层不一致, 移动穿梭车到任务楼层")
 
             car_info = self.car_cross_layer(task_no, target_layer)
             if car_info[0]:
-                self.logger.info(f"{car_info[1]}")
+                logger.info(f"{car_info[1]}")
             else:
-                self.logger.error(f"{car_info[1]}")
+                logger.error(f"{car_info[1]}")
                 return False, f"{car_info[1]}"
             
         else:
-            self.logger.info("✅ 穿梭车已在任务楼层")
+            logger.info("✅ 穿梭车已在任务楼层")
 
         ############################################################
         # step 1: 连接PLC
         ############################################################
 
-        self.logger.info("连接PLC")
+        logger.info("连接PLC")
         
         if self.plc.connect():
-            self.logger.info("✅ PLC连接正常")
+            logger.info("✅ PLC连接正常")
         else:
             self.plc.disconnect()
-            self.logger.error("❌ PLC连接错误")
+            logger.error("❌ PLC连接错误")
             return False ,"❌ PLC连接错误"
         
         ############################################################
         # step 2: 移动到目标货物层
         ############################################################
         
-        self.logger.info(f"🚧 移动空载电梯到 {target_layer} 层")
+        logger.info(f"🚧 移动空载电梯到 {target_layer} 层")
 
         if self.plc.plc_checker():
 
             last_task_no = self.plc.get_lift_last_taskno()
             if last_task_no == task_no:
                 task_no += 1
-                self.logger.info(f"🚧 任务号: {task_no}")
+                logger.info(f"🚧 任务号: {task_no}")
             else:
-                self.logger.info(f"🚧 任务号: {task_no}")
+                logger.info(f"🚧 任务号: {task_no}")
 
-            self.logger.info("🚧 电梯开始移动...")
+            logger.info("🚧 电梯开始移动...")
 
             if self.plc.lift_move_by_layer_sync(task_no+1, target_layer):
-                self.logger.info("✅ 电梯工作指令发送成功")
+                logger.info("✅ 电梯工作指令发送成功")
             else:
                 self.plc.disconnect()
-                self.logger.error("❌ 电梯工作指令发送失败")
+                logger.error("❌ 电梯工作指令发送失败")
                 return False, "❌ 电梯工作指令发送失败"
             
         else:
             self.plc.disconnect()
-            self.logger.error("❌ PLC错误")
+            logger.error("❌ PLC错误")
             return False ,"❌ PLC错误"
         
         ############################################################
         # step 1: 穿梭车前往货物位置
         ############################################################
         
-        self.logger.info(f"▶️ 出库开始")
+        logger.info(f"▶️ 出库开始")
 
         car_location = self.car.car_current_location()
         if car_location == "error":
             self.plc.disconnect()
-            self.logger.error("❌ 获取穿梭车位置错误")
+            logger.error("❌ 获取穿梭车位置错误")
             return False, "❌ 获取穿梭车位置错误"
         else:
-            self.logger.info(f"🚗 穿梭车当前坐标: {car_location}")
+            logger.info(f"🚗 穿梭车当前坐标: {car_location}")
 
-        self.logger.info(f"🚧 穿梭车前往货物位置 {target_location}")
+        logger.info(f"🚧 穿梭车前往货物位置 {target_location}")
 
         if car_location!= target_location:
             
-            self.logger.info("⏳ 穿梭车开始移动...")
+            logger.info("⏳ 穿梭车开始移动...")
 
             if self.car.car_move(task_no+2, target_location):
-                self.logger.info("✅ 穿梭车移动指令发送成功")
+                logger.info("✅ 穿梭车移动指令发送成功")
             else:
                 self.plc.disconnect()
-                self.logger.error(f"❌ 穿梭车移动指令发送错误")
+                logger.error(f"❌ 穿梭车移动指令发送错误")
                 return False, f"❌ 穿梭车移动指令发送错误"
             
-            self.logger.info(f"⏳ 等待穿梭车前往 {target_location} 位置...")
+            logger.info(f"⏳ 等待穿梭车前往 {target_location} 位置...")
 
             if self.car.wait_car_move_complete_by_location_sync(target_location):
-                self.logger.info(f"✅ 穿梭车已到达 货物位置 {target_location}")
+                logger.info(f"✅ 穿梭车已到达 货物位置 {target_location}")
             
             else:
                 self.plc.disconnect()
-                self.logger.error(f"❌ 穿梭车未到达 货物位置 {target_location}")
+                logger.error(f"❌ 穿梭车未到达 货物位置 {target_location}")
                 return False, f"❌ 穿梭车未到达 货物位置 {target_location}"
         
         else:
-            self.logger.info(f"✅ 穿梭车已到达货物位置 {target_location}")
+            logger.info(f"✅ 穿梭车已到达货物位置 {target_location}")
             
         # 等待电梯到达
         if self.plc.plc_checker():
             
-            self.logger.info(f"⌛️ 等待电梯到达{target_layer}层")
+            logger.info(f"⌛️ 等待电梯到达{target_layer}层")
 
             if self.plc.wait_lift_move_complete_by_location_sync():
-                self.logger.info(f"✅ 电梯已到达{target_layer}层")
+                logger.info(f"✅ 电梯已到达{target_layer}层")
             else:
                 self.plc.disconnect()
-                self.logger.error(f"❌ 电梯未到达{target_layer}层")
+                logger.error(f"❌ 电梯未到达{target_layer}层")
                 return False, f"❌ 电梯未到达{target_layer}层"
         
         else:
             self.plc.disconnect()
-            self.logger.error("❌ PLC错误")
+            logger.error("❌ PLC错误")
             return False, "❌ PLC错误"
 
         ############################################################
         # step 2: 发送放货进行中信号给PLC
         ############################################################
 
-        self.logger.info(f"🚧 发送放货进行中信号给PLC")
+        logger.info(f"🚧 发送放货进行中信号给PLC")
 
         if self.plc.plc_checker():
 
             if self.plc.feed_in_process(target_layer):
-                self.logger.info("✅ PLC工作指令发送成功")
+                logger.info("✅ PLC工作指令发送成功")
             else:
                 self.plc.disconnect()
-                self.logger.error("❌ PLC工作指令发送失败")
+                logger.error("❌ PLC工作指令发送失败")
                 return False, "❌ PLC工作指令发送失败"
 
         else:
             self.plc.disconnect()
-            self.logger.error("❌ PLC 运行错误")
+            logger.error("❌ PLC 运行错误")
             return False, "❌ PLC 运行错误"
         
         ############################################################
@@ -870,130 +860,130 @@ class DevicesController(DevicesLogger):
         
         target_lift_pre_location = f"5,3,{target_layer}"
 
-        self.logger.info(f"🚧 穿梭车将货物移动到楼层接驳位输送线 {target_lift_pre_location}")
+        logger.info(f"🚧 穿梭车将货物移动到楼层接驳位输送线 {target_lift_pre_location}")
        
-        self.logger.info("⏳ 穿梭车开始移动...")
+        logger.info("⏳ 穿梭车开始移动...")
 
         if self.car.good_move(task_no+3, target_lift_pre_location):
-            self.logger.info("✅ 穿梭车移动指令发送成功")
+            logger.info("✅ 穿梭车移动指令发送成功")
         else:
             self.plc.disconnect()
-            self.logger.error("❌ 穿梭车移动指令发送错误")
+            logger.error("❌ 穿梭车移动指令发送错误")
             return False, "❌ 穿梭车移动指令发送错误"
         
-        self.logger.info(f"⏳ 等待穿梭车前往 {target_lift_pre_location} 位置...")
+        logger.info(f"⏳ 等待穿梭车前往 {target_lift_pre_location} 位置...")
 
         if self.car.wait_car_move_complete_by_location_sync(target_lift_pre_location):
-            self.logger.info(f"✅ 货物已到达 楼层接驳输送线位置 {target_lift_pre_location}")
+            logger.info(f"✅ 货物已到达 楼层接驳输送线位置 {target_lift_pre_location}")
         else:
             self.plc.disconnect()
-            self.logger.error(f"❌ 货物未到达 楼层接驳输送线位置 {target_lift_pre_location}")
+            logger.error(f"❌ 货物未到达 楼层接驳输送线位置 {target_lift_pre_location}")
             return False, "❌ 穿梭车运行错误"
         
         ############################################################
         # step 4: 发送放货完成信号给PLC, 货物进入电梯
         ############################################################
 
-        self.logger.info(f"🚧 发送放货完成信号给PLC, 货物进入电梯")
+        logger.info(f"🚧 发送放货完成信号给PLC, 货物进入电梯")
         
         if self.plc.plc_checker():
 
-            self.logger.info("📦 货物开始进入电梯...")
+            logger.info("📦 货物开始进入电梯...")
 
             if self.plc.feed_complete(target_layer):
-                self.logger.info("✅ PLC工作指令发送成功")
+                logger.info("✅ PLC工作指令发送成功")
             else:
                 self.plc.disconnect()
-                self.logger.error("❌ PLC工作指令发送失败")
+                logger.error("❌ PLC工作指令发送失败")
                 return False, "❌ PLC工作指令发送失败"
             
-            self.logger.info("⏳ 输送线移动中...")
+            logger.info("⏳ 输送线移动中...")
             
             if self.plc.wait_for_bit_change_sync(11, DB_11.PLATFORM_PALLET_READY_1020.value, 1):
-                self.logger.info("✅ 货物到达电梯")
+                logger.info("✅ 货物到达电梯")
             else:
                 self.plc.disconnect()
-                self.logger.error("❌ 货物进入电梯失败")
+                logger.error("❌ 货物进入电梯失败")
                 return False, "❌ 货物进入电梯失败"
             
         else:
             self.plc.disconnect()
-            self.logger.error("❌ 货物进入电梯失败")
+            logger.error("❌ 货物进入电梯失败")
             return False, "❌ 货物进入电梯失败"
         
         ############################################################
         # step 5: 电梯送货到1楼
         ############################################################
 
-        self.logger.info(f"🚧 移动电梯载货到1层")
+        logger.info(f"🚧 移动电梯载货到1层")
         
         if self.plc.plc_checker():
 
-            self.logger.info("🚧 电梯开始移动...")
+            logger.info("🚧 电梯开始移动...")
 
             if self.plc.lift_move_by_layer_sync(task_no+4, 1):
-                self.logger.info("✅ 电梯工作指令发送成功")
+                logger.info("✅ 电梯工作指令发送成功")
             else:
                 self.plc.disconnect()
-                self.logger.error("❌ 电梯工作指令发送失败")
+                logger.error("❌ 电梯工作指令发送失败")
                 return False, "❌ 电梯工作指令发送失败"
             
-            self.logger.info(f"⌛️ 等待电梯到达{1}层")
+            logger.info(f"⌛️ 等待电梯到达{1}层")
 
             if self.plc.wait_lift_move_complete_by_location_sync():
-                self.logger.info(f"✅ 电梯已到达{1}层")
+                logger.info(f"✅ 电梯已到达{1}层")
             else:
                 self.plc.disconnect()
-                self.logger.error(f"❌ 电梯未到达{1}层")
+                logger.error(f"❌ 电梯未到达{1}层")
                 return False, f"❌ 电梯未到达{1}层"
             
         else:
             self.plc.disconnect()
-            self.logger.error("❌ PLC错误")
+            logger.error("❌ PLC错误")
             return False ,"❌ PLC错误"
         
         ############################################################
         # step 6: 货物离开电梯出库
         ############################################################
 
-        self.logger.info("🚧 货物离开电梯出库")
+        logger.info("🚧 货物离开电梯出库")
 
         if self.plc.plc_checker():
             
-            self.logger.info("📦 货物开始离开电梯...")
+            logger.info("📦 货物开始离开电梯...")
 
             if self.plc.lift_to_outband():
-                self.logger.info("✅ PLC指令发送成功")
+                logger.info("✅ PLC指令发送成功")
             else:
                 self.plc.disconnect()
-                self.logger.error("❌ PLC指令发送错误")
+                logger.error("❌ PLC指令发送错误")
                 return False, "❌ PLC指令发送错误"
             
-            self.logger.info("⏳ 输送线移动中...")
+            logger.info("⏳ 输送线移动中...")
             
             if self.plc.wait_for_bit_change_sync(11, DB_11.PLATFORM_PALLET_READY_MAN.value, 1):
-                self.logger.info("✅ 货物到达出口")
+                logger.info("✅ 货物到达出口")
             else:
                 self.plc.disconnect()
-                self.logger.error("❌ 货物离开电梯出库失败")
+                logger.error("❌ 货物离开电梯出库失败")
                 return False, "❌ 货物离开电梯出库失败"
 
         else:
             self.plc.disconnect()
-            self.logger.error("❌ 货物离开电梯出库失败")
+            logger.error("❌ 货物离开电梯出库失败")
             return False, "❌ 货物离开电梯出库失败"
 
         ############################################################
         # step 7: 断开PLC连接
         ############################################################
         
-        self.logger.info("🚧 断开PLC连接")
+        logger.info("🚧 断开PLC连接")
         
         if self.plc.disconnect():
-            self.logger.info("✅ PLC已断开")
+            logger.info("✅ PLC已断开")
         else:
-            self.logger.error("❌ PLC断开连接错误")
+            logger.error("❌ PLC断开连接错误")
             return False, "❌ PLC断开连接错误"
         
-        self.logger.info("✅ 出库完成")
+        logger.info("✅ 出库完成")
         return True, "✅ 出库完成"

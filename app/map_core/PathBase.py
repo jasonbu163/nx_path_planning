@@ -1,13 +1,14 @@
 # /core/PathBase.py
+import logging
+logger = logging.getLogger(__name__)
+
 # 用于路径规划
 import networkx as nx
 import matplotlib.pyplot as plt
 from .MapBase import MapBase
 
 class PathBase:
-    """
-    路径基类，提供路径规划的基本功能
-    """
+    """路径基类，提供路径规划的基本功能。"""
 
     def __init__(self):
         # 创建地图
@@ -15,9 +16,7 @@ class PathBase:
         self.G, self.pos = self.map_base.create_map()
 
     def draw_path(self, PATH):
-        """
-        [绘制地图和路径] - 通过 NetworkX 和 Matplotlib 绘制地图
-        """
+        """[绘制地图和路径] 通过 NetworkX 和 Matplotlib 绘制地图。"""
         plt.figure(figsize=(10, 10))
         # 高亮显示路径
         path_edges = list(zip(PATH, PATH[1:]))  # 获取路径的边列表 (path为路径列表 path[1:]为路径列表的后半部分)
@@ -35,13 +34,14 @@ class PathBase:
         plt.show()
 
     def find_shortest_path(self, SOURCE, TARGET):
-        """
-        查找最短路径
+        """查找最短路径
 
-        :param SOURCE: 起点
-        :param TARGET: 终点
+        Args:
+            SOURCE: 起点
+            TARGET: 终点
 
-        :return: 最短路径列表
+        Returns:
+            PATH: 最短路径列表
         """
         # 检查节点是否在图中
         if SOURCE not in self.G.nodes():
@@ -54,13 +54,13 @@ class PathBase:
             path = nx.shortest_path(self.G, source=SOURCE, target=TARGET)
             return path
         except nx.NetworkXNoPath:
-            print(f"从 {SOURCE} 到 {TARGET} 没有可达路径")
+            logger.warning(f"从 {SOURCE} 到 {TARGET} 没有可达路径")
             return None
         except nx.NodeNotFound as e:
-            print(f"节点未找到: {e}")
+            logger.warning(f"节点未找到: {e}")
             return None
         except Exception as e:
-            print(f"计算路径时发生未知错误: {e}")
+            logger.warning(f"计算路径时发生未知错误: {e}")
             return None
 
 if __name__ == "__main__":
@@ -75,7 +75,7 @@ if __name__ == "__main__":
     
     path = pathbase.find_shortest_path(source, target)
     if path is None:
-        print("没有找到路径")
+        logger.warning("没有找到路径")
         exit()
     print("最短路径:", path)  # 输出: ['1,2,1', '1,3,1', '2,3,1', '2,4,1', '2,5,1']
     print("最短路径长度:", len(path)-1)  # 输出: 12

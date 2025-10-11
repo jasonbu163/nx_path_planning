@@ -7,6 +7,8 @@ RES+3.1 穿梭车通信协议上位机系统 - 模块化设计
 import struct
 import crcmod
 from typing import Union
+import logging
+logger = logging.getLogger(__name__)
 
 from .res_protocol import RESProtocol, FrameType
 
@@ -57,21 +59,21 @@ class PacketParser:
 
         # 获取字节的整数值
         byte_value = info
-        # print(f"原始字节: {byte_value:08b}")
+        # logger.debug(f"原始字节: {byte_value:08b}")
 
         # 获取字节的前4位（高4位）
         high_4_bits = (byte_value >> 4) & 0x0F  # 右移4位并用0x0F掩码获取前4位
-        # print(f"前4位: {high_4_bits:04b}")
+        # logger.debug(f"前4位: {high_4_bits:04b}")
 
         # 获取字节的后4位（低4位）
         low_4_bits = byte_value & 0x0F  # 使用掩码0x0F(1111)获取低4位
-        # print(f"后4位: {low_4_bits:04b}")
+        # logger.debug(f"后4位: {low_4_bits:04b}")
 
         # 将后4位分成前2位和后2位
         low_4_high_2_bits = (low_4_bits >> 2) & 0x03  # 右移2位并获取前2位
-        # print(f"后4位中的前2位: {low_4_high_2_bits:02b}")
+        # logger.debug(f"后4位中的前2位: {low_4_high_2_bits:02b}")
         low_4_low_2_bits = low_4_bits & 0x03         # 使用掩码0x03(11)获取后2位
-        # print(f"后4位中的后2位: {low_4_low_2_bits:02b}")
+        # logger.debug(f"后4位中的后2位: {low_4_low_2_bits:02b}")
 
         return {
             "high_4_bits": high_4_bits,
@@ -119,7 +121,7 @@ class PacketParser:
             dict: 解析后的报文数据
         """
         if len(DATA) < 5:  # 检查最小数据长度
-            print(f"数据长度不足，需至少5字节，实际收到{len(DATA)}字节")
+            logger.error(f"数据长度不足，需至少5字节，实际收到{len(DATA)}字节")
             return {
                 "car_status": "error",
                 "message": "数据长度不足"
@@ -158,15 +160,15 @@ class PacketParser:
         """
         # 打印报文
         if DATA:
-            print(f"[CAR] 心跳响应报文: {DATA}")
+            logger.info(f"[CAR] 心跳响应报文: {DATA}")
         else:
-            print("[CAR] 错误: 无数据")
+            logger.error("[CAR] 错误: 无数据")
             return {
                 "car_status": "error",
                 "message": "无数据"
             }
 
-        print(f"[CAR] 包长: {len(DATA)}")
+        logger.info(f"[CAR] 包长: {len(DATA)}")
         
         # 头(5)
         header = self.parse_header(DATA)
@@ -218,15 +220,15 @@ class PacketParser:
         """
         # 打印报文
         if DATA:
-            print(f"[CAR] 心跳响应报文: {DATA}")
+            logger.info(f"[CAR] 心跳响应报文: {DATA}")
         else:
-            print("[CAR] 错误: 无数据")
+            logger.error("[CAR] 错误: 无数据")
             return {
                 "car_status": "error",
                 "message": "无数据"
             }
         
-        print(f"[CAR] 包长: {len(DATA)}")
+        logger.info(f"[CAR] 包长: {len(DATA)}")
 
         # 头(5)
         header = self.parse_header(DATA)
@@ -282,7 +284,7 @@ class PacketParser:
                 "message": "非法数据"
             }
         
-        print(f"[CAR] 包长: {len(DATA)}")
+        logger.info(f"[CAR] 包长: {len(DATA)}")
 
         # 头(5)
         header = self.parse_header(DATA)
@@ -340,7 +342,7 @@ class PacketParser:
                 "car_status": "error",
                 "message": "无数据"
             }
-        print(f"[CAR] 包长: {len(DATA)}")
+        logger.info(f"[CAR] 包长: {len(DATA)}")
 
         # 头(5)
         header = self.parse_header(DATA)
@@ -376,7 +378,7 @@ class PacketParser:
         payload_end = len(data) - 4
         
         if payload_end - payload_start < 8:
-            print("调试响应报文数据部分不足8字节")
+            logger.error("调试响应报文数据部分不足8字节")
             return {
                 "car_status": "error",
                 "message": "调试响应报文数据部分不足8字节"
@@ -487,5 +489,5 @@ class PacketParser:
                 'body': body
             }
         except Exception as e:
-            print(f"解析数据包时出错: {str(e)}")
+            logger.error(f"解析数据包时出错: {str(e)}")
             return None

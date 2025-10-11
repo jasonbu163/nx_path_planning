@@ -7,6 +7,7 @@ import time
 from enum import Enum
 
 from app.plc_system.enum import PLCAddressBase
+from app.res_system.enum import CarStatus, StatusDescription
 
 class DB_10(PLCAddressBase, Enum):
 
@@ -46,13 +47,36 @@ def test_2():
 
     print(DB_12.FREQ_CONVERTER_ALARM.get("bit_address"))
 
+def test_3():
+    
+    # 测试枚举类
+    # for status in WorkCommand:
+    #     print(f"{status.name}: {status.value} - {status.description}")
+    
+    # print(ImmediateCommand.CANCEL_TASK.value)
+
+    # 假设状态码来自某个响应报文
+    received_status_code = 1
+
+    result = CarStatus.get_by_value(received_status_code)
+    print(result)
+
+    name = CarStatus.get_info_by_value(received_status_code).get('name')
+    des = CarStatus.get_info_by_value(received_status_code).get('description')
+    print(f"{name}: {received_status_code} - {des}")
+
+    # name = StatusDescription.get_info_by_value(received_warning_code).get('name')
+    # des = StatusDescription.get_info_by_value(received_warning_code).get('description')
+    # print(f"{name}: {received_warning_code} - {des}")
+
 def main():
     """同步测试"""
 
     start = time.time()
 
-    test_1()
-    test_2()
+    # test_1()
+    # test_2()
+    test_3()
 
     elapsed = time.time() - start
     print(f"程序用时: {elapsed:.6f}s")

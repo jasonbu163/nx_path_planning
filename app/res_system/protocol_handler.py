@@ -2,17 +2,11 @@
 
 import asyncio
 import logging
+logger = logging.getLogger(__name__)
 
 from .res_protocol import RESProtocol, CarStatus, ImmediateCommand, WorkCommand, Debug, FrameType, ErrorHandler
 from packet_builder import PacketBuilder
 from packet_parser import PacketParser
-
-logger = logging.getLogger("res_protocol")
-logger.setLevel(logging.INFO)
-ch = logging.StreamHandler()
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-ch.setFormatter(formatter)
-logger.addHandler(ch)
 
 
 class ProtocolHandler:

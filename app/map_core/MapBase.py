@@ -2,11 +2,11 @@
 # 用于地图的构建
 import networkx as nx
 import matplotlib.pyplot as plt
+import logging
+logger = logging.getLogger(__name__)
 
 class MapBase:
-    """
-    地图基类，提供地图的基本功能
-    """
+    """地图基类，提供地图的基本功能。"""
     def __init__(self):
         import os
         import json
@@ -24,9 +24,7 @@ class MapBase:
             raise RuntimeError(f"错误: 无法读取地图配置文件 {config_path} - {e}")
         
     def create_map(self):
-        """
-        创建地图并返回图对象和坐标映射
-        """
+        """创建地图并返回图对象和坐标映射。"""
         # 创建一个无向图
         G = nx.Graph()
         G.add_nodes_from(self.nodes_form)
@@ -41,8 +39,8 @@ class MapBase:
         return G, self.pos
     
     def map_info(self):
-        """
-        获取地图信息
+        """获取地图信息。
+
         节点数量、边数量、节点列表和边列表
         """
         G, _ = self.create_map()
@@ -56,10 +54,13 @@ class MapBase:
         return num_of_nodes, num_of_edges, nodes, edges
     
     def _parse_node_coords(self, node):
-        """
-        解析节点名称中的坐标
-        :param node: 节点名称
-        :return: 坐标列表
+        """解析节点名称中的坐标。
+
+        Args:
+            node: 节点名称
+
+        Returns:
+            list: 节点坐标列表
         """
         try:
             coords = [int(coord) for coord in node.strip().split(',')]
@@ -71,10 +72,11 @@ class MapBase:
             raise ValueError(f"节点 {node} 的坐标格式错误 - {e}")
 
     def draw_map(self, G, pos):
-        """
-        绘制地图
-        :param G: 图对象
-        :param pos: 节点位置字典
+        """绘制地图。
+
+        Args:
+            G: 图对象
+            pos: 节点位置字典
         """
         plt.figure(figsize=(10, 8))
         nx.draw(G, pos, with_labels=True, node_size=800, node_color='lightblue', font_size=14, font_color='black', edge_color='gray')

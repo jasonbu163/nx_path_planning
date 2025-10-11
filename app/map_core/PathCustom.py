@@ -1,13 +1,14 @@
 # /core/PathCustom.py
+import logging
+logger = logging.getLogger(__name__)
+
 # 用于自定义路径规划
 import networkx as nx
 
 from .PathBase import PathBase
 
 class PathCustom(PathBase):
-    """
-    [自定义路径类] - 继承自PathBase, 可以添加更多自定义方法和属性
-    """
+    """[自定义路径类] 继承自PathBase, 可以添加更多自定义方法和属性。"""
     def __init__(self):
         super().__init__()  # 调用父类的初始化方法
 
@@ -24,8 +25,8 @@ class PathCustom(PathBase):
         return x, y, z
     
     def cut_path(self, path):
-        """
-        剪切路径为按X/Y轴连续的子路径
+        """剪切路径为按X/Y轴连续的子路径。
+
         1. 当移动方向从X轴变为Y轴或反之，进行切割
         2. 支持连续X/Y轴移动
         3. 保留完整路径连接性
@@ -50,8 +51,11 @@ class PathCustom(PathBase):
             那么，切割为
                 [['4,2,1', '4,3,1', '4,4,1', '4,5,1', '4,6,1']]
 
-            :param path: 路径列表
-            :return: 剪切后的路径列表
+        Args:
+            path: 路径列表
+        
+        Returns:
+            list: 剪切后的路径列表
         """
         if not path:
             return []
@@ -85,9 +89,14 @@ class PathCustom(PathBase):
         return path_cut_list
     
     def get_direction(self, point1, point2):
-        """
-        获取两点间的移动方向
-        :return: 'x' (水平移动), 'y' (垂直移动), 'diagonal' (斜线移动)
+        """获取两点间的移动方向
+
+        Args:
+            point1: 起点坐标
+            point2: 终点坐标
+
+        Returns:
+            str: 'x' (水平移动), 'y' (垂直移动), 'diagonal' (斜线移动)
         """
         x0, y0 = map(int, point1.split(',')[:2])
         x1, y1 = map(int, point2.split(',')[:2])
@@ -99,11 +108,11 @@ class PathCustom(PathBase):
         return 'diagonal'
     
     def find_path(self, source, target):
-        """
-        [路径生成]
+        """路径生成
 
-        :param source: 起点
-        :param target: 终点
+        Args:
+            source: 起点
+            target: 终点
         """
         found_path = self.find_shortest_path(source, target)
         if found_path is None:
@@ -121,6 +130,7 @@ class PathCustom(PathBase):
             return False, "未找到路径"
         else:
             return False, "路径规划失败"
+    
     def find_and_cut_path(self, source, target):
         path = self.find_path(source, target)
         cut_path = self.cut_path(path)
@@ -172,10 +182,11 @@ class PathCustom(PathBase):
     
 
     def build_segments(self, source: str, target: str) -> list:
-        """
-        生成移动路径
-        :param source: 起点坐标 如，source = "1,1,1"
-        :param target: 终点坐标 如，target = "1,3,1"
+        """生成移动路径
+
+        Args:
+            source: 起点坐标 如，source = "1,1,1"
+            target: 终点坐标 如，target = "1,3,1"
         """
         
         found_path = self.find_path(source, target)
@@ -196,10 +207,13 @@ class PathCustom(PathBase):
         return task_segments
     
     def add_pick_drop_actions(self, point_list):
-        """
-        在路径列表的起点和终点添加货物操作动作
-        :param point_list: generate_point_list()生成的路径列表
-        :return: 修改后的路径列表（起点动作=1提起，终点动作=2放下）
+        """在路径列表的起点和终点添加货物操作动作。
+
+        Args:
+            point_list: generate_point_list()生成的路径列表
+        
+        Returns:
+            修改后的路径列表（起点动作=1提起，终点动作=2放下）
         """
         # 确保路径至少有两个点
         if len(point_list) < 2:
@@ -217,10 +231,11 @@ class PathCustom(PathBase):
         return new_list
     
     def build_pick_task(self, source: str, target: str):
-        """
-        生成取货/放货路径
-        :param source: 起点坐标 如，source = "1,1,1"
-        :param target: 终点坐标 如，target = "1,3,1"
+        """生成取货/放货路径
+
+        Args:
+            source: 起点坐标 如，source = "1,1,1"
+            target: 终点坐标 如，target = "1,3,1"
         """
         
         found_path = self.find_path(source, target)
@@ -244,14 +259,15 @@ class PathCustom(PathBase):
         return pick_task_segments
     
     def find_blocking_nodes(self, SOURCE: str, TARGET: str, NODE_STATUS):
-        """
-        [找到阻塞点] - 检查路径上的阻塞点
+        """检查路径上的阻塞点。
 
-        :param SOURCE: 起点
-        :param TARGET: 终点
-        :param NODE_STATUS: 节点状态字典
+        Args:
+            SOURCE: 起点
+            TARGET: 终点
+            NODE_STATUS: 节点状态字典
 
-        :return: 阻塞点列表
+        Returns:
+            list:阻塞点列表
         """
         found_path = self.find_path(SOURCE, TARGET)
         if found_path is None:
@@ -261,14 +277,15 @@ class PathCustom(PathBase):
         return blocking_nodes
 
     def find_free_nodes_excluding_path(self,  SOURCE: str, TARGET: str, NODE_STATUS):
-        """
-        [空闲点检查器] - 检查非路径上的空闲点
+        """检查非路径上的空闲点。
 
-        :param SOURCE: 起点
-        :param TARGET: 终点
-        :param NODE_STATUS: 节点状态字典
+        Args:
+            SOURCE: 起点
+            TARGET: 终点
+            NODE_STATUS: 节点状态字典
 
-        :return: 不在路径上的空闲点列表
+        Returns:
+            list: 不在路径上的空闲点列表
         """
         found_path = self.find_path(SOURCE, TARGET)
         if found_path is None:
@@ -279,16 +296,17 @@ class PathCustom(PathBase):
         return free_nodes_excluding_path
 
     def find_nearest_free_node(self, TASK_START, TASK_END, MOVE_POINT, NODE_STATUS):
-        """
-        使用NetworkX最短路径算法找到离指定点最近的值为'free'且不在路径中的点
+        """使用NetworkX最短路径算法找到离指定点最近的值为'free'且不在路径中的点。
         
-        :param G: 图对象
-        :param TASK_START: 任务起点
-        :param TASK_END: 任务终点
-        :param MOVE_POINT: 需要移动的阻碍点
-        :param NODE_STATUS: 节点状态字典
+        Args:
+            G: 图对象
+            TASK_START: 任务起点
+            TASK_END: 任务终点
+            MOVE_POINT: 需要移动的阻碍点
+            NODE_STATUS: 节点状态字典
 
-        :return: 最近的free点
+        Returns:
+            最近的free点
         """
         
         # 检查指定点是否有效
@@ -333,13 +351,13 @@ class PathCustom(PathBase):
         return nearest_node
     
     def find_nearest_highway_node(self, BLOCKING_NODES):
-        """
-        [获取最接近的highway节点]
+        """获取最接近的highway节点。
 
-        :param BLOCKING_NODES: 节点列表
+        Args:
+            BLOCKING_NODES: 节点列表
         """
         if not BLOCKING_NODES:
-            print("没有找到可访问的点")
+            logger.warning("没有找到可访问的点")
             return None
         elif len(BLOCKING_NODES) == 1:
             return BLOCKING_NODES[0]

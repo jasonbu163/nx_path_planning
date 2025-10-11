@@ -1,11 +1,13 @@
 # devices/car_connection_module.py
 import asyncio
 from typing import Optional
+import logging
+logger = logging.getLogger(__name__)
 
-from app.utils.devices_logger import DevicesLogger
+# from app.utils.devices_logger import DevicesLogger
 
 
-class ConnectionAsync(DevicesLogger):
+class ConnectionAsync():
     """异步穿梭车连接模块 (基于asyncio)，直接使用字节码通信。"""
     def __init__(self, HOST: str, PORT: int):
         """初始化穿梭车连接模块。
@@ -14,7 +16,7 @@ class ConnectionAsync(DevicesLogger):
             HOST: 服务器主机地址, 如 "192.168.8.30"
             PORT: 服务器端口, 如 2504
         """
-        super().__init__(self.__class__.__name__)
+        # super().__init__(self.__class__.__name__)
         self._host = HOST
         self._port = PORT
         self.reader: Optional[asyncio.StreamReader] = None
@@ -29,7 +31,7 @@ class ConnectionAsync(DevicesLogger):
         """统一处理连接错误。"""
         self._connected = False
         error_type = type(error).__name__
-        self.logger.error(f"[CAR] 连接失败 {error_type}: {error}")
+        logger.error(f"[CAR] 连接失败 {error_type}: {error}")
         if self.writer and not self.writer.is_closing():
             self.writer.close()
 
@@ -41,7 +43,7 @@ class ConnectionAsync(DevicesLogger):
                 timeout=timeout
             )
             self._connected = True
-            self.logger.info(f"[CAR] 已连接到服务器 {self._host}:{self._port}")
+            logger.info(f"[CAR] 已连接到服务器 {self._host}:{self._port}")
             return True
         except (ConnectionRefusedError, asyncio.TimeoutError, OSError) as e:
             self._handle_connection_error(e)
@@ -52,11 +54,11 @@ class ConnectionAsync(DevicesLogger):
         """发送消息到服务器。"""
 
         if not self.is_connected():
-            self.logger.warning("[CAR] 发送失败：连接未建立")
+            logger.warning("[CAR] 发送失败：连接未建立")
             return False
         
         if self.writer is None:
-            self.logger.warning("[CAR] 写入器未初始化")
+            logger.warning("[CAR] 写入器未初始化")
             return False
         
         try:
@@ -65,10 +67,10 @@ class ConnectionAsync(DevicesLogger):
  
             self.writer.write(message)
             await self.writer.drain()
-            self.logger.info(f"[CAR] 已发送: {message[:64]}{'...' if len(message)>64 else ''}")
+            logger.info(f"[CAR] 已发送: {message[:64]}{'...' if len(message)>64 else ''}")
             return True
         except (BrokenPipeError, ConnectionResetError, OSError) as e:
-            self.logger.error(f"[CAR] 发送失败: {e}")
+            logger.error(f"[CAR] 发送失败: {e}")
             self._connected = False
             return False
     
@@ -79,32 +81,32 @@ class ConnectionAsync(DevicesLogger):
         - 后续如需要使用解码，请加入decode参数
         """
         if not self.is_connected():
-            self.logger.warning("[CAR] 接收失败：连接未建立")
+            logger.warning("[CAR] 接收失败：连接未建立")
             return b'\x00'
         
         if self.reader is None:
-            self.logger.warning("[CAR] 读取器未初始化")
+            logger.warning("[CAR] 读取器未初始化")
             return b'\x00'
 
         try:
             data = await asyncio.wait_for(self.reader.read(1024), timeout=timeout)
             if not data:
-                self.logger.warning("[CAR] 连接被远程关闭")
+                logger.warning("[CAR] 连接被远程关闭")
                 self._connected = False
                 return b'\x00'
             
             # 返回解码的数据 (使用请解除注释)
             # response = data.decode() if decode else data
-            # self.logger.info(f"[CAR] 收到回复: {response[:128]}{'...' if len(response)>128 else ''}")
+            # logger.info(f"[CAR] 收到回复: {response[:128]}{'...' if len(response)>128 else ''}")
             # return response
 
             # 返回原始数据
-            self.logger.info(f"[CAR] 收到原始字节({len(data)}字节): {data[:8]}...")
+            logger.debug(f"[CAR] 收到原始字节({len(data)}字节): {data[:8]}...")
             return data
 
         except (asyncio.TimeoutError, ConnectionResetError, OSError) as e:
             error_type = type(e).__name__
-            self.logger.error(f"[CAR] 接收错误 {error_type}: {e}")
+            logger.error(f"[CAR] 接收错误 {error_type}: {e}")
             self._connected = False
             return b'\x00'
 
@@ -120,10 +122,10 @@ class ConnectionAsync(DevicesLogger):
                     self.writer.close()
                     await self.writer.wait_closed()
                     
-            self.logger.info("[CAR] 连接已关闭")
+            logger.info("[CAR] 连接已关闭")
             return True
         except Exception as e:
-            self.logger.error(f"[CAR] 关闭连接时出错: {e}")
+            logger.error(f"[CAR] 关闭连接时出错: {e}")
             return False
         finally:
             self._connected = False

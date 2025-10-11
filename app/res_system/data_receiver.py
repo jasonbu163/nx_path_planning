@@ -2,6 +2,8 @@
 import threading
 import time
 import asyncio
+import logging
+logger = logging.getLogger(__name__)
 
 from .packet_parser import PacketParser
 from .res_protocol import FrameType, ErrorHandler, ImmediateCommand
@@ -29,7 +31,7 @@ class DataReceiver:
             self.running = True
             self.receive_thread = threading.Thread(target=self._receive_loop, daemon=True)
             self.receive_thread.start()
-            print("数据接收器已启动")
+            logger.info("数据接收器已启动")
             
     def _receive_loop(self):
         """接收数据的主循环"""
@@ -45,10 +47,10 @@ class DataReceiver:
             try:
                 parsed_data = self.parser.parse_generic_response(raw_data)
                 if not isinstance(parsed_data, dict):
-                    print("解析结果不是字典格式")
+                    logger.warning("解析结果不是字典格式")
                     continue
             except Exception as e:
-                print(f"解析数据包时出错: {e}")
+                logger.error(f"解析数据包时出错: {e}")
                 continue
                 
             # 3. 根据帧类型处理不同数据
@@ -63,18 +65,18 @@ class DataReceiver:
             # elif frame_type == FrameType.DATA:
             #     self._handle_data_frame(parsed_data)
             else:
-                print(f"未知帧类型: {frame_type}")
+                logger.warning(f"未知帧类型: {frame_type}")
                 
     def _handle_heartbeat(self, data):
         """处理心跳数据"""
         self.heartbeat_mgr.update_status(data)
         
         # 调试信息
-        print(f"收到心跳包: 设备ID={data['device_id']}, 状态码={data['state']}")
+        logger.debug(f"收到心跳包: 设备ID={data['device_id']}, 状态码={data['state']}")
         if 'x' in data and 'y' in data:
-            print(f"当前位置: X={data['x']}, Y={data['y']}, Z={data.get('z', 0)}")
+            logger.debug(f"当前位置: X={data['x']}, Y={data['y']}, Z={data.get('z', 0)}")
         if 'battery' in data:
-            print(f"电池电量: {data['battery']}%")
+            logger.debug(f"电池电量: {data['battery']}%")
             
     def _handle_task_response(self, data):
         """处理任务响应"""
@@ -82,7 +84,7 @@ class DataReceiver:
         result_code = data.get('result')
         current_segment = data.get('current_segment')
         
-        print(f"\n任务响应: 任务ID={task_id}, 结果={result_code}, 当前段={current_segment}")
+        logger.debug(f"\n任务响应: 任务ID={task_id}, 结果={result_code}, 当前段={current_segment}")
         
         # 处理错误代码
         if result_code != ErrorHandler.ERROR_MAP[0]:
@@ -97,16 +99,16 @@ class DataReceiver:
         cmd_no = data.get('cmd_no')
         result = data.get('result')
         
-        print(f"命令响应: 命令ID={cmd_id}, 序号={cmd_no}, 结果={result}")
+        logger.debug(f"命令响应: 命令ID={cmd_id}, 序号={cmd_no}, 结果={result}")
         
         # 特殊处理急停命令
         if cmd_id == ImmediateCommand.EMERGENCY_STOP:
             if result == ErrorHandler.ERROR_MAP[0]:
-                print("急停命令已成功执行")
+                logger.info("急停命令已成功执行")
                 # 更新所有任务状态为停止
                 self.task_executor.emergency_stop()
             else:
-                print("急停命令执行失败!")
+                logger.error("急停命令执行失败!")
                 self._handle_error(result)
         
     # def _handle_data_frame(self, data):
@@ -116,17 +118,17 @@ class DataReceiver:
     #     payload = data.get('payload', {})
         
     #     if data_type == RESProtocol.DataType.PALLET_INFO:
-    #         print(f"载货信息: 状态={payload.get('status')}, 重量={payload.get('weight')}kg")
+    #         logger.info(f"载货信息: 状态={payload.get('status')}, 重量={payload.get('weight')}kg")
     #     else:
-    #         print(f"收到数据帧: 类型={data_type}, 内容={payload}")
+    #         logger.error(f"收到数据帧: 类型={data_type}, 内容={payload}")
             
     def _handle_error(self, error_code):
         """统一错误处理"""
         error_name, solution = ErrorHandler.get_error_info(error_code)
         
-        print(f"\n⚠️ 错误发生: [{error_name}]")
+        logger.error(f"\n⚠️ 错误发生: [{error_name}]")
         # print(f"错误描述: {error_description}")
-        print(f"建议解决方案: {solution}\n")
+        logger.info(f"建议解决方案: {solution}\n")
         
         # 这里可以添加根据错误代码的自动处理逻辑
         # if error_code in [RESProtocol.ErrorCode.POWER_LOW, 
@@ -135,7 +137,7 @@ class DataReceiver:
             
     def _handle_low_battery(self):
         """低电量处理逻辑"""
-        print("检测到低电量，执行安全程序...")
+        logger.warning("检测到低电量，执行安全程序...")
         # 1. 停止所有任务
         self.task_executor.emergency_stop()
         
@@ -146,7 +148,7 @@ class DataReceiver:
         ]
         charge_task_id = self.task_executor.queue_task(charge_segments)
         self.task_executor.start_task(charge_task_id, charge_segments)
-        print(f"已创建充电任务: ID={charge_task_id}")
+        logger.info(f"已创建充电任务: ID={charge_task_id}")
         
     async def _receive_task(self):
         """后台接收任务"""
@@ -160,5 +162,5 @@ class DataReceiver:
                     # 处理解析结果
                     await self._process_parsed_data(parsed)
             except Exception as e:
-                print(f"接收任务异常: {str(e)}")
+                logger.error(f"接收任务异常: {str(e)}")
                 await asyncio.sleep(5)

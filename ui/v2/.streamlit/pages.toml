@@ -9,6 +9,11 @@ name = "仓库位置信息设置(数据库)"
 icon = "🛠️"
 
 [[pages]]
+path = "tool_pages/device_management.py"
+name = "设备状态管理"
+icon = "🦾"
+
+[[pages]]
 path = "tool_pages/car_position_calibration.py"
 name = "穿梭车位置校准"
 icon = "⚙️"
@@ -51,4 +56,4 @@ icon = "🚚"
 [[pages]]
 path = "tool_pages/location_update.py"
 name = "仓库位置信息更新(数据库)"
-icon = "🛠️"
+icon = "♻️"

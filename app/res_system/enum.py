@@ -19,31 +19,45 @@ class CarBaseEnum(Enum):
     
     @property
     def value(self):
-        """
-        [覆盖默认的value属性获取方式]
-        """
+        """覆盖默认的value属性获取方式。"""
         return self._value_
     
     @property
     def description(self):
-        """
-        [获取枚举的描述信息] - 符合WCS/WMS系统交互需求的描述信息
-        """
+        """[获取枚举的描述信息] 符合WCS/WMS系统交互需求的描述信息。"""
         return self._description
     
+    @classmethod
+    def get_by_value(cls, value):
+        """根据值获取枚举成员。"""
+        for member in cls:
+            if member.value == value:
+                return member
+        return None
+    
+    @classmethod
+    def get_info_by_value(cls, value) -> dict:
+        """根据值获取枚举成员的名称和描述。"""
+        member = cls.get_by_value(value)
+        if member:
+            return {
+                'name': member.name,
+                'description': member.description
+            }
+        return {
+            'name': 'UNKNOWN',
+            'description': '未知'
+        }
+    
 class RESProtocol(CarBaseEnum):
-    """
-    [报文常用变量定义]
-    """
+    """报文常用变量定义。"""
     HEADER = b'\x02\xfd', "报文头"
     FOOTER = b'\x03\xfc', "报文尾"
     VERSION = 1, "版本号"
     HEARTBEAT_INTERVAL = 0.6, "心跳间隔"
 
 class FrameType(CarBaseEnum):
-    """
-    [报文类型]
-    """
+    """报文类型。 """
     HEARTBEAT = 0, "心跳"
     TASK = 1, "任务"
     COMMAND = 2, "交互指令"
@@ -57,9 +71,7 @@ class FrameType(CarBaseEnum):
 ###### 穿梭车状态 #####
 #####################
 class CarStatus(CarBaseEnum):
-    """
-    [接收 - 穿梭车状态码] - 用于解析返回报文中状态信息
-    """
+    """[接收 - 穿梭车状态码] 用于解析返回报文中穿梭车状态。"""
     TASK_EXECUTING = 1, "任务执行中"
     COMMAND_EXECUTING = 2, "命令执行中"
     READY = 3, "就绪"
@@ -69,40 +81,29 @@ class CarStatus(CarBaseEnum):
     SLEEPING = 7, "休眠状态"
     NODE_STANDBY = 11, "节点待命"
 
-    @classmethod
-    def get_by_value(cls, value):
-        """
-        根据值获取枚举成员
-        """
-        for member in cls:
-            if member.value == value:
-                return member
-        return None
-    
-    @classmethod
-    def get_info_by_value(cls, value) -> dict:
-        """
-        根据值获取枚举成员的名称和描述
-        """
-        member = cls.get_by_value(value)
-        if member:
-            return {
-                'name': member.name,
-                'description': member.description
-            }
-        return {
-            'name': 'UNKNOWN',
-            'description': '未知'
-        }
+class StatusDescription(CarBaseEnum):
+    """[接收 - 穿梭车状态描述] 用于解析返回报文中穿梭车状态描述。"""
+    	
+    NO_WARNING = 0, "无警告"
+    DRIVING_CONTROLLER_LOST = 1, "行驶控制板失联"
+    HYDRAULIC_CONTROLLER_LOST = 2, "液压控制板失联"
+    DRIVING_DRIVER_LOST = 3, "行驶驱动器失联"
+    HYDRAULIC_DRIVER_LOST = 4, "液压驱动器失联"
+    DRIVING_DRIVER_ERROR = 5, "行驶驱动器出现异常"
+    HYDRAULIC_DRIVER_ERROR = 6, "液压驱动器出现异常"
+    CHARGING_ERROR = 7, "小车充电异常"
+    DRIVER_REBOOTING = 8, "驱动器重启状态"
+    PAUSED_BY_COMMAND = 11, "小车指令暂停"
+    PAUSED_BY_OBSTACLE = 12, "行驶系统障碍物暂停"
+    PAUSED_BY_PALLET_OBSTACLE = 13, "行驶系统托盘障碍物暂停"
+    PAUSED_BY_HOIST_LOCK = 14, "提升机止推暂停"
 
 
 ##########################
 ###### 穿梭车 工作指令 #####
 #########################
 class WorkCommand(CarBaseEnum):
-    """
-    [发送 - 工作指令码] - 用于发送工作指令
-    """
+    """[发送 - 工作指令码] 用于发送工作指令。"""
     PALLET_PICKUP = b'\x01', "托盘取货"
     PALLET_PLACE = b'\x02', "托盘放货"
     START_CHARGING = b'\x03', "开始充电"
@@ -129,9 +130,7 @@ class WorkCommand(CarBaseEnum):
 ###### 穿梭车 调试指令 #####
 #########################
 class ImmediateCommand(CarBaseEnum):
-    """
-    [发送 - 即时指令码] - 用于发送即时指令
-    """
+    """[发送 - 即时指令码] 用于发送即时指令。"""
     # 穿梭车急停 - 紧急停止穿梭车当前的行驶
     EMERGENCY_STOP = b'\x81', "穿梭车急停"
     # 穿梭车暂停恢复 - 穿梭车在行驶暂停状态下时恢复行驶
@@ -164,9 +163,7 @@ class ImmediateCommand(CarBaseEnum):
     GET_PARAM = b'\x9E', "获取单个参数"
 
 class Debug(CarBaseEnum):
-    """
-    [调试指令] - 用于穿梭车的调试
-    """
+    """[调试指令] 用于穿梭车的调试。"""
     # 获取RES全部参数 - 读取RES全部参数(不包含固件版本)
     GET_ALL_PARAM = b'\xA2', "获取RES全部参数"
 
@@ -192,12 +189,3 @@ class ErrorHandler:
     def is_critical_error(cls, error_code):
         """是否为关键错误"""
         return error_code >= 4000   #4000以上的错误为关键错误
-    
-
-if __name__ == "__main__":
-    
-    # 测试枚举类
-    for status in WorkCommand:
-        print(f"{status.name}: {status.value} - {status.description}")
-    
-    print(ImmediateCommand.CANCEL_TASK.value)

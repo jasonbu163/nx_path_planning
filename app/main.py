@@ -1,5 +1,9 @@
 # app/main.py
 from fastapi import FastAPI
+
+from app.utils.logger import setup_logger
+setup_logger()
+
 from contextlib import asynccontextmanager
 from concurrent.futures import ThreadPoolExecutor
 

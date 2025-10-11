@@ -3,6 +3,8 @@
 import time
 from typing import Union
 import asyncio
+import logging
+logger = logging.getLogger(__name__)
 
 import struct
 
@@ -48,15 +50,15 @@ class PLCController(ConnectionAsync):
         lift_remote_online = self.read_bit(2, DB_2.REMOTE_ONLINE.value)
         conveyor_online = self.read_bit(2, DB_2.CONVEYOR_ONLINE.value)
         
-        self.logger.info(f"{DB_11.FAULT.description} - {DB_11.__name__} - {DB_11.FAULT.value} - {lift_fault}")
-        self.logger.info(f"{DB_11.AUTO_MODE.description} - {DB_11.__name__} - {DB_11.AUTO_MODE.value} - {lift_auto_mode}")
-        self.logger.info(f"{DB_2.REMOTE_ONLINE.description} - {DB_2.__name__} - {DB_2.REMOTE_ONLINE.value} - {lift_remote_online}")
-        self.logger.info(f"{DB_2.CONVEYOR_ONLINE.description} - {DB_2.__name__} - {DB_2.CONVEYOR_ONLINE.value} - {conveyor_online}")
+        logger.info(f"{DB_11.FAULT.description} - {DB_11.__name__} - {DB_11.FAULT.value} - {lift_fault}")
+        logger.info(f"{DB_11.AUTO_MODE.description} - {DB_11.__name__} - {DB_11.AUTO_MODE.value} - {lift_auto_mode}")
+        logger.info(f"{DB_2.REMOTE_ONLINE.description} - {DB_2.__name__} - {DB_2.REMOTE_ONLINE.value} - {lift_remote_online}")
+        logger.info(f"{DB_2.CONVEYOR_ONLINE.description} - {DB_2.__name__} - {DB_2.CONVEYOR_ONLINE.value} - {conveyor_online}")
         if lift_fault==0 and lift_auto_mode==1 and lift_remote_online==1 and conveyor_online==1:
-            self.logger.info("✅ [PLC] PLC就绪")
+            logger.info("✅ [PLC] PLC就绪")
             return True
         else:
-            self.logger.error("❌ [PLC] PLC错误，请检查设备状态")
+            logger.error("❌ [PLC] PLC错误，请检查设备状态")
             return False
     
     def get_lift(self) -> int:
@@ -103,7 +105,7 @@ class PLCController(ConnectionAsync):
         lift_last_taskno = self.get_lift_last_taskno()
         if lift_last_taskno == task_no:
             task_no += 1
-            self.logger.warning(f"[LIFT] 当前任务号和新任务号一致，调整任务号为 - {task_no}")
+            logger.warning(f"[LIFT] 当前任务号和新任务号一致，调整任务号为 - {task_no}")
         
         type = struct.pack('!H', task_type)
         num = struct.pack('!H', task_no)
@@ -140,7 +142,7 @@ class PLCController(ConnectionAsync):
         lift_last_taskno = self.get_lift_last_taskno()
         if lift_last_taskno == task_no:
             task_no += 1
-            self.logger.warning(f"[LIFT] 当前任务号和新任务号一致，调整任务号为 - {task_no}")
+            logger.warning(f"[LIFT] 当前任务号和新任务号一致，调整任务号为 - {task_no}")
         
         # 任务识别
         lift_running = self.read_bit(11, DB_11.RUNNING.value)
@@ -149,36 +151,36 @@ class PLCController(ConnectionAsync):
         lift_has_cargo = self.read_bit(11, DB_11.HAS_CARGO.value)
         lift_has_car = self.read_bit(11, DB_11.HAS_CAR.value)
 
-        self.logger.info(f"[LIFT] 电梯状态 - 电梯运行中:{lift_running} 电梯是否空闲:{lift_idle} 电梯是否无货:{lift_no_cargo} 电梯是否有货:{lift_has_cargo} 电梯是否有车:{lift_has_car} ")
+        logger.info(f"[LIFT] 电梯状态 - 电梯运行中:{lift_running} 电梯是否空闲:{lift_idle} 电梯是否无货:{lift_no_cargo} 电梯是否有货:{lift_has_cargo} 电梯是否有车:{lift_has_car} ")
 
         if layer not in [1,2,3,4]:
-            self.logger.error("[LIFT] ❌ 楼层错误")
+            logger.error("[LIFT] ❌ 楼层错误")
             return False
         
         else:
             if lift_running==0 and lift_idle==1 and lift_no_cargo==1 and lift_has_cargo==0 and lift_has_car==0:
                 self.lift_move(LIFT_TASK_TYPE.IDEL, task_no, layer)
-                self.logger.info("[LIFT] ✅ 电梯(空载)移动指令已经发送")
+                logger.info("[LIFT] ✅ 电梯(空载)移动指令已经发送")
                 return True
             
             elif lift_running==0 and lift_idle==1 and lift_no_cargo==1 and lift_has_cargo==0 and lift_has_car==1:
                 self.lift_move(LIFT_TASK_TYPE.CAR, task_no, layer)
-                self.logger.info("[LIFT] ✅ 电梯(载车)移动指令已经发送")
+                logger.info("[LIFT] ✅ 电梯(载车)移动指令已经发送")
                 return True
 
             elif lift_running==0 and lift_idle==1 and lift_no_cargo==0 and lift_has_cargo==1 and lift_has_car==0:                
                 self.lift_move(LIFT_TASK_TYPE.GOOD, task_no, layer)
-                self.logger.info("[LIFT] ✅ 电梯(载货)移动指令已经发送")
+                logger.info("[LIFT] ✅ 电梯(载货)移动指令已经发送")
                 return True
             
             elif lift_running==0 and lift_idle==1 and lift_no_cargo==0 and lift_has_cargo==1 and lift_has_car==1:                
                 self.lift_move(LIFT_TASK_TYPE.GOOD_CAR, task_no, layer)
-                self.logger.info("[LIFT] ✅ 电梯(载货和车)移动指令已经发送")
+                logger.info("[LIFT] ✅ 电梯(载货和车)移动指令已经发送")
                 return True
             
             else:
                 time.sleep(3)
-                self.logger.error(f"[LIFT] 未知状态，电梯到达 {self.get_lift()} 层")
+                logger.error(f"[LIFT] 未知状态，电梯到达 {self.get_lift()} 层")
                 return False
             
     def wait_lift_move_complete_by_location_sync(self) -> bool:
@@ -187,12 +189,12 @@ class PLCController(ConnectionAsync):
         Returns:
             bool: 等待状态
         """
-        self.logger.info("[LIFT] 🚧 电梯工作中...")
+        logger.info("[LIFT] 🚧 电梯工作中...")
                 
         if self.wait_for_bit_change_sync(11, DB_11.RUNNING.value, 0):
-            self.logger.info(f"[LIFT] ✅ 电梯工作完毕")
+            logger.info(f"[LIFT] ✅ 电梯工作完毕")
         else:
-            self.logger.error("[LIFT] ❌ 电梯工作失败")
+            logger.error("[LIFT] ❌ 电梯工作失败")
             return False
         
         time.sleep(4)
@@ -200,22 +202,22 @@ class PLCController(ConnectionAsync):
         # 读取提升机是否空闲
         if self.read_bit(11, DB_11.IDLE.value):
             self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 1)
-            self.logger.info(f"[LIFT] ✅ 写入电梯到位状态")
+            logger.info(f"[LIFT] ✅ 写入电梯到位状态")
             time.sleep(1)
         else:
-            self.logger.error("[LIFT] ❌ 提升机非空闲状态")
+            logger.error("[LIFT] ❌ 提升机非空闲状态")
             return False
         
         # 确认电梯到位后，清除到位状态
         if self.read_bit(12, DB_12.TARGET_LAYER_ARRIVED.value) == 1:
             self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
-            self.logger.info(f"[LIFT] ✅ 清除电梯到位状态")
+            logger.info(f"[LIFT] ✅ 清除电梯到位状态")
             time.sleep(3)
         else:
-            self.logger.error("[LIFT] ❌ 电梯非到位状态")
+            logger.error("[LIFT] ❌ 电梯非到位状态")
             return False
         
-        self.logger.info(f"[LIFT] 电梯到达 {self.get_lift()} 层")
+        logger.info(f"[LIFT] 电梯到达 {self.get_lift()} 层")
 
         return True
     
@@ -225,12 +227,12 @@ class PLCController(ConnectionAsync):
         Returns:
             bool: 等待状态
         """
-        self.logger.info("[LIFT] 🚧 电梯工作中...")
+        logger.info("[LIFT] 🚧 电梯工作中...")
                 
         if await self.wait_for_bit_change(11, DB_11.RUNNING.value, 0):
-            self.logger.info(f"[LIFT] ✅ 电梯工作完毕")
+            logger.info(f"[LIFT] ✅ 电梯工作完毕")
         else:
-            self.logger.error("[LIFT] ❌ 电梯工作失败")
+            logger.error("[LIFT] ❌ 电梯工作失败")
             return False
         
         await asyncio.sleep(4)
@@ -238,22 +240,22 @@ class PLCController(ConnectionAsync):
         # 读取提升机是否空闲
         if self.read_bit(11, DB_11.IDLE.value):
             self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 1)
-            self.logger.info(f"[LIFT] ✅ 写入电梯到位状态")
+            logger.info(f"[LIFT] ✅ 写入电梯到位状态")
             await asyncio.sleep(1)
         else:
-            self.logger.error("[LIFT] ❌ 提升机非空闲状态")
+            logger.error("[LIFT] ❌ 提升机非空闲状态")
             return False
         
         # 确认电梯到位后，清除到位状态
         if self.read_bit(12, DB_12.TARGET_LAYER_ARRIVED.value) == 1:
             self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
-            self.logger.info(f"[LIFT] ✅ 清除电梯到位状态")
+            logger.info(f"[LIFT] ✅ 清除电梯到位状态")
             await asyncio.sleep(3)
         else:
-            self.logger.error("[LIFT] ❌ 电梯非到位状态")
+            logger.error("[LIFT] ❌ 电梯非到位状态")
             return False
         
-        self.logger.info(f"[LIFT] 电梯到达 {self.get_lift()} 层")
+        logger.info(f"[LIFT] 电梯到达 {self.get_lift()} 层")
         
         return True
             
@@ -268,7 +270,7 @@ class PLCController(ConnectionAsync):
         lift_last_taskno = self.get_lift_last_taskno()
         if lift_last_taskno == TASK_NO:
             TASK_NO += 1
-            self.logger.warning(f"[LIFT] 当前任务号和新任务号一致，调整任务号为 - {TASK_NO}")
+            logger.warning(f"[LIFT] 当前任务号和新任务号一致，调整任务号为 - {TASK_NO}")
         
         # 任务识别
         lift_running = self.read_bit(11, DB_11.RUNNING.value)
@@ -277,19 +279,19 @@ class PLCController(ConnectionAsync):
         lift_has_cargo = self.read_bit(11, DB_11.HAS_CARGO.value)
         lift_has_car = self.read_bit(11, DB_11.HAS_CAR.value)
 
-        self.logger.info(f"[LIFT] 电梯状态 - 电梯运行中:{lift_running} 电梯是否空闲:{lift_idle} 电梯是否无货:{lift_no_cargo} 电梯是否有货:{lift_has_cargo} 电梯是否有车:{lift_has_car} ")
+        logger.info(f"[LIFT] 电梯状态 - 电梯运行中:{lift_running} 电梯是否空闲:{lift_idle} 电梯是否无货:{lift_no_cargo} 电梯是否有货:{lift_has_cargo} 电梯是否有车:{lift_has_car} ")
 
         if LAYER not in [1,2,3,4]:
-            self.logger.error("[PLC] 楼层错误")
+            logger.error("[PLC] 楼层错误")
             return False
         
         else:
             if lift_running==0 and lift_idle==1 and lift_no_cargo==1 and lift_has_cargo==0 and lift_has_car==0:
                 
-                self.logger.info("[LIFT] 电梯开始移动")
+                logger.info("[LIFT] 电梯开始移动")
                 self.lift_move(LIFT_TASK_TYPE.IDEL, TASK_NO, LAYER)
                 
-                self.logger.info("[LIFT] 电梯移动中...")
+                logger.info("[LIFT] 电梯移动中...")
                 await self.wait_for_bit_change(11, DB_11.RUNNING.value, 0)
                 
                 # 读取提升机是否空闲
@@ -302,16 +304,16 @@ class PLCController(ConnectionAsync):
                     self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
                 # time.sleep(1)
                 await asyncio.sleep(3)
-                self.logger.info(f"[LIFT] 电梯到达 {self.get_lift()} 层")
+                logger.info(f"[LIFT] 电梯到达 {self.get_lift()} 层")
                 
                 return True
             
             elif lift_running==0 and lift_idle==1 and lift_no_cargo==1 and lift_has_cargo==0 and lift_has_car==1:
                 
-                self.logger.info("[LIFT] 电梯开始移动")
+                logger.info("[LIFT] 电梯开始移动")
                 self.lift_move(LIFT_TASK_TYPE.CAR, TASK_NO, LAYER)
                 
-                self.logger.info("[LIFT] 电梯移动中...")
+                logger.info("[LIFT] 电梯移动中...")
                 await self.wait_for_bit_change(11, DB_11.RUNNING.value, 0)
                 
                 # 读取提升机是否空闲
@@ -324,16 +326,16 @@ class PLCController(ConnectionAsync):
                     self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
                 # time.sleep(1)
                 await asyncio.sleep(3)
-                self.logger.info(f"[LIFT] 电梯到达 {self.get_lift()} 层")
+                logger.info(f"[LIFT] 电梯到达 {self.get_lift()} 层")
                 
                 return True
 
             elif lift_running==0 and lift_idle==1 and lift_no_cargo==0 and lift_has_cargo==1 and lift_has_car==0:
                 
-                self.logger.info("[LIFT] 电梯开始移动")
+                logger.info("[LIFT] 电梯开始移动")
                 self.lift_move(LIFT_TASK_TYPE.GOOD, TASK_NO, LAYER)
                 
-                self.logger.info("[LIFT] 电梯移动中...")
+                logger.info("[LIFT] 电梯移动中...")
                 await self.wait_for_bit_change(11, DB_11.RUNNING.value, 0)
 
                 # 读取提升机是否空闲
@@ -347,13 +349,13 @@ class PLCController(ConnectionAsync):
                 
                 # time.sleep(1)
                 await asyncio.sleep(3)
-                self.logger.info(f"[LIFT] 电梯到达 {self.get_lift()} 层")
+                logger.info(f"[LIFT] 电梯到达 {self.get_lift()} 层")
                 
                 return True
             
             else:
                 await asyncio.sleep(3)
-                self.logger.error(f"[LIFT] 未知状态，电梯到达 {self.get_lift()} 层")
+                logger.error(f"[LIFT] 未知状态，电梯到达 {self.get_lift()} 层")
                 return False
 
     ########################################################
@@ -374,7 +376,7 @@ class PLCController(ConnectionAsync):
         if self.read_bit(12, DB_12.FEED_COMPLETE_1010.value) == 1:
             self.write_bit(12, DB_12.FEED_COMPLETE_1010.value, 0)
         else:
-            self.logger.error("[PLC] ❌ DB_12.FEED_COMPLETE_1010 清零失败")
+            logger.error("[PLC] ❌ DB_12.FEED_COMPLETE_1010 清零失败")
             return False
     
         # 移动到提升机
@@ -385,7 +387,7 @@ class PLCController(ConnectionAsync):
             self.write_db(12, DB_12.TARGET_1010.value, b'\x00\x00')
             return True
         else:
-            self.logger.error("[PLC] ❌ DB_12.TARGET_1010 清零失败")
+            logger.error("[PLC] ❌ DB_12.TARGET_1010 清零失败")
             return False
     
     def lift_to_outband(self) -> bool:
@@ -410,8 +412,8 @@ class PLCController(ConnectionAsync):
             self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
             return True
         else:
-            self.logger.error("[PLC] ❌ DB_12.TARGET_1020 清零失败")
-            self.logger.error("[PLC] ❌ DB_12.TARGET_LAYER_ARRIVED 清零失败")
+            logger.error("[PLC] ❌ DB_12.TARGET_1020 清零失败")
+            logger.error("[PLC] ❌ DB_12.TARGET_LAYER_ARRIVED 清零失败")
             return False
 
     def floor_to_lift(self, floor_id: int) -> bool:
@@ -441,7 +443,7 @@ class PLCController(ConnectionAsync):
                 self.write_db(12, DB_12.TARGET_1030.value, b'\x00\x00')
                 return True
             else:
-                self.logger.error("[PLC] ❌ DB_12.TARGET_1030 清零失败")
+                logger.error("[PLC] ❌ DB_12.TARGET_1030 清零失败")
                 return False
                 
         # 楼层2
@@ -454,7 +456,7 @@ class PLCController(ConnectionAsync):
                 self.write_db(12, DB_12.TARGET_1040.value, b'\x00\x00')
                 return True
             else:
-                self.logger.error("[PLC] ❌ DB_12.TARGET_1040 清零失败")
+                logger.error("[PLC] ❌ DB_12.TARGET_1040 清零失败")
                 return False
         
         # 楼层3
@@ -467,7 +469,7 @@ class PLCController(ConnectionAsync):
                 self.write_db(12, DB_12.TARGET_1050.value, b'\x00\x00')
                 return True
             else:
-                self.logger.error("[PLC] ❌ DB_12.TARGET_1050 清零失败")
+                logger.error("[PLC] ❌ DB_12.TARGET_1050 清零失败")
                 return False
             
         
@@ -481,12 +483,12 @@ class PLCController(ConnectionAsync):
                 self.write_db(12, DB_12.TARGET_1060.value, b'\x00\x00')
                 return True
             else:
-                self.logger.error("[PLC] ❌ DB_12.TARGET_1060 清零失败")
+                logger.error("[PLC] ❌ DB_12.TARGET_1060 清零失败")
                 return False
         
         # 无效楼层
         else:
-            self.logger.error(f"[PLC] ❌ {floor_id}无效的楼层")
+            logger.error(f"[PLC] ❌ {floor_id}无效的楼层")
             return False
 
     def lift_to_everylayer(self, floor_id: int) -> bool:
@@ -516,8 +518,8 @@ class PLCController(ConnectionAsync):
                 self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
                 return True
             else:
-                self.logger.error("[PLC] ❌ DB_12.TARGET_1020 清零失败")
-                self.logger.error("[PLC] ❌ DB_12.TARGET_LAYER_ARRIVED 清零失败")
+                logger.error("[PLC] ❌ DB_12.TARGET_1020 清零失败")
+                logger.error("[PLC] ❌ DB_12.TARGET_LAYER_ARRIVED 清零失败")
                 return False
 
         # 移动到2层
@@ -532,8 +534,8 @@ class PLCController(ConnectionAsync):
                 self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
                 return True
             else:
-                self.logger.error("[PLC] ❌ DB_12.TARGET_1020 清零失败")
-                self.logger.error("[PLC] ❌ DB_12.TARGET_LAYER_ARRIVED 清零失败")
+                logger.error("[PLC] ❌ DB_12.TARGET_1020 清零失败")
+                logger.error("[PLC] ❌ DB_12.TARGET_LAYER_ARRIVED 清零失败")
                 return False
         
         # 移动到3层
@@ -548,8 +550,8 @@ class PLCController(ConnectionAsync):
                 self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
                 return True
             else:
-                self.logger.error("[PLC] ❌ DB_12.TARGET_1020 清零失败")
-                self.logger.error("[PLC] ❌ DB_12.TARGET_LAYER_ARRIVED 清零失败")
+                logger.error("[PLC] ❌ DB_12.TARGET_1020 清零失败")
+                logger.error("[PLC] ❌ DB_12.TARGET_LAYER_ARRIVED 清零失败")
                 return False
 
         # 移动到4层
@@ -564,13 +566,13 @@ class PLCController(ConnectionAsync):
                 self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
                 return True
             else:
-                self.logger.error("[PLC] ❌ DB_12.TARGET_1020 清零失败")
-                self.logger.error("[PLC] ❌ DB_12.TARGET_LAYER_ARRIVED 清零失败")
+                logger.error("[PLC] ❌ DB_12.TARGET_1020 清零失败")
+                logger.error("[PLC] ❌ DB_12.TARGET_LAYER_ARRIVED 清零失败")
                 return False
 
         # 无效楼层
         else:
-            self.logger.error(f"[PLC] ❌ {floor_id} 无效的楼层")
+            logger.error(f"[PLC] ❌ {floor_id} 无效的楼层")
             return False
         
     
@@ -607,7 +609,7 @@ class PLCController(ConnectionAsync):
             return True
         # 无效楼层
         else:
-            self.logger.error(f"[PLC] ❌ {floor_id} 无效的楼层")
+            logger.error(f"[PLC] ❌ {floor_id} 无效的楼层")
             return False
         
     def feed_complete(self, floor_id: int) -> bool:
@@ -633,7 +635,7 @@ class PLCController(ConnectionAsync):
                 self.write_bit(12, DB_12.FEED_COMPLETE_1030.value, 0)
                 return True
             else:
-                self.logger.error("[PLC] ❌ DB_12.FEED_COMPLETE_1030 清零失败")
+                logger.error("[PLC] ❌ DB_12.FEED_COMPLETE_1030 清零失败")
                 return False
 
         # 楼层2
@@ -645,7 +647,7 @@ class PLCController(ConnectionAsync):
                 self.write_bit(12, DB_12.FEED_COMPLETE_1040.value, 0)
                 return True
             else:
-                self.logger.error("[PLC] ❌ DB_12.FEED_COMPLETE_1040 清零失败")
+                logger.error("[PLC] ❌ DB_12.FEED_COMPLETE_1040 清零失败")
                 return False
         
         # 楼层3
@@ -657,7 +659,7 @@ class PLCController(ConnectionAsync):
                 self.write_bit(12, DB_12.FEED_COMPLETE_1050.value, 0)
                 return True
             else:
-                self.logger.error("[PLC] ❌ DB_12.FEED_COMPLETE_1050 清零失败")
+                logger.error("[PLC] ❌ DB_12.FEED_COMPLETE_1050 清零失败")
                 return False
         
         # 楼层4
@@ -669,12 +671,12 @@ class PLCController(ConnectionAsync):
                 self.write_bit(12, DB_12.FEED_COMPLETE_1060.value, 0)
                 return True
             else:
-                self.logger.error("[PLC] ❌ DB_12.FEED_COMPLETE_1060 清零失败")
+                logger.error("[PLC] ❌ DB_12.FEED_COMPLETE_1060 清零失败")
                 return False
         
         # 无效楼层
         else:
-            self.logger.error(f"[PLC] ❌ {floor_id} 无效的楼层")
+            logger.error(f"[PLC] ❌ {floor_id} 无效的楼层")
             return False
         
     def pick_in_process(self, floor_id: int) -> bool:
@@ -706,7 +708,7 @@ class PLCController(ConnectionAsync):
             return True
         # 无效楼层
         else:
-            self.logger.info(f"[PLC] ❌ {floor_id} 无效的楼层")
+            logger.info(f"[PLC] ❌ {floor_id} 无效的楼层")
             return False
         
     def pick_complete(self, floor_id:int) -> bool:
@@ -734,7 +736,7 @@ class PLCController(ConnectionAsync):
                 self.write_bit(12, DB_12.PICK_COMPLETE_1030.value, 0)
                 return True
             else:
-                self.logger.error("[PLC] ❌ DB_12.PICK_COMPLETE_1030 清零失败")
+                logger.error("[PLC] ❌ DB_12.PICK_COMPLETE_1030 清零失败")
                 return False
 
         # 楼层2
@@ -746,7 +748,7 @@ class PLCController(ConnectionAsync):
                 self.write_bit(12, DB_12.PICK_COMPLETE_1040.value, 0)
                 return True
             else:
-                self.logger.error("[PLC] ❌ DB_12.PICK_COMPLETE_1040 清零失败")
+                logger.error("[PLC] ❌ DB_12.PICK_COMPLETE_1040 清零失败")
                 return False
         
         # 楼层3
@@ -758,7 +760,7 @@ class PLCController(ConnectionAsync):
                 self.write_bit(12, DB_12.PICK_COMPLETE_1050.value, 0)
                 return True
             else:
-                self.logger.error("[PLC] ❌ DB_12.PICK_COMPLETE_1050 清零失败")
+                logger.error("[PLC] ❌ DB_12.PICK_COMPLETE_1050 清零失败")
                 return False
         
         # 楼层4
@@ -770,12 +772,12 @@ class PLCController(ConnectionAsync):
                 self.write_bit(12, DB_12.PICK_COMPLETE_1060.value, 0)
                 return True
             else:
-                self.logger.error("[PLC] ❌ DB_12.PICK_COMPLETE_1060 清零失败")
+                logger.error("[PLC] ❌ DB_12.PICK_COMPLETE_1060 清零失败")
                 return False
         
         # 无效楼层
         else:
-            self.logger.error(f"[PLC] {floor_id} 无效的楼层")
+            logger.error(f"[PLC] {floor_id} 无效的楼层")
             return False
         
     
@@ -792,7 +794,7 @@ class PLCController(ConnectionAsync):
             Union: 设备获取的二维码信息 or False
         """
         is_qrcode = self.read_db(11, DB_11.SCAN_CODE_RD.value, 2)
-        self.logger.info(f"🙈 是否扫到码: {is_qrcode}")
+        logger.info(f"🙈 是否扫到码: {is_qrcode}")
         if is_qrcode == b'\x00\x01':
             qrcode = bytes()
             # for code_db_addr in range(24, 29):

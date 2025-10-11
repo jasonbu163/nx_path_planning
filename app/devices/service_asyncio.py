@@ -1,6 +1,7 @@
 # /devices/plc_service_asyncio.py
 from snap7.client import Client
 import logging
+logger = logging.getLogger(__name__)
 import asyncio
 from typing import Callable, Any, Union
 import struct
@@ -26,11 +27,12 @@ class IntCounter:
 # PLC设备服务类
 class DevicesService():
     def __init__(self, PLC_IP: str, CAR_IP: str, CAR_PORT: int):
-        """
-        初始化TCP客户端
-        :param plc_ip: plc地址
-        :param car_ip: 小车地址
-        :param car_port: 小车端口
+        """初始化TCP客户端。
+
+        Args:
+            plc_ip: plc地址
+            car_ip: 小车地址
+            car_port: 小车端口
         """
         
         self.plc_ip = PLC_IP
@@ -44,9 +46,6 @@ class DevicesService():
         self.reader = None
         self.writer = None
         self.connected = False
-
-        # 日志
-        self.logger = self.setup_logger()
         
         # 创建地图实例
         self.map = PathCustom()
@@ -58,15 +57,15 @@ class DevicesService():
         # 解析报文
         self.parser = PacketParser()
 
-    def setup_logger(self):
-        """设置日志记录器"""
-        logger = logging.getLogger("Devices Service")
-        logger.setLevel(logging.INFO)
-        handler = logging.StreamHandler()
-        formatter = logging.Formatter('[%(asctime)s -  %(levelname)s] %(message)s')
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
-        return logger
+    # def setup_logger(self):
+    #     """设置日志记录器"""
+    #     logger = logging.getLogger("Devices Service")
+    #     logger.setLevel(logging.INFO)
+    #     handler = logging.StreamHandler()
+    #     formatter = logging.Formatter('[%(asctime)s -  %(levelname)s] %(message)s')
+    #     handler.setFormatter(formatter)
+    #     logger.addHandler(handler)
+    #     return logger
 
     ############# PLC的连接 和 基础读写 ######################
     async def async_connect(self):
@@ -75,25 +74,25 @@ class DevicesService():
         try:
             await loop.run_in_executor(None, self.connect)
             if self._connected:
-                self.logger.info(f"🔌 PLC连接状态: 已连接到 {self.plc_ip}")
+                logger.info(f"🔌 PLC连接状态: 已连接到 {self.plc_ip}")
             else:
-                self.logger.error("❌ 异步连接失败，未知原因")
+                logger.error("❌ 异步连接失败，未知原因")
         except Exception as e:
-            self.logger.error(f"🚨 异步连接异常: {str(e)}", exc_info=True)
+            logger.error(f"🚨 异步连接异常: {str(e)}", exc_info=True)
             raise
 
     def connect(self):
         """同步连接PLC"""
         try:
-            self.logger.info(f"🔌 正在连接到 PLC: {self.plc_ip} (rack=0, slot=1)")
+            logger.info(f"🔌 正在连接到 PLC: {self.plc_ip} (rack=0, slot=1)")
             self.client.connect(self.plc_ip, 0, 1)  # 默认 rack=0, slot=1
             self._connected = self.client.get_connected()
             if self._connected:
-                self.logger.info(f"✅ 成功连接 PLC：{self.plc_ip}")
+                logger.info(f"✅ 成功连接 PLC：{self.plc_ip}")
             else:
-                self.logger.error("❌ PLC返回连接失败")
+                logger.error("❌ PLC返回连接失败")
         except Exception as e:
-            self.logger.error(f"❌ 连接失败：{e}", exc_info=True)
+            logger.error(f"❌ 连接失败：{e}", exc_info=True)
             self._connected = False
             raise
 
@@ -102,7 +101,7 @@ class DevicesService():
         if self._connected:
             self.client.disconnect()
             self._connected = False
-            self.logger.info("⛔ PLC连接已关闭")
+            logger.info("⛔ PLC连接已关闭")
             
     def is_connected(self) -> bool:
         return self.client.get_connected()
@@ -118,7 +117,7 @@ class DevicesService():
         if not self.is_connected():
             raise ConnectionError("未连接到PLC")
         self.client.db_write(db_number, start, data)
-        self.logger.info(f"📤 写入 DB{db_number}[{start}] 成功，长度: {len(data)} bytes")
+        logger.debug(f"📤 写入 DB{db_number}[{start}] 成功，长度: {len(data)} bytes")
 
     ########################## 小车的连接 和 基础收发报文 ##########################
 
@@ -129,9 +128,9 @@ class DevicesService():
         try:
             self.reader, self.writer = await asyncio.open_connection(self.car_ip, self.car_port)
             self.connected = True
-            self.logger.info(f"[CLIENT] 已连接到服务器 {self.car_ip}:{self.car_port}")
+            logger.info(f"[CLIENT] 已连接到服务器 {self.car_ip}:{self.car_port}")
         except ConnectionRefusedError:
-            self.logger.error("[CLIENT] 无法连接到服务器")
+            logger.error("[CLIENT] 无法连接到服务器")
             self.connected = False
         return self.connected
     
@@ -145,7 +144,7 @@ class DevicesService():
         
         self.writer.write(message)
         await self.writer.drain()
-        self.logger.info(f"[CLIENT] 已发送: {message}")
+        logger.debug(f"[CLIENT] 已发送: {message}")
         return True
     
     async def car_receive_message(self):
@@ -162,7 +161,7 @@ class DevicesService():
         
         # response = data.decode()
         response = data
-        self.logger.info(f"[CLIENT] 收到服务端回复: {response}")
+        logger.debug(f"[CLIENT] 收到服务端回复: {response}")
         return response
     
     async def car_close(self):
@@ -173,7 +172,7 @@ class DevicesService():
             self.writer.close()
             await self.writer.wait_closed()
             self.connected = False
-            self.logger.info("[CLIENT] 连接已关闭")
+            logger.info("[CLIENT] 连接已关闭")
         return True
 
     ########################## PLC的高级应用 #################################
@@ -210,13 +209,15 @@ class DevicesService():
     #     extracted_bits = (current_byte & mask) >> bit_position
         
     #     return extracted_bits
+    
     def read_bit(self, db_number: int, offset: Union[float, int], size: int = 1) -> int:
-        """
-        读取指定位的值
+        """读取指定位的值。
+
         Args:
             db_number: DB块编号
             offset: 偏移地址 (格式：字节.位 如 22.0)
             size: 读取位数 (默认为1位)
+
         Returns:
             读取到的位值（0/1）或多位值（当size>1时返回整数）
         """
@@ -282,8 +283,8 @@ class DevicesService():
     #     logger.info(f"📝 DB{db_number}[{base_offset}.{bit_position}]写入{bits}位成功: 0x{value:02X}")
 
     def write_bit(self, db_number: int, offset: Union[float, int], value: Union[int, bool], size: int = 1) -> None:
-        """
-        写入指定位的值
+        """写入指定位的值。
+
         Args:
             db_number: DB块编号
             offset: 偏移地址 (格式：字节.位 如 22.0)
@@ -324,7 +325,7 @@ class DevicesService():
         
         # 写回PLC
         self.write_db(db_number, byte_offset, bytes([new_value]))
-        self.logger.info(f"🔧 位写入成功 DB{db_number}[{offset}]: 值={value}")
+        logger.debug(f"🔧 位写入成功 DB{db_number}[{offset}]: 值={value}")
 
     
     async def monitor_condition(
@@ -336,17 +337,18 @@ class DevicesService():
         callback: Callable[[], Any],
         poll_interval: float = 0.5
     ):
-        """
-        监控PLC状态并执行回调
-        :param monitor_db: 监控的DB块号
-        :param monitor_offset: 监控的地址偏移
-        :param bits: 监控的位数
-        :param target_value: 要匹配的目标值
-        :param callback: 条件满足时的回调函数
-        :param poll_interval: 轮询间隔(秒)
+        """监控PLC状态并执行回调
+
+        Args:
+            monitor_db: 监控的DB块号
+            monitor_offset: 监控的地址偏移
+            bits: 监控的位数
+            target_value: 要匹配的目标值
+            callback: 条件满足时的回调函数
+            poll_interval: 轮询间隔(秒)
         """
         try:
-            self.logger.info(f"🔍 启动PLC监控: DB{monitor_db}[{monitor_offset}] {bits}位 == 0x{target_value:02X}")
+            logger.info(f"🔍 启动PLC监控: DB{monitor_db}[{monitor_offset}] {bits}位 == 0x{target_value:02X}")
             
             while not self._stop_monitor.is_set():
                 # 异步读取PLC状态
@@ -355,28 +357,28 @@ class DevicesService():
                         self.read_bit, monitor_db, monitor_offset, bits
                     )
                 except Exception as e:
-                    self.logger.error(f"读取PLC状态失败: {e}")
+                    logger.error(f"读取PLC状态失败: {e}")
                     await asyncio.sleep(poll_interval)
                     continue
                 
                 # 检查条件是否满足
                 if current_value == target_value:
-                    self.logger.info("🎯 条件满足! 执行回调函数")
+                    logger.info("🎯 条件满足! 执行回调函数")
                     try:
                         # 执行回调函数
                         if asyncio.iscoroutinefunction(callback):
                             await callback()
                         else:
                             await asyncio.to_thread(callback)
-                        self.logger.info("✅ 回调执行完成")
+                        logger.info("✅ 回调执行完成")
                         return
                     except Exception as e:
-                        self.logger.error(f"回调执行失败: {e}")
+                        logger.error(f"回调执行失败: {e}")
                         return
                 
                 await asyncio.sleep(poll_interval)
         except asyncio.CancelledError:
-            self.logger.info("⏹️ 监控任务已取消")
+            logger.warning("⏹️ 监控任务已取消")
         finally:
             self._stop_monitor.clear()
 
@@ -426,14 +428,14 @@ class DevicesService():
             current_value = await asyncio.to_thread(self.read_bit, db_number, address, 1)
             
             if current_value == target_value:
-                # self.logger.info(f"✅ PLC动作完成: DB{db_number}[{byte_offset}.{bit_offset}] == {target_value}")
-                self.logger.info(f"✅ PLC动作完成: DB{db_number}[{address}] == {target_value}")
+                # logger.debug(f"✅ PLC动作完成: DB{db_number}[{byte_offset}.{bit_offset}] == {target_value}")
+                logger.debug(f"✅ PLC动作完成: DB{db_number}[{address}] == {target_value}")
                 return True
                 
             # 检查超时
             elapsed = asyncio.get_event_loop().time() - start_time
             if elapsed > timeout:
-                self.logger.info(f"❌ 超时错误: 等待PLC动作超时 ({timeout}s)")
+                logger.error(f"❌ 超时错误: 等待PLC动作超时 ({timeout}s)")
                 return False
                 
             # 等待一段时间再次检查
@@ -442,25 +444,28 @@ class DevicesService():
     ################### 小车的高级应用 #####################
 
     def _pack_pre_info(self, frame_type: int):
-        """
-        构建报文前段信息
+        """构建报文前段信息
+
         格式: 报文版本(4bit) 报文类型(4bit)
         """
         version_type = (RESProtocol.VERSION.value << 4) | (frame_type & 0x0F)
         return struct.pack('!B',version_type)
     
     def segments_task_len(self, segments):
-        """
-        计算任务段数
-        :param segments: 路径段列表 [(x, y, z, action), ...]
-        :return: 任务段数
+        """计算任务段数
+
+        Args:
+            segments: 路径段列表 [(x, y, z, action), ...]
+        
+        Returns:
+            任务段数
         """
         task_len = len(segments)
-        self.logger.info(f"任务段数(无动作): {task_len}")
+        logger.info(f"任务段数(无动作): {task_len}")
         for segment in segments:
             if segment[3] != 0:
                 task_len += 1
-        self.logger.info(f"任务段数(含动作): {task_len}")
+        logger.info(f"任务段数(含动作): {task_len}")
         return task_len
 
     # 心跳报文
@@ -474,22 +479,24 @@ class DevicesService():
         packet = data + crc + footer
         return packet
     # 心跳报文使用实例
-    # self.logger.info(heartbeat())
-    # self.logger.info(message)
+    # logger.debug(heartbeat())
+    # logger.debug(message)
     # for i in range(257):
-    #     # self.logger.info(counter())  # 输出1-256，然后回到1
+    #     logger.debug(counter())  # 输出1-256，然后回到1
     #     data = header + device_id + counter() + message
     #     crc = builder._calculate_crc(data)
     #     packet = data + crc + footer
-    #     self.logger.info(packet)
+    #     logger.debug(packet)
 
     # 更换位置指令报文
     def location_change(self, LOCATION: str):
-        """
-        构建调试指令报文
-        固定长度19字节
-        :param LOCATION: "x,y,z"
-        :return: 调试指令报文
+        """构建调试指令报文，固定长度19字节。
+
+        Args:
+            LOCATION: "x,y,z"
+        
+        Returns:
+            调试指令报文
         """
         
         # 构建基础头部
@@ -510,7 +517,7 @@ class DevicesService():
         x, y, z = location[0], location[1], location[2]
         # 位置编码: X(8位) | Y(8位) | Z(8位) | 动作(8位)
         position = struct.pack('!BBBB', 0, x, y, z)
-        self.logger.info(f"[CAR] 位置编码: {position}")
+        logger.debug(f"[CAR] 位置编码: {position}")
 
         # 组合数据部份
         payload = cmd_info + position
@@ -526,18 +533,21 @@ class DevicesService():
         
         # 组合完整报文
         packet = data_part + crc + footer
-        self.logger.info(f"[CAR] 调试指令报文: {packet}")
+        logger.debug(f"[CAR] 调试指令报文: {packet}")
         
         # 返回报文
         return packet
 
     # 任务报文
     def build_task(self, task_no, segments):
-        """
-        构建整体任务报文
-        :param task_no: 任务序号 (1-255)
-        :param segments: 路径段列表 [(x, y, z, action), ...]
-        :return: 任务报文
+        """构建整体任务报文
+
+        Args:
+            task_no: 任务序号 (1-255)
+            segments: 路径段列表 [(x, y, z, action), ...]
+        
+        Returns:
+            任务报文
         """
         # 构建基础头部
         header = b'\x02\xfd'
@@ -548,8 +558,8 @@ class DevicesService():
         # 构建数据内容
         # 计算动态长度: 4字节*段数
         segment_count = self.segments_task_len(segments)
-        self.logger.info("创建 任务序号: ", task_no)
-        self.logger.info("创建 任务段数: ", segment_count)
+        logger.debug("创建 任务序号: ", task_no)
+        logger.debug("创建 任务段数: ", segment_count)
         # 添加任务数据
         payload = struct.pack('!BB', task_no, segment_count)
         # 添加路径段
@@ -557,10 +567,10 @@ class DevicesService():
             x, y, z, action = segment
             # 位置编码: X(8位) | Y(8位) | Z(8位) | 动作(8位)
             # position = (x << 24) | (y << 16) | (z << 8) | action
-            # self.logger.info("位置编码: ", hex(position))
+            # logger.debug("位置编码: ", hex(position))
             # payload += struct.pack('!I', position)
             position = struct.pack('!BBBB', x, y, z, action)
-            self.logger.info("位置编码: ", position)
+            logger.debug("位置编码: ", position)
             payload += position
         
         # 计算数据段长度
@@ -577,18 +587,20 @@ class DevicesService():
 
         # 组装报文
         packet = data_part + crc + footer
-        self.logger.info("[发送] 整体任务报文: ", packet)
+        logger.debug("[发送] 整体任务报文: ", packet)
 
         # 返回报文
         return packet
 
-    # 确认执行任务报文
     def do_task(self, task_no, segments):
-        """
-        构建整体任务报文
-        :param task_no: 任务序号 (1-255)
-        :param segments: 路径段列表 [(x, y, z, action), ...]
-        :return: 任务报文
+        """构建整体任务报文，确认执行任务报文
+
+        Args:
+            task_no: 任务序号 (1-255)
+            segments: 路径段列表 [(x, y, z, action), ...]
+        
+        Returns:
+            任务报文
         """
         # 构建基础头部
         header = RESProtocol.HEADER.value
@@ -605,8 +617,8 @@ class DevicesService():
         # 计算动态长度: 4字节*段数
         segment_count = struct.pack('>I', self.segments_task_len(segments))
         
-        self.logger.info("发送 任务序号: ", task_no)
-        self.logger.info("发送 任务段数: ", segment_count)
+        logger.debug("发送 任务序号: ", task_no)
+        logger.debug("发送 任务段数: ", segment_count)
 
         payload = task_no + cmd_info + segment_count
         
@@ -624,15 +636,16 @@ class DevicesService():
 
         # 组装报文
         packet = data_part + crc + footer
-        self.logger.info("[发送] 整体任务报文: ", packet)
+        logger.debug("[发送] 整体任务报文: ", packet)
 
         # 返回报文
         return packet
     
-    # 心跳报文
     async def send_heartbeat(self, time: int):
-        """
-        :param time: 心跳次数
+        """心跳报文
+
+        Args:
+            time: 心跳次数
         """
         for i in range(time):
             packet = self.heartbeat()
@@ -641,35 +654,38 @@ class DevicesService():
                 response = await self.car_receive_message()
                 if response:
                     msg = self.parser.parse_heartbeat_response(response)
-                    self.logger.info(msg)
+                    logger.debug(msg)
                     await self.car_close()
         return msg
     
-    # 修改小车位置
     async def change_car_location(self, car_location):
-        """
-        :param car_location: 小车位置 如，"6,3,1"
+        """修改小车位置
+
+        Args:
+            car_location: 小车位置 如，"6,3,1"
         """
         packet = self.location_change(car_location)
-        self.logger.info(packet)
+        logger.debug(packet)
         if await self.car_connect():
             await self.car_send_message(packet)
             response = await self.car_receive_message()
-            self.logger.info(response)
+            logger.debug(response)
             if response:
                 # msg = parser.parse_heartbeat_response(response)
-                # print(msg)
+                # logger.debug(msg)
                 await self.car_close()
                 return "位置修改成功"
         return "位置修改失败"
 
-    # 获取小车位置
+    
     async def car_current_location(self, times: int):
-        """
-        获取小车位置
-        :param times: 心跳次数
-        :return: 小车当前位置
-        例如: "6,3,1"
+        """获取小车位置
+
+        Args:
+            times: 心跳次数
+
+        Returns:
+            小车当前位置, 例如: "6,3,1"
         """
         # 发送
         heartbeat_msg = await self.send_heartbeat(times)
@@ -677,21 +693,26 @@ class DevicesService():
         car_current_location = f"{car_current_location[0]},{car_current_location[1]},{car_current_location[2]}"
         return car_current_location
     
-    # 获取小车状态
+
     async def car_status(self, times: int):
-        """
-        获取小车状态
-        :param times: 心跳次数
-        :return: 小车状态
+        """获取小车状态
+        
+        Args:
+            times: 心跳次数
+
+        Returns:
+            小车状态
         """
         # 发送
         heartbeat_msg = await self.send_heartbeat(times)
         car_status = heartbeat_msg['car_status']
         return car_status
-    # 发送小车移动任务
+
     async def car_move(self, target):
-        """
-        :param target: 小车移动目标 如，"6,3,1"
+        """穿梭车移动
+
+        Args:
+            target: 小车移动目标 如，"6,3,1"
         """
         # 创建任务号
         import random
@@ -710,7 +731,7 @@ class DevicesService():
         #     (1,1,1,0)
         #             ]
         segments = self.map.build_segments(car_current_location, target)
-        # print(segments)
+        # logger.debug(segments)
 
         # 发送任务报文
         task_packet = self.build_task(task_no, segments)
@@ -719,21 +740,24 @@ class DevicesService():
             response = await self.car_receive_message()
             if response:
                 # msg = parser.parse_task_response(response)
-                # print(msg)
+                # logger.debug(msg)
                 # 发送任务确认执行报文
                 do_packet = self.do_task(task_no, segments)
                 await self.car_send_message(do_packet)
                 response = await self.car_receive_message()
                 if response:
                     # msg = parser.parse_task_response(response)
-                    # self.logger.info(msg)
+                    # logger.debug(msg)
                     await self.car_close()
 
     def add_pick_drop_actions(self, point_list):
-        """
-        在路径列表的起点和终点添加货物操作动作
-        :param point_list: generate_point_list()生成的路径列表
-        :return: 修改后的路径列表（起点动作=1提起，终点动作=2放下）
+        """在路径列表的起点和终点添加货物操作动作
+
+        Args:
+            point_list: generate_point_list()生成的路径列表
+
+        Returns:
+            修改后的路径列表（起点动作=1提起，终点动作=2放下）
         """
         # 确保路径至少有两个点
         if len(point_list) < 2:
@@ -751,10 +775,11 @@ class DevicesService():
         return new_list
 
 
-    # 发送移动货物任务
     async def good_move(self, target):
-        """
-        :param target: 小车移动目标 如，(6,3,1)
+        """发送移动货物任务。
+        
+        Args:
+            target: 小车移动目标 如，(6,3,1)
         """
         # 创建任务号
         import random
@@ -774,7 +799,7 @@ class DevicesService():
         #             ]
         segments = self.map.build_segments(car_current_location, target)
         segments = self.add_pick_drop_actions(segments)
-        # print(segments)
+        # logger.info(segments)
 
         # 发送任务报文
         task_packet = self.build_task(task_no, segments)
@@ -783,14 +808,14 @@ class DevicesService():
             response = await self.car_receive_message()
             if response:
                 # msg = parser.parse_task_response(response)
-                # print(msg)
+                # logger.debug(msg)
                 # 发送任务确认执行报文
                 do_packet = self.do_task(task_no, segments)
                 await self.car_send_message(do_packet)
                 response = await self.car_receive_message()
                 if response:
                     # msg = parser.parse_task_response(response)
-                    # print(msg)
+                    # logger.debug(msg)
                     await self.car_close()
 
     ############# PLC联合小车的业务动作 #######################
@@ -862,10 +887,12 @@ class DevicesService():
         if self.read_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 1) == 1:
             self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
 
-    # 楼层进入提升机
+
     def floor_to_lift(self, floor):
-        """
-        param floor: 楼层 int
+        """楼层进入提升机。
+
+        Args:
+            floor: 楼层 int
         """
         # 楼层1
         if floor == 1:
@@ -932,14 +959,16 @@ class DevicesService():
             #     self.write_db(12, PLCAddress.TARGET_1060.value, b'\x00\x00')
         
         else:
-            self.logger.info("无效的楼层")
+            logger.error("无效的楼层")
         
     def lift_to_everylayer(self, target_floor):
-        """
-        :::param target_floor: 目标楼层
+        """从电梯层进入隔楼层。
+
+        Args:
+            target_floor: 目标楼层
         """
         # 确认提升机
-        self.logger.info(f"确认提升机状态: {self.read_bit(11, DB_11.PLATFORM_PALLET_READY_1020.value)}")
+        logger.info(f"确认提升机状态: {self.read_bit(11, DB_11.PLATFORM_PALLET_READY_1020.value)}")
 
         # 确认目标层到达
         time.sleep(1)
@@ -998,14 +1027,15 @@ class DevicesService():
             raise ValueError("Invalid target floor")
         
     async def wait_car_move_complete_by_location(self, location: str):
-        """
-        等待小车移动到指定位置
-        :param location: 目标位置 如 "6,3,1"
+        """等待小车移动到指定位置
+
+        Args:
+            location: 目标位置 如 "6,3,1"
         """
         target_loc = list(map(int, location.split(',')))
         target_x, target_y, target_z = target_loc[0], target_loc[1], target_loc[2]
         
-        self.logger.info(f"⏳ 等待小车移动到位置: {location}")
+        logger.info(f"⏳ 等待小车移动到位置: {location}")
         
         while True:
             # 获取小车当前位置
@@ -1014,7 +1044,7 @@ class DevicesService():
             car_x, car_y, car_z = car_cur_loc[0], car_cur_loc[1], car_cur_loc[2]
             
             if (car_x == target_x) and (car_y == target_y) and (car_z == target_z):
-                self.logger.info("✅ 小车已到达目标位置")
+                logger.info("✅ 小车已到达目标位置")
                 return True
             
             await asyncio.sleep(1)

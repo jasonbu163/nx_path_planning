@@ -2,14 +2,16 @@
 import socket
 import time
 from typing import Optional
+import logging
+logger = logging.getLogger(__name__)
 
-from app.utils.devices_logger import DevicesLogger
+# from app.utils.devices_logger import DevicesLogger
 
 
-class ConnectionBase(DevicesLogger):
+class ConnectionBase():
     """同步穿梭车连接模块 (基于原生Socket实现)。"""
     def __init__(self, HOST: str, PORT: int):
-        super().__init__(self.__class__.__name__)
+        # super().__init__(self.__class__.__name__)
         self._host = HOST
         self._port = PORT
         self._socket: Optional[socket.socket] = None
@@ -22,12 +24,12 @@ class ConnectionBase(DevicesLogger):
     def connect(self, retry_count: int = 5, retry_interval: float = 3.0) -> bool:
         """连接到TCP服务器(同步阻塞)。"""
         if self._connected:
-            self.logger.warning("[CAR] 尝试连接但连接已存在，先关闭现有连接")
+            logger.warning("[CAR] 尝试连接但连接已存在，先关闭现有连接")
             self.close()
         
         for attempt in range(1, retry_count + 1):
             try:
-                self.logger.info(f"[CAR] 连接尝试 {attempt}/{retry_count} {self._host}:{self._port}")
+                logger.info(f"[CAR] 连接尝试 {attempt}/{retry_count} {self._host}:{self._port}")
                 
                 # 创建新的socket实例
                 self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -41,18 +43,18 @@ class ConnectionBase(DevicesLogger):
                 self._socket.connect((self._host, self._port))
                 self._connected = True
                 
-                self.logger.info(f"[CAR] 连接成功 (尝试次数：{attempt})")
+                logger.info(f"[CAR] 连接成功 (尝试次数：{attempt})")
                 return True
                 
             except (socket.error, TimeoutError, OSError) as e:
                 self._cleanup_socket()
-                self.logger.error(f"[CAR] 连接失败 {attempt}/{retry_count}: {str(e)}")
+                logger.error(f"[CAR] 连接失败 {attempt}/{retry_count}: {str(e)}")
                 
                 if attempt < retry_count:
-                    self.logger.error(f"[CAR] 连接失败 {retry_interval} 秒后尝试重连...")
+                    logger.error(f"[CAR] 连接失败 {retry_interval} 秒后尝试重连...")
                     time.sleep(retry_interval)
                 else:
-                    self.logger.error(f"[CAR] 已达到最大重连次数（{retry_count}），连接终止")
+                    logger.error(f"[CAR] 已达到最大重连次数（{retry_count}），连接终止")
 
         self._connected = False
         return False
@@ -61,7 +63,7 @@ class ConnectionBase(DevicesLogger):
     # def send_message(self, message: str | bytes) -> bool:
         """发送消息到服务器。"""
         if not self.is_connected() or self._socket is None:
-            self.logger.error("[CAR] 发送失败：未建立有效连接")
+            logger.error("[CAR] 发送失败：未建立有效连接")
             return False
             
         try:
@@ -78,19 +80,19 @@ class ConnectionBase(DevicesLogger):
                     raise RuntimeError("Socket连接中断")
                 total_sent += sent
                 
-            # self.logger.info(f"[CAR] 已发送({len(message)}字节): {message[:32]}{'...' if len(message)>32 else ''}")
-            self.logger.info(f"[CAR] 已发送原始字节({len(message)}字节): {message[:8]}...")
+            # logger.debug(f"[CAR] 已发送({len(message)}字节): {message[:32]}{'...' if len(message)>32 else ''}")
+            logger.debug(f"[CAR] 已发送原始字节({len(message)}字节): {message[:8]}...")
             return True
             
         except (socket.error, OSError) as e:
-            self.logger.error(f"[CAR] 发送失败: {str(e)}")
+            logger.error(f"[CAR] 发送失败: {str(e)}")
             self.close()
             return False
     
     def receive_message(self, timeout: float = 10.0, max_bytes: int = 4096) -> bytes:
         """接收服务器响应。"""
         if not self.is_connected() or self._socket is None:
-            self.logger.error("[CAR] 接收失败：未建立有效连接")
+            logger.error("[CAR] 接收失败：未建立有效连接")
             return b'\x00'
             
         try:
@@ -98,21 +100,21 @@ class ConnectionBase(DevicesLogger):
             data = self._socket.recv(max_bytes)
             
             if not data:
-                self.logger.warning("[CAR] 连接已由服务端关闭")
+                logger.warning("[CAR] 连接已由服务端关闭")
                 self.close()
                 return b'\x00'
                 
             # 注意：当前项目直接返回原始字节数据
             # 如果未来需要字符串，可取消以下注释：
-            # self.logger.info(f"[CAR] 收到({len(data)}字节): {data[:128]}{'...' if len(data)>128 else ''}")
-            self.logger.info(f"[CAR] 收到原始字节({len(data)}字节): {data[:8]}...")
+            # logger.info(f"[CAR] 收到({len(data)}字节): {data[:128]}{'...' if len(data)>128 else ''}")
+            logger.debug(f"[CAR] 收到原始字节({len(data)}字节): {data[:8]}...")
             return data
             
         except socket.timeout:
-            self.logger.warning("[CAR] 接收超时，未接收到数据")
+            logger.warning("[CAR] 接收超时，未接收到数据")
             return b'\x00'
         except (socket.error, OSError) as e:
-            self.logger.error(f"[CAR] 接收错误: {str(e)}")
+            logger.error(f"[CAR] 接收错误: {str(e)}")
             self.close()
             return b'\x00'
     
@@ -132,10 +134,10 @@ class ConnectionBase(DevicesLogger):
                 
                 # 实际关闭套接字
                 self._socket.close()
-                self.logger.info("[CAR] 连接已关闭")
+                logger.info("[CAR] 连接已关闭")
                 
         except Exception as e:
-            self.logger.error(f"[CAR] 关闭连接时出错: {str(e)}")
+            logger.error(f"[CAR] 关闭连接时出错: {str(e)}")
             return False
             
         finally:

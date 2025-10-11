@@ -1,15 +1,17 @@
 # /devices/plc_connection_module.py
 import time
 from typing import Union, Callable, Any
+import logging
+logger = logging.getLogger(__name__)
 
 from snap7.client import Client
 from snap7.util import get_bool, set_bool, get_int, set_int
 
-from app.utils.devices_logger import DevicesLogger
+# from app.utils.devices_logger import DevicesLogger
 from app.core.config import settings
 from ..enum import DB_2, DB_11
 
-class ConnectionBase(DevicesLogger):
+class ConnectionBase():
     """PLC连接模块，基于同步通讯基础版"""
     def __init__(self, host: str):
         """初始化PLC连接模块
@@ -17,7 +19,7 @@ class ConnectionBase(DevicesLogger):
         Args:
             host: 服务器主机地址, 如 "192.168.8.30"
         """
-        super().__init__(self.__class__.__name__)
+        # super().__init__(self.__class__.__name__)
         self._ip = host
         self.client = Client()
         self._connected = False
@@ -26,18 +28,18 @@ class ConnectionBase(DevicesLogger):
         """同步连接PLC"""
         # 双重检查连接状态
         if self._connected and self.client.get_connected():
-            self.logger.info("✅ 连接已存在，无需重新连接")
+            logger.info("✅ 连接已存在，无需重新连接")
             return True
         
         # 如果已有连接但状态不一致，先断开
         if self._connected or self.client.get_connected():
-            self.logger.warning("⚠️ 连接状态不一致，先关闭现有连接")
+            logger.warning("⚠️ 连接状态不一致，先关闭现有连接")
             self.client.disconnect()
 
         for attempt in range(1, retry_count + 1):
             try:
-                self.logger.info(f"🔌 正在连接到 PLC: {self._ip} (rack=0, slot=1)")
-                self.logger.info(f"⌛️ 尝试连接 {attempt}/{retry_count} {self._ip}")
+                logger.info(f"🔌 正在连接到 PLC: {self._ip} (rack=0, slot=1)")
+                logger.info(f"⌛️ 尝试连接 {attempt}/{retry_count} {self._ip}")
                 
                 # 创建新的Client实例（避免重用问题连接）
                 self.client = Client()
@@ -47,23 +49,23 @@ class ConnectionBase(DevicesLogger):
                 self._connected = self.client.get_connected()
 
                 if not self._connected:
-                    self.logger.error("❌ PLC返回连接失败")
+                    logger.error("❌ PLC返回连接失败")
                     continue
 
                 try:
                     # 读取一个测试值验证连接
                     data = self.client.get_cpu_info()
-                    self.logger.info(f"✉️ 读取CPU信息数据: {data}")
+                    logger.debug(f"✉️ 读取CPU信息数据: {data}")
                 except Exception as test_e:
-                    self.logger.error(f"❌ 连接验证失败: {test_e}")
+                    logger.error(f"❌ 连接验证失败: {test_e}")
                     self._connected = False
                     continue
                 
-                self.logger.info(f"✅ 成功连接PLC: {self._ip}")
+                logger.info(f"✅ 成功连接PLC: {self._ip}")
                 return True
             
             except Exception as e:
-                self.logger.error(f"❌ PLC连接失败({attempt}/{retry_count}): {str(e)}", exc_info=True)
+                logger.error(f"❌ PLC连接失败({attempt}/{retry_count}): {str(e)}", exc_info=True)
                 self._connected = False
 
                 # 清理（如果连接部分成功）
@@ -83,16 +85,16 @@ class ConnectionBase(DevicesLogger):
         """断开PLC连接"""
         # 如果未连接，直接返回成功
         if not self._connected and not self.client.get_connected():        
-            self.logger.info(f"⚠️ PLC连接已断开, 无需操作")
+            logger.info(f"⚠️ PLC连接已断开, 无需操作")
             return True
         
         try:
             # 尝试断开连接
             self.client.disconnect()
-            self.logger.info(f"⛓️‍💥 PLC已断开连接")
+            logger.info(f"⛓️‍💥 PLC已断开连接")
             return True
         except Exception as e:
-            self.logger.error(f"❌ 断开连接失败: {e}", exc_info=True)
+            logger.error(f"❌ 断开连接失败: {e}", exc_info=True)
             return False
         finally:
             # 无论成功与否，更新状态
@@ -105,31 +107,32 @@ class ConnectionBase(DevicesLogger):
         return self.client.get_connected() and self._connected
 
     def read_db(self, db_number: int, start: int, size: int) -> bytes:
-        """
-        [按字节读取DB块信息] 读取指定 DB 块，从 start 偏移开始，长度为 size（单位：字节）\n
-        ::: param :::\n
-            db_number: DB块号\n
-            start: 偏移量\n
+        """[按字节读取DB块信息] 读取指定 DB 块，从 start 偏移开始，长度为 size（单位：字节）
+        
+        Args:
+            db_number: DB块号
+            start: 偏移量
             size: 字节数量
-        ::: return :::
-            返回DB块数据
+
+        Returns:
+            bytes: 返回DB块数据
         """
         if not self.is_connected():
             raise ConnectionError("未连接到PLC")
         return self.client.db_read(db_number, start, size)
 
     def write_db(self, db_number: int, start: int, data: bytes) -> None:
-        """
-        [按字节写入DB块信息] 将 data 写入指定 DB 块的偏移位置\n
-        ::: param :::\n
-            db_number: DB块号\n
-            start: 偏移量\n
+        """[按字节写入DB块信息] 将 data 写入指定 DB 块的偏移位置
+
+        Args:
+            db_number: DB块号
+            start: 偏移量
             size: 字节数量
         """
         if not self.is_connected():
             raise ConnectionError("未连接到PLC")
         self.client.db_write(db_number, start, data)
-        self.logger.info(f"📤 写入 DB{db_number}[{start}] 成功，长度: {len(data)} bytes")
+        logger.debug(f"📤 写入 DB{db_number}[{start}] 成功，长度: {len(data)} bytes")
 
     def read_bit(self, db_number: int, offset: Union[float, int], size: int = 1) -> int:
         """读取指定位的值
@@ -140,7 +143,7 @@ class ConnectionBase(DevicesLogger):
             size: 读取位数 (默认为1位)
         
         Returns:
-            读取到的位值（0/1）或多位值（当size>1时返回整数）
+            int: 读取到的位值（0/1）或多位值（当size>1时返回整数）
         """
         if not isinstance(offset, float) and '.' not in str(offset):
             raise ValueError("位偏移量必须使用float格式(如22.0)")
@@ -207,7 +210,7 @@ class ConnectionBase(DevicesLogger):
         
         # 写回PLC
         self.write_db(db_number, byte_offset, bytes([new_value]))
-        self.logger.info(f"🔧 位写入成功 DB{db_number}[{offset}]: 值={value}")
+        logger.debug(f"🔧 位写入成功 DB{db_number}[{offset}]: 值={value}")
 
     def wait_for_bit_change(
             self,
@@ -232,19 +235,19 @@ class ConnectionBase(DevicesLogger):
             current_value = self.read_bit(DB_NUMBER, ADDRESS, 1)
             
             if current_value == TRAGET_VALUE:
-                self.logger.info(f"✅ PLC动作完成: DB{DB_NUMBER}[{ADDRESS}] == {TRAGET_VALUE}")
+                logger.info(f"✅ PLC动作完成: DB{DB_NUMBER}[{ADDRESS}] == {TRAGET_VALUE}")
                 return True
                 
             # 检查超时
             elapsed = time.time() - start_time
             if elapsed > TIMEOUT:
-                self.logger.info(f"❌ 超时错误: 等待PLC动作超时 ({TIMEOUT}s)")
+                logger.error(f"❌ 超时错误: 等待PLC动作超时 ({TIMEOUT}s)")
                 return False
                 
             # 等待一段时间再次检查
             time.sleep(0.5)
 
-class Connection(DevicesLogger):
+class Connection():
     """PLC连接基类，改良版"""
     def __init__(self, host: str):
         """初始化PLC连接。
@@ -252,7 +255,7 @@ class Connection(DevicesLogger):
         Args:
             host: PLC IP地址
         """
-        super().__init__(self.__class__.__name__)
+        # super().__init__(self.__class__.__name__)
         self._ip = host
         self._rack = 0
         self._slot = 1
@@ -272,18 +275,18 @@ class Connection(DevicesLogger):
         """
         # 双重检查连接状态
         if self._connected and self.client.get_connected():
-            self.logger.info("✅ 连接已存在，无需重新连接")
+            logger.info("✅ 连接已存在，无需重新连接")
             return True
         
         # 如果已有连接但状态不一致，先断开
         if self._connected or self.client.get_connected():
-            self.logger.warning("⚠️ 连接状态不一致，先关闭现有连接")
+            logger.warning("⚠️ 连接状态不一致，先关闭现有连接")
             self.client.disconnect()
 
         for attempt in range(1, retry_count + 1):
             try:
-                self.logger.info(f"🔌 正在连接到PLC: Host-{self._ip} Rack-{self._rack} Slot-{self._slot}")
-                self.logger.info(f"⌛️ 尝试连接({attempt}/{retry_count}): {self._ip}")
+                logger.info(f"🔌 正在连接到PLC: Host-{self._ip} Rack-{self._rack} Slot-{self._slot}")
+                logger.info(f"⌛️ 尝试连接({attempt}/{retry_count}): {self._ip}")
                 
                 # 创建新的Client实例（避免重用问题连接）
                 self.client = Client()
@@ -293,23 +296,23 @@ class Connection(DevicesLogger):
                 self._connected = self.client.get_connected()
 
                 if not self._connected:
-                    self.logger.error("❌ PLC返回连接失败")
+                    logger.error("❌ PLC返回连接失败")
                     continue
 
                 try:
                     # 读取一个测试值验证连接
                     data = self.client.get_cpu_info()
-                    self.logger.info(f"✉️ 读取CPU信息数据: {data}")
+                    logger.debug(f"✉️ 读取CPU信息数据: {data}")
                 except Exception as test_e:
-                    self.logger.error(f"❌ 连接验证失败: {test_e}")
+                    logger.error(f"❌ 连接验证失败: {test_e}")
                     self._connected = False
                     continue
                 
-                self.logger.info(f"✅ 成功连接PLC: {self._ip}")
+                logger.info(f"✅ 成功连接PLC: {self._ip}")
                 return True
             
             except Exception as e:
-                self.logger.error(f"❌ PLC连接失败({attempt}/{retry_count}): {str(e)}", exc_info=True)
+                logger.error(f"❌ PLC连接失败({attempt}/{retry_count}): {str(e)}", exc_info=True)
                 self._connected = False
 
                 # 清理（如果连接部分成功）
@@ -333,16 +336,16 @@ class Connection(DevicesLogger):
         """
         # 如果未连接，直接返回成功
         if not self._connected and not self.client.get_connected():        
-            self.logger.info(f"⚠️ PLC连接已断开, 无需操作")
+            logger.info(f"⚠️ PLC连接已断开, 无需操作")
             return True
         
         try:
             # 尝试断开连接
             self.client.disconnect()
-            self.logger.info(f"⛓️‍💥 PLC已断开连接")
+            logger.info(f"⛓️‍💥 PLC已断开连接")
             return True
         except Exception as e:
-            self.logger.error(f"❌ 断开连接失败: {e}", exc_info=True)
+            logger.error(f"❌ 断开连接失败: {e}", exc_info=True)
             return False
         finally:
             # 无论成功与否，更新状态
@@ -379,10 +382,10 @@ class Connection(DevicesLogger):
         size = len(data)
         flag = self.read_db(db_number, start, size)
         if flag == data:
-            self.logger.info(f"✅ 写入 DB{db_number}@{start} 成功，长度: {size} bytes")
+            logger.debug(f"✅ 写入 DB{db_number}@{start} 成功，长度: {size} bytes")
             return True
         else:
-            self.logger.error(f"❌ 写入 DB{db_number}@{start} 失败")
+            logger.error(f"❌ 写入 DB{db_number}@{start} 失败")
             return False
 
     def read_bit(self, db_number: int, byte_address: int, bit_address: int) -> bool:
@@ -422,10 +425,10 @@ class Connection(DevicesLogger):
 
         flag = self.read_bit(db_number, byte_address, bit_address)
         if flag == value:
-            self.logger.info(f"✅ 写入BD块的位成功 - DB{db_number}@{byte_address}.{bit_address} = {value}")
+            logger.debug(f"✅ 写入BD块的位成功 - DB{db_number}@{byte_address}.{bit_address} = {value}")
             return True
         else:
-            self.logger.error(f"❌ 写入BD块的位失败")
+            logger.error(f"❌ 写入BD块的位失败")
             return False
         
     def read_int(self, db_number: int, start: int) -> int:
@@ -458,10 +461,10 @@ class Connection(DevicesLogger):
 
         flag = self.read_int(db_number, start)
         if flag == value:
-            self.logger.info(f"✅ 写入DB块的整数成功 - DB{db_number}@{start} = {value}")
+            logger.debug(f"✅ 写入DB块的整数成功 - DB{db_number}@{start} = {value}")
             return True
         else:
-            self.logger.error(f"❌ 写入DB块的整数失败")
+            logger.error(f"❌ 写入DB块的整数失败")
             return False
         
     def wait_for_bit_change(
@@ -488,13 +491,13 @@ class Connection(DevicesLogger):
             current_value = self.read_bit(db_number, byte_address, bit_address)
             
             if current_value == target_value:
-                self.logger.info(f"✅ PLC动作完成: DB{db_number}@{byte_address}.{bit_address} = {current_value}")
+                logger.debug(f"✅ PLC动作完成: DB{db_number}@{byte_address}.{bit_address} = {current_value}")
                 return True
                 
             # 检查超时
             elapsed = time.time() - start_time
             if elapsed > timeout:
-                self.logger.info(f"❌ 超时错误: 等待PLC动作超时 ({timeout}s)")
+                logger.error(f"❌ 超时错误: 等待PLC动作超时 ({timeout}s)")
                 return False
                 
             # 等待一段时间再次检查

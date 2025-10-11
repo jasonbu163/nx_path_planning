@@ -424,12 +424,36 @@ async def good_move_segments(request: schemas.PathBase) -> StandardResponse[Unio
 async def get_car_location() -> StandardResponse[Union[str, Dict]]:
     """获取穿梭车当前位置。"""
 
-    success, car_info = await device_services.get_car_current_location()
+    success, car_info = device_services_base.get_car_current_location()
 
     if success:    
         return StandardResponse.isSuccess(data=car_info)
     else:
-        return StandardResponse.isError(message=f"{car_info}")
+        return StandardResponse.isError(message=f"{car_info}", data=car_info)
+    
+@router.get("/control/get_car_status", response_model=StandardResponse[Union[str, Dict]])
+@standard_response
+async def get_car_status() -> StandardResponse[Union[str, Dict]]:
+    """获取穿梭车当前状态信息。"""
+
+    success, car_info = device_services_base.get_car_status()
+
+    if success:    
+        return StandardResponse.isSuccess(data=car_info)
+    else:
+        return StandardResponse.isError(message=f"{car_info}", data=car_info)
+
+@router.get("/control/get_car_info_with_power", response_model=StandardResponse[Union[str, Dict]])
+@standard_response
+async def get_car_info_with_power() -> StandardResponse[Union[str, Dict]]:
+    """获取穿梭车当前信息（带电量信息）。"""
+
+    success, car_info = device_services_base.get_car_info_with_power()
+
+    if success:    
+        return StandardResponse.isSuccess(data=car_info)
+    else:
+        return StandardResponse.isError(message=f"{car_info.get('car_status')}", data=car_info)
     
 @router.post("/control/change_car_location", response_model=StandardResponse[Union[str, Dict]])
 @standard_response
@@ -448,7 +472,43 @@ async def change_car_location(
     if success:    
         return StandardResponse.isSuccess(data=car_info)
     else:
-        return StandardResponse.isError(message=f"{car_info}")
+        return StandardResponse.isError(message=f"{car_info}", data=car_info)
+    
+@router.get("/control/start_car_charge", response_model=StandardResponse[Union[str, Dict]])
+@standard_response
+async def start_car_charge() -> StandardResponse[Union[str, Dict]]:
+    """执行穿梭车开始充电指令。"""
+
+    success, car_info = await device_services_base.car_charge(is_charge=True)
+
+    if success:    
+        return StandardResponse.isSuccess(data=car_info)
+    else:
+        return StandardResponse.isError(message=f"{car_info}", data=car_info)
+    
+@router.get("/control/stop_car_charge", response_model=StandardResponse[Union[str, Dict]])
+@standard_response
+async def stop_car_charge() -> StandardResponse[Union[str, Dict]]:
+    """执行穿梭车结束充电指令。"""
+
+    success, car_info = await device_services_base.car_charge(is_charge=False)
+
+    if success:    
+        return StandardResponse.isSuccess(data=car_info)
+    else:
+        return StandardResponse.isError(message=f"{car_info}", data=car_info)
+    
+@router.get("/control/car_move_to_charge", response_model=StandardResponse[Union[str, Dict]])
+@standard_response
+async def car_move_to_charge() -> StandardResponse[Union[str, Dict]]:
+    """穿梭车前往充电口充电。"""
+
+    success, car_info = await device_services_base.car_move_to_charge()
+
+    if success:    
+        return StandardResponse.isSuccess(data=car_info)
+    else:
+        return StandardResponse.isError(message=f"{car_info}", data=car_info)
 
 @router.post("/control/car_move", response_model=StandardResponse[Union[str, Dict]])
 @standard_response

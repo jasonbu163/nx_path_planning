@@ -6,10 +6,7 @@ from dataclasses import dataclass
 import time
 import re
 import logging
-
-# 日志配置（如不需要可注释）
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
 
 @dataclass
 class PLCConfig:

@@ -1,6 +1,8 @@
 # res_protocol_system/PacketBuilder.py
 import struct
 import crcmod
+import logging
+logger = logging.getLogger(__name__)
 
 from .res_protocol import (
     RESProtocol,
@@ -96,7 +98,7 @@ class PacketBuilder:
         crc_length = 2
         footer_length = 2
         packet_length = header_length + data_length + len_length + crc_length + footer_length
-        print(f"[CAR] 报文长度:{packet_length}")
+        logger.debug(f"[CAR] 报文长度:{packet_length}")
         return struct.pack('!H', packet_length)
     
     def _calculate_crc(self, DATA: bytes) -> bytes:
@@ -106,7 +108,7 @@ class PacketBuilder:
         格式: 校验位(2)
         """
         crc = self.crc16(DATA)
-        print(f"[CAR] CRC16校验值: {hex(crc)}")
+        logger.debug(f"[CAR] CRC16校验值: {hex(crc)}")
         return struct.pack('<H', crc)
     
 
@@ -121,11 +123,11 @@ class PacketBuilder:
             task_len: int, 任务段数
         """
         task_len = len(SEGMENTS)
-        print(f"[CAR] 任务段数(无动作): {task_len}")
+        logger.debug(f"[CAR] 任务段数(无动作): {task_len}")
         for segment in SEGMENTS:
             if segment[3] != 0:
                 task_len += 1
-        print(f"[CAR] 任务段数(含动作): {task_len}")
+        logger.debug(f"[CAR] 任务段数(含动作): {task_len}")
         return task_len
 
 
@@ -174,7 +176,7 @@ class PacketBuilder:
         
         # 组装报文
         packet = data_part + crc + footer
-        print(f"[CAR] 心跳报文: {packet}")
+        logger.debug(f"[CAR] 心跳报文: {packet}")
         
         # 返回报文
         return packet
@@ -214,7 +216,7 @@ class PacketBuilder:
 
         # 组装报文
         packet = data_part + crc + footer
-        print(f"[CAR] {FRAME_TYPE.name} 报文: {packet}")
+        logger.debug(f"[CAR] {FRAME_TYPE.name} 报文: {packet}")
 
         # 返回报文
         return packet
@@ -243,11 +245,11 @@ class PacketBuilder:
         pre_info = self._pack_pre_info(FrameType.TASK.value)
         
         # 构建数据内容
-        print("[CAR] 任务序号: ", TASK_NO)
+        logger.debug("[CAR] 任务序号: ", TASK_NO)
 
         # 计算动态长度: 4字节*段数
         segment_count = self._segments_task_len(SEGMENTS)
-        print("[CAR] 任务段数: ", segment_count)
+        logger.debug("[CAR] 任务段数: ", segment_count)
         
         # 添加任务数据
         payload = struct.pack('!BB', TASK_NO, segment_count)
@@ -257,10 +259,10 @@ class PacketBuilder:
             x, y, z, action = segment
             # 位置编码: X(8位) | Y(8位) | Z(8位) | 动作(8位)
             # position = (x << 24) | (y << 16) | (z << 8) | action
-            # print("位置编码: ", hex(position))
+            # logger.debug("位置编码: ", hex(position))
             # payload += struct.pack('!I', position)
             position = struct.pack('!BBBB', x, y, z, action)
-            print(f"[CAR] 位置编码: {position}")
+            logger.debug(f"[CAR] 位置编码: {position}")
             payload += position
         
         # 计算数据段长度
@@ -277,7 +279,7 @@ class PacketBuilder:
 
         # 组装报文
         packet = data_part + crc + footer
-        print(f"[CAR] 整体任务报文: {packet}")
+        logger.debug(f"[CAR] 整体任务报文: {packet}")
 
         # 返回报文
         return packet
@@ -344,7 +346,7 @@ class PacketBuilder:
         
         # 组装报文
         packet = data_part + crc + footer
-        print(f"[CAR] 调试指令报文: {packet}")
+        logger.debug(f"[CAR] 调试指令报文: {packet}")
         
         # 返回报文
         return packet
@@ -356,22 +358,21 @@ class PacketBuilder:
 
     def build_work_command(
             self,
-            TASK_NO: int,
-            CMD_NO: int,
-            CMD: bytes,
-            CMD_PARAM: list=[0,0,0,0],
-            ) -> bytes:
-        """
-        [构建工作指令报文] - 固定长度18字节
+            task_number: int,
+            command_number: int,
+            command: bytes,
+            command_param: list=[0,0,0,0],
+    ) -> bytes:
+        """[构建工作指令报文] 固定长度18字节。
 
-        ::: param :::
-            TASK_NO: 任务编号 (1-255)
-            CMD_NO: 操作指令序号 (1-255)
-            CMD: 主指令ID (0x9D, 0x9E等)
-            CMD_PARAM: 参数值 (32位)，输入一个列表四位整数的列表
+        Args:
+            task_number: 任务编号 (1-255)
+            command_number: 操作指令序号 (1-255)
+            command: 主指令ID (0x9D, 0x9E等)
+            command_param: 参数值 (32位)，输入一个列表四位整数的列表
 
-        ::: return :::
-            packet: bytes, 工作指令报文
+        Returns:
+            bytes: 工作指令报文
         """
         
         # 构建基础头部
@@ -379,22 +380,22 @@ class PacketBuilder:
         pre_info = self._pack_pre_info(FrameType.COMMAND.value)
 
         # 任务号
-        task_no = struct.pack('!B', TASK_NO)
-        print("[CAR] 任务号: ", task_no)
+        task_no = struct.pack('!B', task_number)
+        logger.debug("[CAR] 任务号: ", task_no)
         
         # 指令编号
-        cmd_no = struct.pack('!B', CMD_NO)
+        cmd_no = struct.pack('!B', command_number)
         
         #### 指令参数（32） ####
         # 添加调试指令数据
         cmd_param = struct.pack(
             '!BBBB',
-            CMD_PARAM[0],
-            CMD_PARAM[1],
-            CMD_PARAM[2],
-            CMD_PARAM[3]
+            command_param[0],
+            command_param[1],
+            command_param[2],
+            command_param[3]
             )
-        payload = task_no + cmd_no + CMD + cmd_param
+        payload = task_no + cmd_no + command + cmd_param
         
         # 计算数据段长度
         data_lenght = self._data_length(pre_info + payload)
@@ -410,7 +411,7 @@ class PacketBuilder:
         
         # 组装报文
         packet = data_part + crc + footer
-        print(f"[CAR] 工作指令报文: {packet}")
+        logger.debug(f"[CAR] 工作指令报文: {packet}")
         
         # 返回报文
         return packet
@@ -419,7 +420,7 @@ class PacketBuilder:
             self,
             TASK_NO: int=2,
             LOCATION: str="255,255,31"
-            ) -> bytes:
+    ) -> bytes:
         """
         [更换位置] - 固定长度19字节
             ⚠️注意⚠️ "x,y,z"为位置坐标，数字间只能说英文逗号，以及不能有空格！
@@ -439,7 +440,7 @@ class PacketBuilder:
 
         # 任务号
         task_no = struct.pack('B', TASK_NO)
-        print("[CAR] 任务号: ", task_no)
+        logger.debug("[CAR] 任务号: ", task_no)
         
         # 指令编号
         cmd_no = struct.pack('B', 189)
@@ -458,7 +459,7 @@ class PacketBuilder:
         x, y, z = location[0], location[1], location[2]
         # 位置编码: 空占位(8位) | X(8位) | Y(8位) | Z(8位)
         position = struct.pack('!BBBB', 0, x, y, z)
-        print(f"[CAR] 位置编码: {position}")
+        logger.debug(f"[CAR] 位置编码: {position}")
 
         # 组合数据部份
         payload = task_no + cmd_info + position
@@ -477,7 +478,7 @@ class PacketBuilder:
         
         # 组合完整报文
         packet = data_part + crc + footer
-        print(f"[CAR] 位置更改指令报文: {packet}")
+        logger.debug(f"[CAR] 位置更改指令报文: {packet}")
         
         # 返回报文
         return packet
@@ -487,7 +488,7 @@ class PacketBuilder:
             self,
             TASK_NO: int,
             SEGMENTS: list
-            ) -> bytes:
+    ) -> bytes:
         """
         [确认执行任务] - 发送完任务报文后，要发送次报文确认，穿梭车才会执行任务
             ⚠️注意⚠️ - [任务号] 和 [路径段列表] 必须和 [构建整体任务报文] 一致!
@@ -506,7 +507,7 @@ class PacketBuilder:
         
         # 任务号
         task_no = struct.pack('B', TASK_NO)
-        print("[CAR] 任务号: ", task_no)
+        logger.debug("[CAR] 任务号: ", task_no)
         
         # 指令编号
         cmd_no = struct.pack('B', 44)
@@ -520,7 +521,7 @@ class PacketBuilder:
         #### 指令参数（32） ####
         # 计算动态长度: 4字节*段数
         segment_count = struct.pack('>I', self._segments_task_len(SEGMENTS))
-        print("[CAR] 任务段数: ", segment_count)
+        logger.debug("[CAR] 任务段数: ", segment_count)
 
         # 组合指令所有数据
         payload = task_no + cmd_info + segment_count
@@ -539,7 +540,7 @@ class PacketBuilder:
 
         # 组装报文
         packet = data_part + crc + footer
-        print("[CAR] 任务确认报文: ", packet)
+        logger.debug("[CAR] 任务确认报文: ", packet)
 
         # 返回报文
         return packet
