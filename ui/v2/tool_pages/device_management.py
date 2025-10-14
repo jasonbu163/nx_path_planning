@@ -153,7 +153,7 @@ with a2:
 
         if st.button(f"⏸️ 停止充电", use_container_width=True):
             try:
-                url = API_BASE + "/control/start_car_charge"
+                url = API_BASE + "/control/stop_car_charge"
                 resp = requests.get(url)
 
                 if resp.status_code == 200:
