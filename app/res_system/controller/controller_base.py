@@ -164,12 +164,15 @@ class ControllerBase(ConnectionBase):
         """
         heartbeat_msg = self.send_heartbeat(times)
         if heartbeat_msg:
-            car_status = CarStatus.get_info_by_value(heartbeat_msg['car_status'])
-            logger.info(f"[CAR] 穿梭车状态码: {heartbeat_msg['car_status']}时, 穿梭车状态: {car_status['name']}, 状态描述: {car_status['description']}")
+            car_status_info = CarStatus.get_info_by_value(heartbeat_msg['car_status'])
+            car_status = heartbeat_msg['car_status']
+            name = car_status_info.get('description')
+            description = CarStatus.get_info_by_value(heartbeat_msg['status_description'])
+            logger.info(f"[CAR] 穿梭车状态码: {car_status}时, 穿梭车状态: {name}, 状态描述: {description}")
             return {
-                'car_status': heartbeat_msg['car_status'],
-                'name': car_status['name'],
-                'description': car_status['description']
+                'car_status': car_status,
+                'name': name,
+                'description': description
                 }
         else:
             return {

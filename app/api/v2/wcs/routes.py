@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi import FastAPI
 
+from app.core.config import settings
 # from app.api.v1.common.custom_handlers import http_exception_handler, unhandled_exception_handler
 from app.api.v2.common.response import StandardResponse
 from app.api.v2.common.decorators import standard_response, standard_response_sync
@@ -424,7 +425,15 @@ async def good_move_segments(request: schemas.PathBase) -> StandardResponse[Unio
 async def get_car_location() -> StandardResponse[Union[str, Dict]]:
     """获取穿梭车当前位置。"""
 
-    success, car_info = device_services_base.get_car_current_location()
+    if settings.USE_MOCK_PLC:
+        if settings.MOCK_BOOL:
+            success = True
+            car_info = "4,1,1"
+        else:
+            success = False
+            car_info = "error"
+    else:
+        success, car_info = device_services_base.get_car_current_location()
 
     if success:    
         return StandardResponse.isSuccess(data=car_info)
@@ -436,19 +445,71 @@ async def get_car_location() -> StandardResponse[Union[str, Dict]]:
 async def get_car_status() -> StandardResponse[Union[str, Dict]]:
     """获取穿梭车当前状态信息。"""
 
-    success, car_info = device_services_base.get_car_status()
+    if settings.USE_MOCK_PLC:
+        if settings.MOCK_BOOL:
+            success = True
+            car_info = {
+                'car_status': 1,
+                'name': "任务执行中",
+                'description': "无警告"
+            }
+        else:
+            success = False
+            car_info = {
+                'car_status': "error",
+                'name': "error",
+                'description': "error"
+            }
+    else:
+        success, car_info = device_services_base.get_car_status()
 
     if success:    
         return StandardResponse.isSuccess(data=car_info)
     else:
-        return StandardResponse.isError(message=f"{car_info}", data=car_info)
+        return StandardResponse.isError(message=f"{car_info.get('car_status')}", data=car_info)
 
 @router.get("/control/get_car_info_with_power", response_model=StandardResponse[Union[str, Dict]])
 @standard_response
 async def get_car_info_with_power() -> StandardResponse[Union[str, Dict]]:
     """获取穿梭车当前信息（带电量信息）。"""
 
-    success, car_info = device_services_base.get_car_info_with_power()
+    if settings.USE_MOCK_PLC:
+        if settings.MOCK_BOOL:
+            success = True
+            car_info = {
+                'cmd_no': 96,
+                'resluct': 1,
+                'current_location': (5, 4, 1),
+                'current_segment': 1,
+                'cur_barcode': 40401,
+                'car_status': '任务执行中',
+                'pallet_status': 0,
+                'reserve_status': 1,
+                'drive_direction': 0,
+                'status_description': '无警告',
+                'have_pallet': 2,
+                'driver_warning': 0,
+                'power': 80
+            }
+        else:
+            success = False
+            car_info = {
+                'cmd_no': 'error',
+                'resluct': '心跳发送次数设置错误或未发送心跳！',
+                'current_location': 'error',
+                'current_segment': 'error',
+                'cur_barcode': 'error',
+                'car_status': 'error',
+                'pallet_status': 'error',
+                'reserve_status': 'error',
+                'drive_direction': 'error',
+                'status_description': 'error',
+                'have_pallet': 'error',
+                'driver_warning': 'error',
+                'power': 'error'
+            }
+    else:
+        success, car_info = device_services_base.get_car_info_with_power()
 
     if success:    
         return StandardResponse.isSuccess(data=car_info)
@@ -478,8 +539,15 @@ async def change_car_location(
 @standard_response
 async def start_car_charge() -> StandardResponse[Union[str, Dict]]:
     """执行穿梭车开始充电指令。"""
-
-    success, car_info = await device_services_base.car_charge(is_charge=True)
+    if settings.USE_MOCK_PLC:
+        if settings.MOCK_BOOL:
+            success = True
+            car_info = "[MOCK] ✅ 穿梭车充电指令发送成功"
+        else:
+            success = False
+            car_info = "[MOCK] ❌ 穿梭车充电指令发送失败"
+    else:
+        success, car_info = await device_services_base.car_charge(is_charge=True)
 
     if success:    
         return StandardResponse.isSuccess(data=car_info)
@@ -490,8 +558,15 @@ async def start_car_charge() -> StandardResponse[Union[str, Dict]]:
 @standard_response
 async def stop_car_charge() -> StandardResponse[Union[str, Dict]]:
     """执行穿梭车结束充电指令。"""
-
-    success, car_info = await device_services_base.car_charge(is_charge=False)
+    if settings.USE_MOCK_PLC:
+        if settings.MOCK_BOOL:
+            success = True
+            car_info = "[MOCK] ✅ 穿梭车充电指令发送成功"
+        else:
+            success = False
+            car_info = "[MOCK] ❌ 穿梭车充电指令发送失败"
+    else:
+        success, car_info = await device_services_base.car_charge(is_charge=False)
 
     if success:    
         return StandardResponse.isSuccess(data=car_info)
@@ -502,8 +577,15 @@ async def stop_car_charge() -> StandardResponse[Union[str, Dict]]:
 @standard_response
 async def car_move_to_charge() -> StandardResponse[Union[str, Dict]]:
     """穿梭车前往充电口充电。"""
-
-    success, car_info = await device_services_base.car_move_to_charge()
+    if settings.USE_MOCK_PLC:
+        if settings.MOCK_BOOL:
+            success = True
+            car_info = "[MOCK] ✅ 可以开始执行充电指令"
+        else:
+            success = False
+            car_info = "[MOCK] ❌ 模拟充电失败"
+    else:
+        success, car_info = await device_services_base.car_move_to_charge()
 
     if success:    
         return StandardResponse.isSuccess(data=car_info)

@@ -20,13 +20,18 @@ with a1:
                     try:
                         if resp.json()["code"] == 404:
                             st.error(f"{resp.json()['message']}")
-                            st.json(resp.json()['data'])
+                            st.json(resp.json())
                         elif resp.json()["code"] == 500:
                             st.error(f"{resp.json()['message']}")
-                            st.json(resp.json()['data'])
+                            st.json(resp.json())
                         else:
                             st.success(f"{resp.json()['message']}")
-                            st.json(resp.json()['data'])
+                            # st.json(resp.json())
+                            st.markdown(f"电量：{resp.json()['data'].get('power')}")
+                            st.markdown(f"位置：{resp.json()['data'].get('current_location')}")
+                            st.markdown(f"状态：{resp.json()['data'].get('car_status')}")
+                            st.markdown(f"描述：{resp.json()['data'].get('status_description')}")
+
                     except:
                         st.text(resp.text)
                 else:
@@ -45,13 +50,16 @@ with a1:
                     try:
                         if resp.json()["code"] == 404:
                             st.error(f"{resp.json()['message']}")
-                            st.json(resp.json()['data'])
+                            st.json(resp.json())
                         elif resp.json()["code"] == 500:
                             st.error(f"{resp.json()['message']}")
-                            st.json(resp.json()['data'])
+                            st.json(resp.json())
                         else:
                             st.success(f"{resp.json()['message']}")
-                            st.json(resp.json()['data'])
+                            # st.json(resp.json())
+                            st.markdown(f"状态码：{resp.json()['data'].get('car_status')}")
+                            st.markdown(f"状态：{resp.json()['data'].get('name')}")
+                            st.markdown(f"描述：{resp.json()['data'].get('description')}")
                     except:
                         st.text(resp.text)
                 else:
@@ -70,13 +78,14 @@ with a1:
                     try:
                         if resp.json()["code"] == 404:
                             st.error(f"{resp.json()['message']}")
-                            st.json(resp.json()['data'])
+                            st.json(resp.json())
                         elif resp.json()["code"] == 500:
                             st.error(f"{resp.json()['message']}")
-                            st.json(resp.json()['data'])
+                            st.json(resp.json())
                         else:
                             st.success(f"{resp.json()['message']}")
-                            st.json(resp.json()['data'])
+                            # st.json(resp.json())
+                            st.markdown(f"位置：{resp.json()['data']}")
                     except:
                         st.text(resp.text)
                 else:
@@ -99,13 +108,13 @@ with a2:
                     try:
                         if resp.json()["code"] == 404:
                             st.error(f"{resp.json()['message']}")
-                            st.json(resp.json()['data'])
+                            st.json(resp.json())
                         elif resp.json()["code"] == 500:
                             st.error(f"{resp.json()['message']}")
-                            st.json(resp.json()['data'])
+                            st.json(resp.json())
                         else:
                             st.success(f"{resp.json()['message']}")
-                            st.json(resp.json()['data'])
+                            st.json(resp.json())
                     except:
                         st.text(resp.text)
                 else:
@@ -125,13 +134,13 @@ with a2:
                     try:
                         if resp.json()["code"] == 404:
                             st.error(f"{resp.json()['message']}")
-                            st.json(resp.json()['data'])
+                            st.json(resp.json())
                         elif resp.json()["code"] == 500:
                             st.error(f"{resp.json()['message']}")
-                            st.json(resp.json()['data'])
+                            st.json(resp.json())
                         else:
                             st.success(f"{resp.json()['message']}")
-                            st.json(resp.json()['data'])
+                            st.json(resp.json())
                     except:
                         st.text(resp.text)
                 else:
@@ -151,13 +160,13 @@ with a2:
                     try:
                         if resp.json()["code"] == 404:
                             st.error(f"{resp.json()['message']}")
-                            st.json(resp.json()['data'])
+                            st.json(resp.json())
                         elif resp.json()["code"] == 500:
                             st.error(f"{resp.json()['message']}")
-                            st.json(resp.json()['data'])
+                            st.json(resp.json())
                         else:
                             st.success(f"{resp.json()['message']}")
-                            st.json(resp.json()['data'])
+                            st.json(resp.json())
                     except:
                         st.text(resp.text)
                 else:

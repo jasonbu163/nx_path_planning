@@ -29,6 +29,7 @@ class Settings():
 
     # 切换为 False 连接真实 PLC
     USE_MOCK_PLC = True
+    MOCK_BOOL = False  # True 切换为成功模拟，False 切换为失败模拟
 
     # 等待设备执行动作完成的超时时间（秒）
     PLC_ACTION_TIMEOUT = 120.0
