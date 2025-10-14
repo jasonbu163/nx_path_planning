@@ -5,7 +5,7 @@ class Settings():
     # ===== 应用基础配置 =====
     PROJECT_NAME: str = "NetworkX Path Planning API"
     PROJECT_DESCRIPTION: str = "四向车立体库控制系统，支持入库、出库及库内移动任务的设备操作"
-    PROJECT_VERSION: str = "2.2.0"
+    PROJECT_VERSION: str = "2.2.2"
 
     # ===== 版本API添加前缀 =====
     API_V1_STR: str = "/api/v1"
@@ -28,7 +28,7 @@ class Settings():
     MAP_SIZE = 5
 
     # 切换为 False 连接真实 PLC
-    USE_MOCK_PLC = True
+    USE_MOCK_PLC = False
     MOCK_BOOL = False  # True 切换为成功模拟，False 切换为失败模拟
 
     # 等待设备执行动作完成的超时时间（秒）
