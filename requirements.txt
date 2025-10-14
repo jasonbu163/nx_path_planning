@@ -8,3 +8,4 @@ python-snap7==2.0.2
 SQLAlchemy==2.0.41
 uvicorn==0.34.3
 pyinstaller
+py7zr
