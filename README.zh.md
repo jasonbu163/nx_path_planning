@@ -130,7 +130,7 @@ streamlit run main.py
 ```
 
 ### 访问系统
-- API 文档：http://localhost:8765/docs
+- API 文档：http://localhost:8765/docs 或 http://localhost:8765/redoc
 - 可视化界面：http://localhost:8501
 
 ## 核心模块说明
