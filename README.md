@@ -43,20 +43,20 @@ An open-source path planning project based on NetworkX, focusing on providing ef
 
 ### System Architecture
 ```
-┌─────────────────┐    ┌────────────────┐    ┌──────────────────┐
-│   Streamlit UI  │    │   FastAPI API  │    │  Device Communication │
-│  (Visualization) │◄──►│   (REST API)   │◄──►│   (PLC/Shuttle Control)│
-└─────────────────┘    └────────────────┘    └──────────────────┘
+┌──────────────────┐    ┌────────────────┐    ┌────────────────────────┐
+│   Streamlit UI   │    │   FastAPI API  │    │  Device Communication  │
+│  (Visualization) │◄──►│   (REST API)   │◄──►│  (PLC/Shuttle Control) │
+└──────────────────┘    └────────────────┘    └────────────────────────┘
                               │                        │
-                    ┌─────────▼─────────┐    ┌─────────▼─────────┐
-                    │   Task Scheduler  │    │  Path Planning   │
+                    ┌─────────▼─────────┐    ┌─────────▼────────────┐
+                    │   Task Scheduler  │    │     Path Planning    │
                     │  (TaskScheduler)  │    │ (NetworkX Algorithms)│
-                    └───────────────────┘    └───────────────────┘
+                    └───────────────────┘    └──────────────────────┘
                               │                        │
-                    ┌─────────▼─────────┐    ┌─────────▼─────────┐
-                    │   Database Layer  │    │   Map Data Layer │
+                    ┌─────────▼──────────┐    ┌─────────▼──────────┐
+                    │    Database Layer  │    │    Map Data Layer  │
                     │ (SQLite/SQLAlchemy)│    │ (JSON Config Files)│
-                    └───────────────────┘    └───────────────────┘
+                    └────────────────────┘    └────────────────────┘
 ```
 
 ## Project Structure
@@ -130,7 +130,7 @@ streamlit run main.py
 ```
 
 ### Access the System
-- API Documentation: http://localhost:8765/api/v2/docs
+- API Documentation: http://localhost:8765/docs or http://localhost:8765/redoc
 - Visualization Interface: http://localhost:8501
 
 ## Core Module Description
