@@ -63,21 +63,34 @@
 
 ```
 nx_path_planning/
-├── api/                 # REST API 接口
-│   ├── v1/              # API 版本1
-│   └── v2/              # API 版本2
-├── data/                # 地图配置数据
-├── devices/             # 设备控制模块
-├── map_core/            # 地图与路径核心算法
-├── models/              # 数据库模型
-├── res_protocol_system/ # 通信协议处理
-├── task_scheduler/      # 任务调度模块
-├── tests/               # 测试代码
-├── ui/                  # 用户界面
-│   ├── v1/              # UI 版本1
-│   └── v2/              # UI 版本2
-├── config.py            # 系统配置文件
-└── main.py              # 系统入口文件
+├── backend/                 # 后端应用
+│   ├── app/                 # 主应用程序目录
+│   │   ├── api/             # REST API 接口
+│   │   │   ├── v1/          # API 版本 1
+│   │   │   └── v2/          # API 版本 2
+│   │   ├── core/            # 核心应用组件
+│   │   ├── data/            # 数据库文件
+│   │   ├── devices/         # 设备控制模块
+│   │   ├── map_core/        # 地图与路径核心算法
+│   │   │   └── data/        # 地图配置数据
+│   │   ├── models/          # 数据库模型
+│   │   ├── plc_system/      # PLC 通信系统
+│   │   ├── protocols/       # 通信协议
+│   │   ├── res_system/      # RES 通信系统
+│   │   ├── task_scheduler/  # 任务调度模块
+│   │   ├── utils/           # 工具函数
+│   │   └── main.py          # 应用程序入口点
+│   ├── tests/               # 测试文件
+│   ├── build.py             # 构建脚本
+│   └── run.py               # 运行脚本
+├── frontend/                # 前端应用
+│   ├── v1/                  # 前端版本 1
+│   └── v2/                  # 前端版本 2
+├── tests/                   # 额外的测试文件
+├── README.md                # 英文文档
+├── README.zh.md             # 中文文档
+├── LICENSE                  # 许可证文件
+└── .gitignore               # Git 忽略文件
 ```
 
 ## 安装与部署
@@ -100,22 +113,24 @@ pip install -r requirements.txt
 ```
 
 3. 配置系统参数（可选）：
-编辑 `config.py` 文件，修改设备IP地址等配置项
+编辑配置文件以修改设备IP地址等配置项
 
 ### 启动服务
 
 1. 启动 API 服务：
 ```bash
-python main.py
+cd backend
+python run.py
 ```
 
 2. 启动可视化界面（新终端窗口）：
 ```bash
-streamlit run ui/v2/main.py
+cd frontend/v2
+streamlit run main.py
 ```
 
 ### 访问系统
-- API 文档：http://localhost:8765/api/v2/docs
+- API 文档：http://localhost:8765/docs
 - 可视化界面：http://localhost:8501
 
 ## 核心模块说明
@@ -128,8 +143,9 @@ streamlit run ui/v2/main.py
 
 ### 设备控制模块 (devices)
 负责与物理设备通信：
-- `car_controller.py` - 穿梭车控制器
-- `plc_controller.py` - PLC 控制器
+- `async_devices_controller.py` - 异步设备控制器
+- `devices_controller.py` - 设备控制器
+- `fsm_devices_controller.py` - 有限状态机设备控制器
 - `service_asyncio.py` - 异步通信服务
 
 ### API 接口模块 (api)
@@ -137,23 +153,14 @@ streamlit run ui/v2/main.py
 - `v1/` - 第一版 API 接口
 - `v2/` - 第二版 API 接口（推荐使用）
 
-### 用户界面模块 (ui)
-基于 Streamlit 的可视化操作界面：
-- 提供设备调试功能
-- 支持手动操作和任务调度
-- 可视化路径展示
+### 任务调度模块 (task_scheduler)
+负责任务调度和管理：
+- `TaskScheduler.py` - 主任务调度器实现
+- `models.py` - 任务数据模型
 
 ## 配置说明
 
-系统主要配置项在 `config.py` 文件中：
-
-```python
-PLC_IP = "192.168.8.10"           # PLC IP地址
-CAR_IP = "192.168.8.20"           # 穿梭车 IP地址
-CAR_PORT = 2504                   # 穿梭车端口
-SQLITE_DB = "wcs.db"              # SQLite 数据库文件名
-USE_MOCK_PLC = True               # 是否使用模拟PLC（开发模式）
-```
+系统主要配置项在 `backend/app/core/config.py` 文件中。
 
 ## 开发指南
 
@@ -164,7 +171,7 @@ USE_MOCK_PLC = True               # 是否使用模拟PLC（开发模式）
 4. 更新 API 文档
 
 ### 扩展地图
-1. 修改 `data/map_config.json` 文件
+1. 修改 `backend/app/map_core/data/` 目录下的地图配置文件
 2. 添加新的节点和边定义
 3. 重启服务使配置生效
 

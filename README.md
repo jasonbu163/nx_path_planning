@@ -63,21 +63,34 @@ An open-source path planning project based on NetworkX, focusing on providing ef
 
 ```
 nx_path_planning/
-├── api/                 # REST API interfaces
-│   ├── v1/              # API version 1
-│   └── v2/              # API version 2
-├── data/                # Map configuration data
-├── devices/             # Device control modules
-├── map_core/            # Map and path core algorithms
-├── models/              # Database models
-├── res_protocol_system/ # Communication protocol processing
-├── task_scheduler/      # Task scheduling module
-├── tests/               # Test code
-├── ui/                  # User interface
-│   ├── v1/              # UI version 1
-│   └── v2/              # UI version 2
-├── config.py            # System configuration file
-└── main.py              # System entry file
+├── backend/                 # Backend application
+│   ├── app/                 # Main application directory
+│   │   ├── api/             # REST API interfaces
+│   │   │   ├── v1/          # API version 1
+│   │   │   └── v2/          # API version 2
+│   │   ├── core/            # Core application components
+│   │   ├── data/            # Database files
+│   │   ├── devices/         # Device control modules
+│   │   ├── map_core/        # Map and path core algorithms
+│   │   │   └── data/        # Map configuration data
+│   │   ├── models/          # Database models
+│   │   ├── plc_system/      # PLC communication system
+│   │   ├── protocols/       # Communication protocols
+│   │   ├── res_system/      # RES communication system
+│   │   ├── task_scheduler/  # Task scheduling module
+│   │   ├── utils/           # Utility functions
+│   │   └── main.py          # Application entry point
+│   ├── tests/               # Test files
+│   ├── build.py             # Build script
+│   └── run.py               # Run script
+├── frontend/                # Frontend application
+│   ├── v1/                  # Frontend version 1
+│   └── v2/                  # Frontend version 2
+├── tests/                   # Additional test files
+├── README.md                # English documentation
+├── README.zh.md             # Chinese documentation
+├── LICENSE                  # License file
+└── .gitignore               # Git ignore file
 ```
 
 ## Installation and Deployment
@@ -100,18 +113,20 @@ pip install -r requirements.txt
 ```
 
 3. Configure system parameters (optional):
-Edit the `config.py` file to modify device IP addresses and other configuration items
+Edit the configuration files to modify device IP addresses and other configuration items
 
 ### Start Services
 
 1. Start the API service:
 ```bash
-python main.py
+cd backend
+python run.py
 ```
 
 2. Start the visualization interface (new terminal window):
 ```bash
-streamlit run ui/v2/main.py
+cd frontend/v2
+streamlit run main.py
 ```
 
 ### Access the System
@@ -128,8 +143,9 @@ This module is responsible for warehouse map construction and path planning algo
 
 ### Device Control Module (devices)
 Responsible for communication with physical devices:
-- `car_controller.py` - Shuttle car controller
-- `plc_controller.py` - PLC controller
+- `async_devices_controller.py` - Asynchronous device controller
+- `devices_controller.py` - Device controller
+- `fsm_devices_controller.py` - Finite state machine device controller
 - `service_asyncio.py` - Asynchronous communication service
 
 ### API Interface Module (api)
@@ -137,23 +153,14 @@ Provides RESTful API interfaces:
 - `v1/` - First version of API interfaces
 - `v2/` - Second version of API interfaces (recommended)
 
-### User Interface Module (ui)
-Visualization operation interface based on Streamlit:
-- Provides device debugging functions
-- Supports manual operation and task scheduling
-- Visual path display
+### Task Scheduler Module (task_scheduler)
+Responsible for task scheduling and management:
+- `TaskScheduler.py` - Main task scheduler implementation
+- `models.py` - Task data models
 
 ## Configuration Description
 
-The main system configuration items are in the `config.py` file:
-
-```python
-PLC_IP = "192.168.8.10"           # PLC IP address
-CAR_IP = "192.168.8.20"           # Shuttle car IP address
-CAR_PORT = 2504                   # Shuttle car port
-SQLITE_DB = "wcs.db"              # SQLite database filename
-USE_MOCK_PLC = True               # Whether to use mock PLC (development mode)
-```
+The main system configuration items are in the `backend/app/core/config.py` file.
 
 ## Development Guide
 
@@ -164,7 +171,7 @@ USE_MOCK_PLC = True               # Whether to use mock PLC (development mode)
 4. Update API documentation
 
 ### Extending Maps
-1. Modify the `data/map_config.json` file
+1. Modify the map configuration files in `backend/app/map_core/data/`
 2. Add new node and edge definitions
 3. Restart the service for the configuration to take effect
 
