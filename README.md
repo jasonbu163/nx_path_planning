@@ -1,180 +1,180 @@
-# NetworkX 路径规划系统
+# NetworkX Path Planning System
 
-## 项目简介
+## Project Introduction
 
-基于 NetworkX 的路径规划开源项目，专注于提供高效、灵活的图算法支持，适用于各种路径优化问题。本项目主要应用于自动化仓储系统中的穿梭车路径规划与任务调度。
+An open-source path planning project based on NetworkX, focusing on providing efficient and flexible graph algorithm support for various path optimization problems. This project is mainly applied to shuttle car path planning and task scheduling in automated storage systems.
 
-## 核心功能
+## Core Features
 
-### 1. 路径规划
-- 基于 NetworkX 图算法的最短路径计算
-- 多层仓库地图建模（支持最多4层立体仓库）
-- 可视化地图展示与路径绘制
+### 1. Path Planning
+- Shortest path calculation based on NetworkX graph algorithms
+- Multi-layer warehouse map modeling (supports up to 4-layer立体 warehouses)
+- Visual map display and path drawing
 
-### 2. 设备控制
-- 穿梭车（Car）控制模块
-- PLC（可编程逻辑控制器）通信模块
-- 支持真实设备连接和模拟模式
+### 2. Device Control
+- Shuttle car (Car) control module
+- PLC (Programmable Logic Controller) communication module
+- Supports real device connection and simulation mode
 
-### 3. 任务调度
-- WCS（仓库控制系统）任务管理
-- WMS（仓库管理系统）订单处理
-- 任务优先级调度机制
+### 3. Task Scheduling
+- WCS (Warehouse Control System) task management
+- WMS (Warehouse Management System) order processing
+- Task priority scheduling mechanism
 
-### 4. 系统接口
-- RESTful API 接口（提供 v1 和 v2 两个版本）
-- 支持 Swagger UI 文档
-- 数据库操作接口
+### 4. System Interface
+- RESTful API interface (provides v1 and v2 versions)
+- Supports Swagger UI documentation
+- Database operation interface
 
-### 5. 用户界面
-- 基于 Streamlit 的可视化操作界面
-- 提供调试工具页面
-- 支持手动操作和自动化操作模式
+### 5. User Interface
+- Visual operation interface based on Streamlit
+- Provides debugging tool pages
+- Supports manual and automated operation modes
 
-## 技术架构
+## Technical Architecture
 
-### 核心技术栈
+### Core Technology Stack
 - Python 3.10+
-- FastAPI - Web 框架
-- NetworkX - 图算法处理
-- SQLAlchemy - 数据库 ORM
-- Matplotlib - 数据可视化
-- Streamlit - 前端界面
+- FastAPI - Web framework
+- NetworkX - Graph algorithm processing
+- SQLAlchemy - Database ORM
+- Matplotlib - Data visualization
+- Streamlit - Frontend interface
 
-### 系统架构
+### System Architecture
 ```
 ┌─────────────────┐    ┌────────────────┐    ┌──────────────────┐
-│   Streamlit UI  │    │   FastAPI API  │    │  设备通信模块     │
-│   (可视化界面)   │◄──►│   (REST接口)    │◄──►│ (PLC/穿梭车控制)  │
+│   Streamlit UI  │    │   FastAPI API  │    │  Device Communication │
+│  (Visualization) │◄──►│   (REST API)   │◄──►│   (PLC/Shuttle Control)│
 └─────────────────┘    └────────────────┘    └──────────────────┘
                               │                        │
                     ┌─────────▼─────────┐    ┌─────────▼─────────┐
-                    │   任务调度模块     │    │   路径规划模块     │
-                    │  (TaskScheduler)  │    │  (NetworkX算法)    │
+                    │   Task Scheduler  │    │  Path Planning   │
+                    │  (TaskScheduler)  │    │ (NetworkX Algorithms)│
                     └───────────────────┘    └───────────────────┘
                               │                        │
                     ┌─────────▼─────────┐    ┌─────────▼─────────┐
-                    │    数据库层        │    │    地图数据层      │
-                    │  (SQLite/SQLAlchemy)│   │  (JSON配置文件)    │
+                    │   Database Layer  │    │   Map Data Layer │
+                    │ (SQLite/SQLAlchemy)│    │ (JSON Config Files)│
                     └───────────────────┘    └───────────────────┘
 ```
 
-## 项目结构
+## Project Structure
 
 ```
 nx_path_planning/
-├── api/                 # REST API 接口
-│   ├── v1/              # API 版本1
-│   └── v2/              # API 版本2
-├── data/                # 地图配置数据
-├── devices/             # 设备控制模块
-├── map_core/            # 地图与路径核心算法
-├── models/              # 数据库模型
-├── res_protocol_system/ # 通信协议处理
-├── task_scheduler/      # 任务调度模块
-├── tests/               # 测试代码
-├── ui/                  # 用户界面
-│   ├── v1/              # UI 版本1
-│   └── v2/              # UI 版本2
-├── config.py            # 系统配置文件
-└── main.py              # 系统入口文件
+├── api/                 # REST API interfaces
+│   ├── v1/              # API version 1
+│   └── v2/              # API version 2
+├── data/                # Map configuration data
+├── devices/             # Device control modules
+├── map_core/            # Map and path core algorithms
+├── models/              # Database models
+├── res_protocol_system/ # Communication protocol processing
+├── task_scheduler/      # Task scheduling module
+├── tests/               # Test code
+├── ui/                  # User interface
+│   ├── v1/              # UI version 1
+│   └── v2/              # UI version 2
+├── config.py            # System configuration file
+└── main.py              # System entry file
 ```
 
-## 安装与部署
+## Installation and Deployment
 
-### 环境要求
-- Python 3.10 或更高版本
-- pip 包管理器
+### Requirements
+- Python 3.10 or higher
+- pip package manager
 
-### 安装步骤
+### Installation Steps
 
-1. 克隆项目代码：
+1. Clone the project code:
 ```bash
-git clone <项目地址>
+git clone <project_url>
 cd nx_path_planning
 ```
 
-2. 安装依赖：
+2. Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-3. 配置系统参数（可选）：
-编辑 `config.py` 文件，修改设备IP地址等配置项
+3. Configure system parameters (optional):
+Edit the `config.py` file to modify device IP addresses and other configuration items
 
-### 启动服务
+### Start Services
 
-1. 启动 API 服务：
+1. Start the API service:
 ```bash
 python main.py
 ```
 
-2. 启动可视化界面（新终端窗口）：
+2. Start the visualization interface (new terminal window):
 ```bash
 streamlit run ui/v2/main.py
 ```
 
-### 访问系统
-- API 文档：http://localhost:8765/api/v2/docs
-- 可视化界面：http://localhost:8501
+### Access the System
+- API Documentation: http://localhost:8765/api/v2/docs
+- Visualization Interface: http://localhost:8501
 
-## 核心模块说明
+## Core Module Description
 
-### 地图与路径规划模块 (map_core)
-该模块负责仓库地图的构建和路径规划算法实现：
-- `MapBase.py` - 地图基础类，负责读取地图配置并构建 NetworkX 图
-- `PathBase.py` - 路径规划基础类，提供最短路径计算功能
-- `PathCustom.py` - 自定义路径规划扩展
+### Map and Path Planning Module (map_core)
+This module is responsible for warehouse map construction and path planning algorithm implementation:
+- `MapBase.py` - Map base class, responsible for reading map configuration and building NetworkX graph
+- `PathBase.py` - Path planning base class, provides shortest path calculation functionality
+- `PathCustom.py` - Custom path planning extensions
 
-### 设备控制模块 (devices)
-负责与物理设备通信：
-- `car_controller.py` - 穿梭车控制器
-- `plc_controller.py` - PLC 控制器
-- `service_asyncio.py` - 异步通信服务
+### Device Control Module (devices)
+Responsible for communication with physical devices:
+- `car_controller.py` - Shuttle car controller
+- `plc_controller.py` - PLC controller
+- `service_asyncio.py` - Asynchronous communication service
 
-### API 接口模块 (api)
-提供 RESTful API 接口：
-- `v1/` - 第一版 API 接口
-- `v2/` - 第二版 API 接口（推荐使用）
+### API Interface Module (api)
+Provides RESTful API interfaces:
+- `v1/` - First version of API interfaces
+- `v2/` - Second version of API interfaces (recommended)
 
-### 用户界面模块 (ui)
-基于 Streamlit 的可视化操作界面：
-- 提供设备调试功能
-- 支持手动操作和任务调度
-- 可视化路径展示
+### User Interface Module (ui)
+Visualization operation interface based on Streamlit:
+- Provides device debugging functions
+- Supports manual operation and task scheduling
+- Visual path display
 
-## 配置说明
+## Configuration Description
 
-系统主要配置项在 `config.py` 文件中：
+The main system configuration items are in the `config.py` file:
 
 ```python
-PLC_IP = "192.168.8.10"           # PLC IP地址
-CAR_IP = "192.168.8.20"           # 穿梭车 IP地址
-CAR_PORT = 2504                   # 穿梭车端口
-SQLITE_DB = "wcs.db"              # SQLite 数据库文件名
-USE_MOCK_PLC = True               # 是否使用模拟PLC（开发模式）
+PLC_IP = "192.168.8.10"           # PLC IP address
+CAR_IP = "192.168.8.20"           # Shuttle car IP address
+CAR_PORT = 2504                   # Shuttle car port
+SQLITE_DB = "wcs.db"              # SQLite database filename
+USE_MOCK_PLC = True               # Whether to use mock PLC (development mode)
 ```
 
-## 开发指南
+## Development Guide
 
-### 添加新功能
-1. 在对应的模块目录下创建新文件
-2. 遵循现有代码风格和规范
-3. 编写单元测试
-4. 更新 API 文档
+### Adding New Features
+1. Create new files in the corresponding module directory
+2. Follow existing code style and specifications
+3. Write unit tests
+4. Update API documentation
 
-### 扩展地图
-1. 修改 `data/map_config.json` 文件
-2. 添加新的节点和边定义
-3. 重启服务使配置生效
+### Extending Maps
+1. Modify the `data/map_config.json` file
+2. Add new node and edge definitions
+3. Restart the service for the configuration to take effect
 
-## 贡献
+## Contributing
 
-1. Fork 本仓库
-2. 新建 Feat_xxx 分支
-3. 提交代码
-4. 新建 Pull Request
+1. Fork the repository
+2. Create a Feat_xxx branch
+3. Commit your code
+4. Create a Pull Request
 
-## 许可证
+## License
 
-本项目采用 Apache License 2.0 许可证，详情请见 [LICENSE](LICENSE) 文件。
+This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for details.
