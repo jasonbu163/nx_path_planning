@@ -149,8 +149,8 @@ def build_executable():
     ]
 
     # 添加图标如果存在
-    if os.path.exists('ui/img/icon.ico'):
-        pyinstaller_args.append('--icon=ui/img/icon.ico')
+    if os.path.exists('img/icon.ico'):
+        pyinstaller_args.append('--icon=img/icon.ico')
 
     # 添加主程序入口
     pyinstaller_args.append('run.py')
