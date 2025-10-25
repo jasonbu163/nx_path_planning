@@ -1,5 +1,10 @@
 # app/main.py
-from fastapi import FastAPI
+
+# 需要离线运行时使用
+from fastapi_offline import FastAPIOffline as FastAPI
+
+# 需要有最新特性开发时使用（推荐）
+# from fastapi import FastAPI
 
 from app.utils.logger import setup_logger
 setup_logger()

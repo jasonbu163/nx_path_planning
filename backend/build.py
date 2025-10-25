@@ -120,18 +120,25 @@ def copy_resources():
     
     # 复制配置文件夹
     if os.path.exists('app/data'):
-        print("复制配置文件夹...")
-        shutil.copytree('app/data', f'{dist_path}/app/data', dirs_exist_ok=True)
+        print("复制数据文件夹...")
+        shutil.copytree('app/data', os.path.join(dist_path, 'app/data'), dirs_exist_ok=True)
     
     if os.path.exists('app/map_core/data'):
-        shutil.copytree('app/map_core/data', f'{dist_path}/app/map_core/data', dirs_exist_ok=True)
+        print("复制配置文件夹...")
+        shutil.copytree('app/map_core/data', os.path.join(dist_path, 'app/map_core/data'), dirs_exist_ok=True)
 
     if os.path.exists('app/logs'):
-        shutil.copytree('app/logs', f'{dist_path}/app/logs', dirs_exist_ok=True)
+        print("复制日志文件夹...")
+        shutil.copytree('app/logs', os.path.join(dist_path, 'app/logs'), dirs_exist_ok=True)
+
+    if os.path.exists('static'):
+        print("复制静态文件文件夹...")
+        shutil.copytree('static', os.path.join(dist_path, '_internal/fastapi_offline/static'), dirs_exist_ok=True)
 
     # 复制 snap7.dll
     if os.path.exists('snap7.dll'):
-        shutil.copy2('snap7.dll', f'{dist_path}/_internal/snap7.dll')
+        print("复制 snap7.dll 文件...")
+        shutil.copy2('snap7.dll', os.path.join(dist_path, '_internal/snap7.dll'))
 
 def build_executable():
     """使用PyInstaller构建可执行文件"""
@@ -142,9 +149,9 @@ def build_executable():
         'pyinstaller',
         '--name=nx_path_planning',
         '--noconfirm',  # 覆盖输出目录
-        '--add-data=app/data;app/data',  # 添加配置文件夹
-        '--add-data=app/map_core/data;app/map_core/data',
-        '--add-data=app/logs;app/logs'
+        f'--add-data=app/data{os.pathsep}app/data',  # 添加配置文件夹
+        f'--add-data=app/map_core/data{os.pathsep}app/map_core/data',
+        f'--add-data=app/logs{os.pathsep}app/logs'
         '--hidden-import=snap7',  # 添加snap7模块'
     ]
 
