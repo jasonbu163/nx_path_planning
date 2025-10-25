@@ -131,7 +131,7 @@ def copy_resources():
 
     # 复制 snap7.dll
     if os.path.exists('snap7.dll'):
-        shutil.copy2('snap7.dll', f'{dist_path}/snap7.dll')
+        shutil.copy2('snap7.dll', f'{dist_path}/_internal/snap7.dll')
 
 def build_executable():
     """使用PyInstaller构建可执行文件"""
@@ -178,7 +178,7 @@ def main():
     # 确保日志目录存在
     ensure_log_directory()
 
-    # 检查并下载 snap7.dll
+    # 检查并下载 snap7.dll 如果有snap7.dll文件，可以先手动复制到backend/下
     if not os.path.exists('snap7.dll'):
         if not download_snap7_dll():
             print("无法获取 snap7.dll，请手动下载并放置在项目根目录")
