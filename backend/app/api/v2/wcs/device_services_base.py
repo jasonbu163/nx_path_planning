@@ -640,6 +640,7 @@ class DeviceServicesBase():
           end_location: 终点位置
         """
 
+        # car_location = "2,2,1" # 测试用
         car_location = self.car.car_current_location()
         if car_location == "error":
             logger.error("❌ 获取穿梭车位置错误")
@@ -658,7 +659,7 @@ class DeviceServicesBase():
         end_layer = end_loc[2]
 
         if task_no >= 250:
-            task_no = 50
+            task_no = 120
 
         logger.info(f"[任务号] {task_no}")
 
@@ -672,7 +673,6 @@ class DeviceServicesBase():
             logger.info(f"✅ 穿梭车已到达 {start_location} 位置")
         else:
             logger.info(f"⌛️ 穿梭车开始移动...")
-            task_no += 1
             logger.info(f"[任务号] {task_no}")
 
             if self.car.car_move(task_no, start_location):
@@ -1814,7 +1814,7 @@ class DeviceServicesBase():
                 logger.info(f"[订单托盘校验] - ✅ 订单托盘在库内")
                 if result and isinstance(result.pallet_id, str):
                     pallet_id = result.pallet_id
-                    logger.error(f"[订单托盘校验] - ✅ 位置: {start_location} - 托盘号: {pallet_id}")
+                    logger.info(f"[订单托盘校验] - ✅ 位置: {start_location} - 托盘号: {pallet_id}")
                 else:
                     logger.error(f"[订单托盘校验] - ❌ 订单托盘查询错误 - info: {result}")
                     return False, f"❌ 订单托盘查询错误 - info: {result}"
@@ -1828,11 +1828,10 @@ class DeviceServicesBase():
             if isinstance(result, LocationModel):
                 logger.info(f"[订单托盘校验] - ✅ 查询库位{end_location}信息成功")
                 if result and isinstance(result.pallet_id, str):
-                    pallet_id = result.pallet_id
-                    logger.error(f"[订单托盘校验] - ❌ 位置: {end_location} - 托盘号: {pallet_id}")
-                    return False, f"❌ 位置: {end_location} - 托盘号: {pallet_id}"
+                    logger.error(f"[订单托盘校验] - ❌ 位置: {end_location} - 托盘号: {result.pallet_id}")
+                    return False, f"❌ 位置: {end_location} - 托盘号: {result.pallet_id}"
                 else:
-                    logger.info(f"[订单托盘校验] - ✅ 位置: {end_location} - 托盘号: {pallet_id}")
+                    logger.info(f"[订单托盘校验] - ✅ 位置: {end_location} - 托盘号: {result.pallet_id}")
             else:
                 logger.error(f"[订单托盘校验] - ❌ 获取到未知的成功响应类型: {type(result)}")
                 return False, f"❌ 获取到未知的成功响应类型: {type(result)}"
@@ -1941,8 +1940,7 @@ class DeviceServicesBase():
         # ---------------------------------------- #
 
         logger.info(f"[step 4] ({start_location})货物转移到({end_location})")
-        task_no += 9
-        logger.info(f"[SYSTEM] 货物转移任务编号 - {task_no}")
+        logger.info(f"[任务号] {task_no}")
         
         success, good_move_info = self.good_move_by_start_end_no_lock(task_no, start_location, end_location)
         if success:
@@ -2092,7 +2090,6 @@ class DeviceServicesBase():
             logger.info(f"[任务号] {task_no}")
             
             success, car_move_info = self.device_service.car_cross_layer(task_no, target_layer)
-            # success, car_move_info = await asyncio.to_thread(self.device_service.car_cross_layer, task_no, target_layer)
             if success:
                 logger.info(f"{car_move_info}")
             else:
@@ -2151,7 +2148,7 @@ class DeviceServicesBase():
                         # 获取最远空闲点
                         success, farthest_free_node = self.advance_function.find_farthest_free_node(inband_location, target_location, blocking_node, db)
                         # 移动遮挡货物
-                        task_no += 1
+                        task_no += 10
                         logger.info(f"[任务号] {task_no}")
                         if success:
                             if isinstance(farthest_free_node, List) and farthest_free_node:
@@ -2176,11 +2173,10 @@ class DeviceServicesBase():
             # ---------------------------------------- #
 
             logger.info(f"[step 4] 货物入库至位置({target_location})")
-            task_no += 1
+            task_no += 4
             logger.info(f"[任务号] {task_no}")
             
             success, good_move_info = self.device_service.task_inband(task_no, target_location)
-            # success, good_move_info = await asyncio.to_thread(self.device_service.task_inband, task_no, target_location)
             if success:
                 logger.info(f"货物入库至({target_location})成功 - {good_move_info}")
             else:
@@ -2307,7 +2303,6 @@ class DeviceServicesBase():
             logger.info(f"[任务号] {task_no}")
             
             success, car_move_info = self.device_service.car_cross_layer(task_no, target_layer)
-            # success, car_move_info = await asyncio.to_thread(self.device_service.car_cross_layer, task_no, target_layer)
             if success:
                 logger.info(f"{car_move_info}")
             else:
@@ -2366,7 +2361,7 @@ class DeviceServicesBase():
                         # 获取最远空闲点
                         success, farthest_free_node = self.advance_function.find_farthest_free_node(target_location, outband_location, blocking_node, db)
                         # 移动遮挡货物
-                        task_no += 1
+                        task_no += 10
                         logger.info(f"[任务号] {task_no}")
                         if success:
                             if isinstance(farthest_free_node, List) and farthest_free_node:
@@ -2391,11 +2386,10 @@ class DeviceServicesBase():
             # ---------------------------------------- #
 
             logger.info(f"[step 4] ({target_location})货物出库")
-            task_no += 1
+            task_no += 4
             logger.info(f"[任务号] {task_no}")
            
             success, good_move_info = self.device_service.task_outband(task_no, target_location)
-            # success, good_move_info = await asyncio.to_thread(self.device_service.task_outband, task_no, target_location)
             if success:
                 logger.info(f"✅ {target_location}货物出库成功 - {good_move_info}")
             else:
@@ -2406,7 +2400,7 @@ class DeviceServicesBase():
             # step 5: 数据库更新信息
             # ---------------------------------------- #
 
-            logger.info(f"[step 6] 数据库更新信息")
+            logger.info(f"[step 5] 数据库更新信息")
             
             success, sql_info = self.location_service.delete_pallet_by_loc(db, target_location)
             if not success:
