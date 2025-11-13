@@ -14,6 +14,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from app.core import settings
 from app.api import v2_wcs_router
+from app.api.v2.wcs.advance_route import router as advance_route
 
 # from daemon.scheduler import TaskScheduler
 
@@ -68,6 +69,11 @@ app.include_router(
     v2_wcs_router,
     prefix="/api/v2/wcs",
     tags=[f"{settings.PROJECT_NAME} WCS-v2"]
+)
+
+app.include_router(
+    advance_route,
+    prefix="/api/v2/wcs",
 )
 
 @app.get("/")

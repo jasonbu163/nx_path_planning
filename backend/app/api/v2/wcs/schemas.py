@@ -142,8 +142,10 @@ class CarMove(CarMoveBase):
     task_no: int = Field(..., examples=[1, 2, 3], description="任务号(1-255)")
 class GoodMoveBase(BaseModel):
     """WCS穿梭车基础模型"""
-    start_location: str = Field(..., examples=["6,3,1"], description="目标点")
-    end_location: str = Field(..., examples=["6,3,1"], description="目标点")
+    start_location: str = Field(..., examples=["1,1,1"], description="起始点")
+    end_location: str = Field(..., examples=["5,3,1"], description="目标点")
+class MovePoint(GoodMoveBase):
+    move_point: str = Field(..., examples=["2,1,1"], description="中转点")
 
 class LiftBase(BaseModel):
     """WCS电梯基础模型"""

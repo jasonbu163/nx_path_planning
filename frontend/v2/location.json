@@ -1,0 +1,1156 @@
+{
+    "success": true,
+    "code": 200,
+    "status": "ok",
+    "message": "操作成功",
+    "data": [
+        {
+            "location": "1,1,4",
+            "status": "free",
+            "pallet_id": null,
+            "id": 1,
+            "update_time": "2025-10-09T03:00:20.268930"
+        },
+        {
+            "location": "1,2,4",
+            "status": "free",
+            "pallet_id": null,
+            "id": 2,
+            "update_time": "2025-09-30T06:39:02.966978"
+        },
+        {
+            "location": "1,3,4",
+            "status": "free",
+            "pallet_id": null,
+            "id": 3,
+            "update_time": "2025-09-30T06:39:02.966979"
+        },
+        {
+            "location": "1,4,4",
+            "status": "free",
+            "pallet_id": null,
+            "id": 4,
+            "update_time": "2025-09-30T06:39:02.966979"
+        },
+        {
+            "location": "1,5,4",
+            "status": "free",
+            "pallet_id": null,
+            "id": 5,
+            "update_time": "2025-09-30T06:39:02.966980"
+        },
+        {
+            "location": "1,6,4",
+            "status": "free",
+            "pallet_id": null,
+            "id": 6,
+            "update_time": "2025-09-30T06:39:02.966981"
+        },
+        {
+            "location": "1,7,4",
+            "status": "free",
+            "pallet_id": null,
+            "id": 7,
+            "update_time": "2025-09-30T06:39:02.966981"
+        },
+        {
+            "location": "2,1,4",
+            "status": "free",
+            "pallet_id": null,
+            "id": 8,
+            "update_time": "2025-09-30T06:39:02.966982"
+        },
+        {
+            "location": "2,2,4",
+            "status": "free",
+            "pallet_id": null,
+            "id": 9,
+            "update_time": "2025-09-30T06:39:02.966983"
+        },
+        {
+            "location": "2,3,4",
+            "status": "free",
+            "pallet_id": null,
+            "id": 10,
+            "update_time": "2025-09-30T06:39:02.966983"
+        },
+        {
+            "location": "2,4,4",
+            "status": "free",
+            "pallet_id": null,
+            "id": 11,
+            "update_time": "2025-09-30T06:39:02.966984"
+        },
+        {
+            "location": "2,5,4",
+            "status": "free",
+            "pallet_id": null,
+            "id": 12,
+            "update_time": "2025-09-30T06:39:02.966984"
+        },
+        {
+            "location": "2,6,4",
+            "status": "free",
+            "pallet_id": null,
+            "id": 13,
+            "update_time": "2025-09-30T06:39:02.966985"
+        },
+        {
+            "location": "2,7,4",
+            "status": "free",
+            "pallet_id": null,
+            "id": 14,
+            "update_time": "2025-09-30T06:39:02.966986"
+        },
+        {
+            "location": "3,1,4",
+            "status": "free",
+            "pallet_id": null,
+            "id": 15,
+            "update_time": "2025-09-30T06:39:02.966986"
+        },
+        {
+            "location": "3,2,4",
+            "status": "free",
+            "pallet_id": null,
+            "id": 16,
+            "update_time": "2025-09-30T06:39:02.966987"
+        },
+        {
+            "location": "3,3,4",
+            "status": "free",
+            "pallet_id": null,
+            "id": 17,
+            "update_time": "2025-09-30T06:39:02.966988"
+        },
+        {
+            "location": "3,4,4",
+            "status": "free",
+            "pallet_id": null,
+            "id": 18,
+            "update_time": "2025-09-30T06:39:02.966988"
+        },
+        {
+            "location": "3,5,4",
+            "status": "free",
+            "pallet_id": null,
+            "id": 19,
+            "update_time": "2025-09-30T06:39:02.966989"
+        },
+        {
+            "location": "3,6,4",
+            "status": "free",
+            "pallet_id": null,
+            "id": 20,
+            "update_time": "2025-09-30T06:39:02.966989"
+        },
+        {
+            "location": "3,7,4",
+            "status": "free",
+            "pallet_id": null,
+            "id": 21,
+            "update_time": "2025-09-30T06:39:02.966990"
+        },
+        {
+            "location": "4,1,4",
+            "status": "highway",
+            "pallet_id": null,
+            "id": 22,
+            "update_time": "2025-09-30T06:39:02.966991"
+        },
+        {
+            "location": "4,2,4",
+            "status": "highway",
+            "pallet_id": null,
+            "id": 23,
+            "update_time": "2025-09-30T06:39:02.966991"
+        },
+        {
+            "location": "4,3,4",
+            "status": "highway",
+            "pallet_id": null,
+            "id": 24,
+            "update_time": "2025-09-30T06:39:02.966992"
+        },
+        {
+            "location": "4,4,4",
+            "status": "highway",
+            "pallet_id": null,
+            "id": 25,
+            "update_time": "2025-09-30T06:39:02.966993"
+        },
+        {
+            "location": "4,5,4",
+            "status": "highway",
+            "pallet_id": null,
+            "id": 26,
+            "update_time": "2025-09-30T06:39:02.966993"
+        },
+        {
+            "location": "4,6,4",
+            "status": "highway",
+            "pallet_id": null,
+            "id": 27,
+            "update_time": "2025-09-30T06:39:02.966994"
+        },
+        {
+            "location": "4,7,4",
+            "status": "highway",
+            "pallet_id": null,
+            "id": 28,
+            "update_time": "2025-09-30T06:39:02.966994"
+        },
+        {
+            "location": "5,1,4",
+            "status": "free",
+            "pallet_id": null,
+            "id": 29,
+            "update_time": "2025-09-30T06:39:02.966995"
+        },
+        {
+            "location": "5,3,4",
+            "status": "free",
+            "pallet_id": null,
+            "id": 30,
+            "update_time": "2025-09-30T06:39:02.966996"
+        },
+        {
+            "location": "5,4,4",
+            "status": "free",
+            "pallet_id": null,
+            "id": 31,
+            "update_time": "2025-09-30T06:39:02.966996"
+        },
+        {
+            "location": "5,5,4",
+            "status": "free",
+            "pallet_id": null,
+            "id": 32,
+            "update_time": "2025-09-30T06:39:02.966997"
+        },
+        {
+            "location": "5,6,4",
+            "status": "free",
+            "pallet_id": null,
+            "id": 33,
+            "update_time": "2025-09-30T06:39:02.966997"
+        },
+        {
+            "location": "5,7,4",
+            "status": "free",
+            "pallet_id": null,
+            "id": 34,
+            "update_time": "2025-09-30T06:39:02.966998"
+        },
+        {
+            "location": "6,3,4",
+            "status": "lift",
+            "pallet_id": null,
+            "id": 35,
+            "update_time": "2025-09-30T06:39:02.966999"
+        },
+        {
+            "location": "6,6,4",
+            "status": "free",
+            "pallet_id": null,
+            "id": 36,
+            "update_time": "2025-09-30T06:39:02.966999"
+        },
+        {
+            "location": "6,7,4",
+            "status": "free",
+            "pallet_id": null,
+            "id": 37,
+            "update_time": "2025-09-30T06:39:02.967000"
+        },
+        {
+            "location": "7,6,4",
+            "status": "free",
+            "pallet_id": null,
+            "id": 38,
+            "update_time": "2025-09-30T06:39:02.967001"
+        },
+        {
+            "location": "7,7,4",
+            "status": "free",
+            "pallet_id": null,
+            "id": 39,
+            "update_time": "2025-09-30T06:39:02.967001"
+        },
+        {
+            "location": "8,6,4",
+            "status": "free",
+            "pallet_id": null,
+            "id": 40,
+            "update_time": "2025-09-30T06:39:02.967002"
+        },
+        {
+            "location": "8,7,4",
+            "status": "free",
+            "pallet_id": null,
+            "id": 41,
+            "update_time": "2025-09-30T06:39:02.967002"
+        },
+        {
+            "location": "1,1,3",
+            "status": "free",
+            "pallet_id": null,
+            "id": 42,
+            "update_time": "2025-09-30T06:39:02.967003"
+        },
+        {
+            "location": "1,2,3",
+            "status": "free",
+            "pallet_id": null,
+            "id": 43,
+            "update_time": "2025-09-30T06:39:02.967004"
+        },
+        {
+            "location": "1,3,3",
+            "status": "free",
+            "pallet_id": null,
+            "id": 44,
+            "update_time": "2025-09-30T06:39:02.967004"
+        },
+        {
+            "location": "1,4,3",
+            "status": "free",
+            "pallet_id": null,
+            "id": 45,
+            "update_time": "2025-09-30T06:39:02.967005"
+        },
+        {
+            "location": "1,5,3",
+            "status": "free",
+            "pallet_id": null,
+            "id": 46,
+            "update_time": "2025-09-30T06:39:02.967005"
+        },
+        {
+            "location": "1,6,3",
+            "status": "free",
+            "pallet_id": null,
+            "id": 47,
+            "update_time": "2025-09-30T06:39:02.967006"
+        },
+        {
+            "location": "1,7,3",
+            "status": "free",
+            "pallet_id": null,
+            "id": 48,
+            "update_time": "2025-09-30T06:39:02.967007"
+        },
+        {
+            "location": "2,1,3",
+            "status": "free",
+            "pallet_id": null,
+            "id": 49,
+            "update_time": "2025-09-30T06:39:02.967007"
+        },
+        {
+            "location": "2,2,3",
+            "status": "free",
+            "pallet_id": null,
+            "id": 50,
+            "update_time": "2025-09-30T06:39:02.967008"
+        },
+        {
+            "location": "2,3,3",
+            "status": "free",
+            "pallet_id": null,
+            "id": 51,
+            "update_time": "2025-09-30T06:39:02.967009"
+        },
+        {
+            "location": "2,4,3",
+            "status": "free",
+            "pallet_id": null,
+            "id": 52,
+            "update_time": "2025-09-30T06:39:02.967009"
+        },
+        {
+            "location": "2,5,3",
+            "status": "free",
+            "pallet_id": null,
+            "id": 53,
+            "update_time": "2025-09-30T06:39:02.967010"
+        },
+        {
+            "location": "2,6,3",
+            "status": "free",
+            "pallet_id": null,
+            "id": 54,
+            "update_time": "2025-09-30T06:39:02.967010"
+        },
+        {
+            "location": "2,7,3",
+            "status": "free",
+            "pallet_id": null,
+            "id": 55,
+            "update_time": "2025-09-30T06:39:02.967011"
+        },
+        {
+            "location": "3,1,3",
+            "status": "free",
+            "pallet_id": null,
+            "id": 56,
+            "update_time": "2025-09-30T06:39:02.967012"
+        },
+        {
+            "location": "3,2,3",
+            "status": "free",
+            "pallet_id": null,
+            "id": 57,
+            "update_time": "2025-09-30T06:39:02.967012"
+        },
+        {
+            "location": "3,3,3",
+            "status": "free",
+            "pallet_id": null,
+            "id": 58,
+            "update_time": "2025-09-30T06:39:02.967013"
+        },
+        {
+            "location": "3,4,3",
+            "status": "free",
+            "pallet_id": null,
+            "id": 59,
+            "update_time": "2025-09-30T06:39:02.967014"
+        },
+        {
+            "location": "3,5,3",
+            "status": "free",
+            "pallet_id": null,
+            "id": 60,
+            "update_time": "2025-09-30T06:39:02.967014"
+        },
+        {
+            "location": "3,6,3",
+            "status": "free",
+            "pallet_id": null,
+            "id": 61,
+            "update_time": "2025-09-30T06:39:02.967015"
+        },
+        {
+            "location": "3,7,3",
+            "status": "free",
+            "pallet_id": null,
+            "id": 62,
+            "update_time": "2025-09-30T06:39:02.967015"
+        },
+        {
+            "location": "4,1,3",
+            "status": "highway",
+            "pallet_id": null,
+            "id": 63,
+            "update_time": "2025-09-30T06:39:02.967016"
+        },
+        {
+            "location": "4,2,3",
+            "status": "highway",
+            "pallet_id": null,
+            "id": 64,
+            "update_time": "2025-09-30T06:39:02.967017"
+        },
+        {
+            "location": "4,3,3",
+            "status": "highway",
+            "pallet_id": null,
+            "id": 65,
+            "update_time": "2025-09-30T06:39:02.967017"
+        },
+        {
+            "location": "4,4,3",
+            "status": "highway",
+            "pallet_id": null,
+            "id": 66,
+            "update_time": "2025-09-30T06:39:02.967018"
+        },
+        {
+            "location": "4,5,3",
+            "status": "highway",
+            "pallet_id": null,
+            "id": 67,
+            "update_time": "2025-09-30T06:39:02.967018"
+        },
+        {
+            "location": "4,6,3",
+            "status": "highway",
+            "pallet_id": null,
+            "id": 68,
+            "update_time": "2025-09-30T06:39:02.967019"
+        },
+        {
+            "location": "4,7,3",
+            "status": "highway",
+            "pallet_id": null,
+            "id": 69,
+            "update_time": "2025-09-30T06:39:02.967020"
+        },
+        {
+            "location": "5,1,3",
+            "status": "free",
+            "pallet_id": null,
+            "id": 70,
+            "update_time": "2025-09-30T06:39:02.967020"
+        },
+        {
+            "location": "5,3,3",
+            "status": "free",
+            "pallet_id": null,
+            "id": 71,
+            "update_time": "2025-09-30T06:39:02.967021"
+        },
+        {
+            "location": "5,4,3",
+            "status": "free",
+            "pallet_id": null,
+            "id": 72,
+            "update_time": "2025-09-30T06:39:02.967022"
+        },
+        {
+            "location": "5,5,3",
+            "status": "free",
+            "pallet_id": null,
+            "id": 73,
+            "update_time": "2025-09-30T06:39:02.967022"
+        },
+        {
+            "location": "5,6,3",
+            "status": "free",
+            "pallet_id": null,
+            "id": 74,
+            "update_time": "2025-09-30T06:39:02.967023"
+        },
+        {
+            "location": "5,7,3",
+            "status": "free",
+            "pallet_id": null,
+            "id": 75,
+            "update_time": "2025-09-30T06:39:02.967023"
+        },
+        {
+            "location": "6,3,3",
+            "status": "lift",
+            "pallet_id": null,
+            "id": 76,
+            "update_time": "2025-09-30T06:39:02.967024"
+        },
+        {
+            "location": "6,6,3",
+            "status": "free",
+            "pallet_id": null,
+            "id": 77,
+            "update_time": "2025-09-30T06:39:02.967025"
+        },
+        {
+            "location": "6,7,3",
+            "status": "free",
+            "pallet_id": null,
+            "id": 78,
+            "update_time": "2025-09-30T06:39:02.967025"
+        },
+        {
+            "location": "7,6,3",
+            "status": "free",
+            "pallet_id": null,
+            "id": 79,
+            "update_time": "2025-09-30T06:39:02.967026"
+        },
+        {
+            "location": "7,7,3",
+            "status": "free",
+            "pallet_id": null,
+            "id": 80,
+            "update_time": "2025-09-30T06:39:02.967026"
+        },
+        {
+            "location": "8,6,3",
+            "status": "free",
+            "pallet_id": null,
+            "id": 81,
+            "update_time": "2025-09-30T06:39:02.967027"
+        },
+        {
+            "location": "8,7,3",
+            "status": "free",
+            "pallet_id": null,
+            "id": 82,
+            "update_time": "2025-09-30T06:39:02.967028"
+        },
+        {
+            "location": "1,1,2",
+            "status": "occupied",
+            "pallet_id": "A0035",
+            "id": 83,
+            "update_time": "2025-11-05T07:14:49.801214"
+        },
+        {
+            "location": "1,2,2",
+            "status": "occupied",
+            "pallet_id": "A0032",
+            "id": 84,
+            "update_time": "2025-11-05T09:19:19.935085"
+        },
+        {
+            "location": "1,3,2",
+            "status": "free",
+            "pallet_id": null,
+            "id": 85,
+            "update_time": "2025-09-30T06:39:02.967030"
+        },
+        {
+            "location": "1,4,2",
+            "status": "occupied",
+            "pallet_id": "A0029",
+            "id": 86,
+            "update_time": "2025-11-08T08:15:22.321023"
+        },
+        {
+            "location": "1,5,2",
+            "status": "free",
+            "pallet_id": null,
+            "id": 87,
+            "update_time": "2025-09-30T06:39:02.967031"
+        },
+        {
+            "location": "1,6,2",
+            "status": "free",
+            "pallet_id": null,
+            "id": 88,
+            "update_time": "2025-09-30T06:39:02.967032"
+        },
+        {
+            "location": "1,7,2",
+            "status": "free",
+            "pallet_id": null,
+            "id": 89,
+            "update_time": "2025-09-30T06:39:02.967033"
+        },
+        {
+            "location": "2,1,2",
+            "status": "occupied",
+            "pallet_id": "A0034",
+            "id": 90,
+            "update_time": "2025-11-05T07:42:11.650962"
+        },
+        {
+            "location": "2,2,2",
+            "status": "occupied",
+            "pallet_id": "A0013",
+            "id": 91,
+            "update_time": "2025-11-08T06:20:48.591089"
+        },
+        {
+            "location": "2,3,2",
+            "status": "free",
+            "pallet_id": null,
+            "id": 92,
+            "update_time": "2025-09-30T06:39:02.967035"
+        },
+        {
+            "location": "2,4,2",
+            "status": "occupied",
+            "pallet_id": "A0040",
+            "id": 93,
+            "update_time": "2025-11-08T09:16:20.269607"
+        },
+        {
+            "location": "2,5,2",
+            "status": "free",
+            "pallet_id": null,
+            "id": 94,
+            "update_time": "2025-11-08T08:24:03.972571"
+        },
+        {
+            "location": "2,6,2",
+            "status": "free",
+            "pallet_id": null,
+            "id": 95,
+            "update_time": "2025-09-30T06:39:02.967037"
+        },
+        {
+            "location": "2,7,2",
+            "status": "free",
+            "pallet_id": null,
+            "id": 96,
+            "update_time": "2025-09-30T06:39:02.967038"
+        },
+        {
+            "location": "3,1,2",
+            "status": "occupied",
+            "pallet_id": "A0033",
+            "id": 97,
+            "update_time": "2025-11-05T08:43:19.886918"
+        },
+        {
+            "location": "3,2,2",
+            "status": "occupied",
+            "pallet_id": "A0039",
+            "id": 98,
+            "update_time": "2025-11-08T06:34:37.617148"
+        },
+        {
+            "location": "3,3,2",
+            "status": "free",
+            "pallet_id": null,
+            "id": 99,
+            "update_time": "2025-09-30T06:39:02.967040"
+        },
+        {
+            "location": "3,4,2",
+            "status": "free",
+            "pallet_id": null,
+            "id": 100,
+            "update_time": "2025-11-08T06:39:02.749126"
+        },
+        {
+            "location": "3,5,2",
+            "status": "free",
+            "pallet_id": null,
+            "id": 101,
+            "update_time": "2025-09-30T06:39:02.967041"
+        },
+        {
+            "location": "3,6,2",
+            "status": "free",
+            "pallet_id": null,
+            "id": 102,
+            "update_time": "2025-09-30T06:39:02.967042"
+        },
+        {
+            "location": "3,7,2",
+            "status": "free",
+            "pallet_id": null,
+            "id": 103,
+            "update_time": "2025-09-30T06:39:02.967043"
+        },
+        {
+            "location": "4,1,2",
+            "status": "highway",
+            "pallet_id": null,
+            "id": 104,
+            "update_time": "2025-09-30T06:39:02.967043"
+        },
+        {
+            "location": "4,2,2",
+            "status": "highway",
+            "pallet_id": null,
+            "id": 105,
+            "update_time": "2025-09-30T06:39:02.967044"
+        },
+        {
+            "location": "4,3,2",
+            "status": "highway",
+            "pallet_id": null,
+            "id": 106,
+            "update_time": "2025-09-30T06:39:02.967044"
+        },
+        {
+            "location": "4,4,2",
+            "status": "highway",
+            "pallet_id": null,
+            "id": 107,
+            "update_time": "2025-09-30T06:39:02.967045"
+        },
+        {
+            "location": "4,5,2",
+            "status": "highway",
+            "pallet_id": null,
+            "id": 108,
+            "update_time": "2025-09-30T06:39:02.967046"
+        },
+        {
+            "location": "4,6,2",
+            "status": "highway",
+            "pallet_id": null,
+            "id": 109,
+            "update_time": "2025-09-30T06:39:02.967046"
+        },
+        {
+            "location": "4,7,2",
+            "status": "highway",
+            "pallet_id": null,
+            "id": 110,
+            "update_time": "2025-09-30T06:39:02.967047"
+        },
+        {
+            "location": "5,1,2",
+            "status": "occupied",
+            "pallet_id": "A0025",
+            "id": 111,
+            "update_time": "2025-10-24T08:29:38.096846"
+        },
+        {
+            "location": "5,3,2",
+            "status": "free",
+            "pallet_id": null,
+            "id": 112,
+            "update_time": "2025-09-30T06:39:02.967048"
+        },
+        {
+            "location": "5,4,2",
+            "status": "occupied",
+            "pallet_id": "A0027",
+            "id": 113,
+            "update_time": "2025-10-09T07:55:35.068084"
+        },
+        {
+            "location": "5,5,2",
+            "status": "occupied",
+            "pallet_id": "A0026",
+            "id": 114,
+            "update_time": "2025-10-09T07:55:35.068084"
+        },
+        {
+            "location": "5,6,2",
+            "status": "free",
+            "pallet_id": null,
+            "id": 115,
+            "update_time": "2025-09-30T06:39:02.967050"
+        },
+        {
+            "location": "5,7,2",
+            "status": "free",
+            "pallet_id": null,
+            "id": 116,
+            "update_time": "2025-09-30T06:39:02.967050"
+        },
+        {
+            "location": "6,3,2",
+            "status": "lift",
+            "pallet_id": null,
+            "id": 117,
+            "update_time": "2025-09-30T06:39:02.967051"
+        },
+        {
+            "location": "6,6,2",
+            "status": "free",
+            "pallet_id": null,
+            "id": 118,
+            "update_time": "2025-10-09T07:55:35.068084"
+        },
+        {
+            "location": "6,7,2",
+            "status": "free",
+            "pallet_id": null,
+            "id": 119,
+            "update_time": "2025-09-30T06:39:02.967052"
+        },
+        {
+            "location": "7,6,2",
+            "status": "occupied",
+            "pallet_id": "A0024",
+            "id": 120,
+            "update_time": "2025-10-09T07:55:35.068084"
+        },
+        {
+            "location": "7,7,2",
+            "status": "free",
+            "pallet_id": null,
+            "id": 121,
+            "update_time": "2025-09-30T06:39:02.967054"
+        },
+        {
+            "location": "8,6,2",
+            "status": "occupied",
+            "pallet_id": "A0028",
+            "id": 122,
+            "update_time": "2025-10-09T07:55:35.068084"
+        },
+        {
+            "location": "8,7,2",
+            "status": "occupied",
+            "pallet_id": "A0038",
+            "id": 123,
+            "update_time": "2025-11-08T08:23:17.321778"
+        },
+        {
+            "location": "1,1,1",
+            "status": "free",
+            "pallet_id": null,
+            "id": 124,
+            "update_time": "2025-10-09T07:55:35.068084"
+        },
+        {
+            "location": "1,2,1",
+            "status": "occupied",
+            "pallet_id": "A0036",
+            "id": 125,
+            "update_time": "2025-10-09T07:55:35.068084"
+        },
+        {
+            "location": "1,3,1",
+            "status": "free",
+            "pallet_id": null,
+            "id": 126,
+            "update_time": "2025-09-30T06:39:02.967060"
+        },
+        {
+            "location": "1,4,1",
+            "status": "occupied",
+            "pallet_id": "A0014",
+            "id": 127,
+            "update_time": "2025-10-24T05:54:07.018191"
+        },
+        {
+            "location": "1,5,1",
+            "status": "occupied",
+            "pallet_id": "A0011",
+            "id": 128,
+            "update_time": "2025-10-09T03:05:14.516558"
+        },
+        {
+            "location": "1,6,1",
+            "status": "occupied",
+            "pallet_id": "A0008",
+            "id": 129,
+            "update_time": "2025-10-09T07:55:35.068084"
+        },
+        {
+            "location": "1,7,1",
+            "status": "occupied",
+            "pallet_id": "A0005",
+            "id": 130,
+            "update_time": "2025-10-09T03:05:14.516558"
+        },
+        {
+            "location": "2,1,1",
+            "status": "free",
+            "pallet_id": null,
+            "id": 131,
+            "update_time": "2025-09-30T06:39:02.967063"
+        },
+        {
+            "location": "2,2,1",
+            "status": "free",
+            "pallet_id": null,
+            "id": 132,
+            "update_time": "2025-09-30T06:39:02.967063"
+        },
+        {
+            "location": "2,3,1",
+            "status": "free",
+            "pallet_id": null,
+            "id": 133,
+            "update_time": "2025-09-30T06:39:02.967064"
+        },
+        {
+            "location": "2,4,1",
+            "status": "occupied",
+            "pallet_id": "A0016",
+            "id": 134,
+            "update_time": "2025-10-09T07:55:35.068084"
+        },
+        {
+            "location": "2,5,1",
+            "status": "free",
+            "pallet_id": null,
+            "id": 135,
+            "update_time": "2025-09-30T06:39:02.967065"
+        },
+        {
+            "location": "2,6,1",
+            "status": "free",
+            "pallet_id": null,
+            "id": 136,
+            "update_time": "2025-09-30T06:39:02.967066"
+        },
+        {
+            "location": "2,7,1",
+            "status": "occupied",
+            "pallet_id": "A0006",
+            "id": 137,
+            "update_time": "2025-10-09T03:05:14.516558"
+        },
+        {
+            "location": "3,1,1",
+            "status": "occupied",
+            "pallet_id": "A0020",
+            "id": 138,
+            "update_time": "2025-10-09T03:05:14.516558"
+        },
+        {
+            "location": "3,2,1",
+            "status": "occupied",
+            "pallet_id": "A0019",
+            "id": 139,
+            "update_time": "2025-10-09T03:05:14.516558"
+        },
+        {
+            "location": "3,3,1",
+            "status": "free",
+            "pallet_id": null,
+            "id": 140,
+            "update_time": "2025-10-09T07:55:35.068084"
+        },
+        {
+            "location": "3,4,1",
+            "status": "occupied",
+            "pallet_id": "A0010",
+            "id": 141,
+            "update_time": "2025-10-09T07:55:35.068084"
+        },
+        {
+            "location": "3,5,1",
+            "status": "occupied",
+            "pallet_id": "A0015",
+            "id": 142,
+            "update_time": "2025-10-09T07:55:35.068084"
+        },
+        {
+            "location": "3,6,1",
+            "status": "occupied",
+            "pallet_id": "A0017",
+            "id": 143,
+            "update_time": "2025-10-09T07:55:35.068084"
+        },
+        {
+            "location": "3,7,1",
+            "status": "occupied",
+            "pallet_id": "A0007",
+            "id": 144,
+            "update_time": "2025-10-09T03:05:14.516558"
+        },
+        {
+            "location": "4,1,1",
+            "status": "highway",
+            "pallet_id": null,
+            "id": 145,
+            "update_time": "2025-09-30T06:39:02.967071"
+        },
+        {
+            "location": "4,2,1",
+            "status": "highway",
+            "pallet_id": null,
+            "id": 146,
+            "update_time": "2025-09-30T06:39:02.967072"
+        },
+        {
+            "location": "4,3,1",
+            "status": "highway",
+            "pallet_id": null,
+            "id": 147,
+            "update_time": "2025-09-30T06:39:02.967073"
+        },
+        {
+            "location": "4,4,1",
+            "status": "highway",
+            "pallet_id": null,
+            "id": 148,
+            "update_time": "2025-09-30T06:39:02.967073"
+        },
+        {
+            "location": "4,5,1",
+            "status": "highway",
+            "pallet_id": null,
+            "id": 149,
+            "update_time": "2025-09-30T06:39:02.967074"
+        },
+        {
+            "location": "4,6,1",
+            "status": "highway",
+            "pallet_id": null,
+            "id": 150,
+            "update_time": "2025-09-30T06:39:02.967074"
+        },
+        {
+            "location": "4,7,1",
+            "status": "highway",
+            "pallet_id": null,
+            "id": 151,
+            "update_time": "2025-09-30T06:39:02.967075"
+        },
+        {
+            "location": "5,1,1",
+            "status": "occupied",
+            "pallet_id": "A0021",
+            "id": 152,
+            "update_time": "2025-10-09T03:05:14.516558"
+        },
+        {
+            "location": "5,3,1",
+            "status": "free",
+            "pallet_id": null,
+            "id": 153,
+            "update_time": "2025-09-30T06:39:02.967076"
+        },
+        {
+            "location": "5,4,1",
+            "status": "occupied",
+            "pallet_id": "A0023",
+            "id": 154,
+            "update_time": "2025-10-09T03:05:14.516558"
+        },
+        {
+            "location": "5,5,1",
+            "status": "occupied",
+            "pallet_id": "A0022",
+            "id": 155,
+            "update_time": "2025-10-09T03:05:14.516558"
+        },
+        {
+            "location": "5,6,1",
+            "status": "occupied",
+            "pallet_id": "A0018",
+            "id": 156,
+            "update_time": "2025-10-09T03:05:14.516558"
+        },
+        {
+            "location": "5,7,1",
+            "status": "occupied",
+            "pallet_id": "A0004",
+            "id": 157,
+            "update_time": "2025-10-09T03:05:14.516558"
+        },
+        {
+            "location": "6,3,1",
+            "status": "lift",
+            "pallet_id": null,
+            "id": 158,
+            "update_time": "2025-09-30T06:39:02.967079"
+        },
+        {
+            "location": "6,6,1",
+            "status": "occupied",
+            "pallet_id": "A0012",
+            "id": 159,
+            "update_time": "2025-10-09T03:05:14.516558"
+        },
+        {
+            "location": "6,7,1",
+            "status": "occupied",
+            "pallet_id": "A0003",
+            "id": 160,
+            "update_time": "2025-10-09T03:05:14.516558"
+        },
+        {
+            "location": "7,6,1",
+            "status": "occupied",
+            "pallet_id": "A0009",
+            "id": 161,
+            "update_time": "2025-11-08T08:57:03.579546"
+        },
+        {
+            "location": "7,7,1",
+            "status": "occupied",
+            "pallet_id": "A0002",
+            "id": 162,
+            "update_time": "2025-10-09T03:05:14.516558"
+        },
+        {
+            "location": "8,6,1",
+            "status": "free",
+            "pallet_id": null,
+            "id": 163,
+            "update_time": "2025-10-09T07:55:35.068084"
+        },
+        {
+            "location": "8,7,1",
+            "status": "occupied",
+            "pallet_id": "A0001",
+            "id": 164,
+            "update_time": "2025-10-09T03:05:14.516558"
+        }
+    ]
+}

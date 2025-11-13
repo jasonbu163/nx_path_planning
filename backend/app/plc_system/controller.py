@@ -144,6 +144,7 @@ class PLCController(ConnectionAsync):
             task_no += 1
             logger.warning(f"[LIFT] 当前任务号和新任务号一致，调整任务号为 - {task_no}")
         
+        time.sleep(1)
         # 任务识别
         lift_running = self.read_bit(11, DB_11.RUNNING.value)
         lift_idle = self.read_bit(11, DB_11.IDLE.value)
@@ -212,7 +213,7 @@ class PLCController(ConnectionAsync):
         if self.read_bit(12, DB_12.TARGET_LAYER_ARRIVED.value) == 1:
             self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
             logger.info(f"[LIFT] ✅ 清除电梯到位状态")
-            time.sleep(3)
+            time.sleep(5)
         else:
             logger.error("[LIFT] ❌ 电梯非到位状态")
             return False
@@ -250,7 +251,7 @@ class PLCController(ConnectionAsync):
         if self.read_bit(12, DB_12.TARGET_LAYER_ARRIVED.value) == 1:
             self.write_bit(12, DB_12.TARGET_LAYER_ARRIVED.value, 0)
             logger.info(f"[LIFT] ✅ 清除电梯到位状态")
-            await asyncio.sleep(3)
+            await asyncio.sleep(5)
         else:
             logger.error("[LIFT] ❌ 电梯非到位状态")
             return False

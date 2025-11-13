@@ -90,8 +90,8 @@ steps = [
     },
     {
         "step": 4,
-        "title": "⬇️ **高级入库操作** (有遮挡货物处理)",
-        "api": "/control/task_inband_with_solve_blocking",
+        "title": "⬇️ **高级入库操作**",
+        "api": "/control/task_inband_with_database",
         "method": "POST",
         "params": {
             "location": "1,1,4",
@@ -100,8 +100,8 @@ steps = [
     },
     {
         "step": 5,
-        "title": "⬆️ **高级出库操作** (有遮挡货物处理)",
-        "api": "/control/task_outband_with_solve_blocking",
+        "title": "⬆️ **高级出库操作**",
+        "api": "/control/task_outband_with_database",
         "method": "POST",
         "params": {
             "location": "1,1,4",
@@ -111,7 +111,7 @@ steps = [
     {
         "step": 6,
         "title": "📦 **高级货物操作**",
-        "api": "/control/good_move_with_solve_blocking",
+        "api": "/control/good_move_with_database",
         "method": "POST",
         "params": {
             "pallet_id": "P1001",
@@ -148,7 +148,7 @@ read_db = [
 # ----------------- 高级入库操作 -----------------
 ################################################
 
-st.subheader("⬇️ 高级入库操作 (有遮挡货物处理，操作数据库)")
+st.subheader("⬇️ 高级入库操作 (数据库)")
 
 # 楼层信息查询
 step = read_db[0]
@@ -347,7 +347,7 @@ with b2:
 # ----------------- 高级出库操作 -----------------
 ################################################
 
-st.subheader("⬆️ 高级出库操作 (有遮挡货物处理，操作数据库)")
+st.subheader("⬆️ 高级出库操作 (数据库)")
 
 # 楼层信息查询
 step = read_db[0]

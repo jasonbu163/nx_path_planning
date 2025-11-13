@@ -4,6 +4,11 @@ name = "首页"
 icon = "🏠"
 
 [[pages]]
+path = "tool_pages/location_display.py"
+name = "仓库位置信息"
+icon = "📍"
+
+[[pages]]
 path = "tool_pages/location_set.py"
 name = "仓库位置信息设置(数据库)"
 icon = "🛠️"

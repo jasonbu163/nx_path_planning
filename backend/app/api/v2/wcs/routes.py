@@ -1,5 +1,6 @@
 # api/v2/wcs/routes.py
 import asyncio
+import time
 import random
 from typing import List, Optional, Any, Union, Dict
 
@@ -599,7 +600,7 @@ async def car_move_control(
 ) -> StandardResponse[Union[str, Dict]]:
     """控制穿梭车移动。"""
 
-    success, car_info = await device_services.car_move_by_target(request.target)
+    success, car_info = await device_services_base.car_move_by_target(request.target)
     
     if success:    
         return StandardResponse.isSuccess(data=car_info)
@@ -613,7 +614,7 @@ async def good_move_control(
 ) -> StandardResponse[Union[str, Dict]]:
     """控制货物移动。"""
 
-    success, car_info = await device_services.good_move_by_target(request.target)
+    success, car_info = await device_services_base.good_move_by_target(request.target)
     
     if success:    
         return StandardResponse.isSuccess(data=car_info)
@@ -788,57 +789,57 @@ async def control_task_outband(request: schemas.CarMoveBase):
         return StandardResponse.isError(message=f"{msg}")
 
 
-@router.post("/control/task_inband_with_solve_blocking")
+@router.post("/control/task_inband_with_database")
 @standard_response
-async def control_task_inband_with_solve_blocking(
+async def control_task_inband_with_database(
     request: schemas.GoodTask,
     db: Session = get_database()
     ):
     """[入库服务接口 - 数据库] 操作穿梭车联动PLC系统入库, 使用障碍检测功能。"""
     task_no = random.randint(1, 100)
-    success, msg = await device_services_base.do_task_inband_with_solve_blocking(
+    success, msg = await device_services_base.do_task_inband_with_database(
         task_no,
         request.location,
         request.new_pallet_id,
         db
-        )
+    )
     if success:
         return StandardResponse.isSuccess(data=msg)
     return StandardResponse.isError(message=f"{msg}")
 
-@router.post("/control/task_outband_with_solve_blocking")
+@router.post("/control/task_outband_with_database")
 @standard_response
-async def control_task_outband_with_solve_blocking(
+async def control_task_outband_with_database(
     request: schemas.GoodTask,
     db: Session = get_database()
     ):
     """[出库服务接口 - 数据库] 操作穿梭车联动PLC系统出库, 使用障碍检测功能。"""
     task_no = random.randint(1, 100)
-    success, msg = await device_services_base.do_task_outband_with_solve_blocking(
+    success, msg = await device_services_base.do_task_outband_with_database(
         task_no,
         request.location,
         request.new_pallet_id,
         db
-        )
+    )
     if success:
         return StandardResponse.isSuccess(data=msg)
     return StandardResponse.isError(message=f"{msg}")
 
-@router.post("/control/good_move_with_solve_blocking")
+@router.post("/control/good_move_with_database")
 @standard_response
-async def control_good_move_with_solve_blocking(
+async def control_good_move_with_database(
     request: schemas.GoodMoveTask,
     db: Session = get_database()
     ):
     """[货物移动服务接口 - 数据库] 操作穿梭车联动PLC系统移动货物, 使用障碍检测功能。"""
     task_no = random.randint(1, 100)
-    success, msg = await device_services_base.do_good_move_with_solve_blocking(
+    success, msg = await device_services_base.do_good_move_with_database(
         task_no,
         request.pallet_id,
         request.start_location,
         request.end_location,
         db
-        )
+    )
     if success:
         return StandardResponse.isSuccess(data=msg)
     return StandardResponse.isError(message=f"{msg}")

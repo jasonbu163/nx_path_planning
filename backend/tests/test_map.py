@@ -9,7 +9,7 @@ print("sys.path:", sys.path)
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import networkx as nx
-from map_core import PathCustom
+from app.map_core import PathCustom
 
 def main():
     # 创建路径基类实例

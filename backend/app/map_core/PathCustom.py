@@ -294,6 +294,60 @@ class PathCustom(PathBase):
         free_nodes_excluding_path = [node for node, status in NODE_STATUS.items()
                                     if status == "free" and node not in found_path]
         return free_nodes_excluding_path
+    
+    def find_farthest_free_node(self, TASK_START, TASK_END, MOVE_POINT, NODE_STATUS):
+        """使用NetworkX最短路径算法找到离指定点最远的值为'free'且不在路径中的点。
+        
+        Args:
+            TASK_START: 任务起点
+            TASK_END: 任务终点
+            MOVE_POINT: 需要移动的阻碍点
+            NODE_STATUS: 节点状态字典
+
+        Returns:
+            最远的free点
+        """
+        
+        # 检查指定点是否有效
+        if MOVE_POINT not in self.G.nodes():
+            raise ValueError(f"指定点 {MOVE_POINT} 不在图中")
+        
+        # 获取所有值为'free'且不在路径中的点
+        free_nodes_excluding_path = self.find_free_nodes_excluding_path(TASK_START, TASK_END, NODE_STATUS)
+        
+        # 如果没有可用的free点，返回None
+        if not free_nodes_excluding_path:
+            return None
+        
+        # 计算距离并找到最远的点
+        farthest_node = None
+        max_distance = -1  # 改为-1，因为距离可能为0
+        
+        for node in free_nodes_excluding_path:
+            try:
+                # 使用NetworkX的最短路径算法计算距离
+                path = nx.shortest_path(self.G, MOVE_POINT, node)
+                distance = len(path) - 1  # 路径长度为节点数减1
+                
+                # 检查路径上是否有阻塞点(除了起点和终点)
+                blocking_nodes = [n for n in path[1:-1] if NODE_STATUS.get(n) == "occupied"]
+                
+                # 如果路径上有阻塞点，则跳过该节点
+                if blocking_nodes:
+                    continue
+
+                # 更新最远的点：将 < 改为 >
+                if distance > max_distance:
+                    max_distance = distance
+                    farthest_node = node
+            except nx.NetworkXNoPath:
+                # 如果没有路径，跳过该节点
+                continue
+            except Exception:
+                # 如果其他异常，也跳过该节点
+                continue
+        
+        return farthest_node
 
     def find_nearest_free_node(self, TASK_START, TASK_END, MOVE_POINT, NODE_STATUS):
         """使用NetworkX最短路径算法找到离指定点最近的值为'free'且不在路径中的点。
