@@ -5,7 +5,7 @@ class Settings():
     # ===== 应用基础配置 =====
     PROJECT_NAME: str = "NetworkX Path Planning API"
     PROJECT_DESCRIPTION: str = "四向车立体库控制系统，支持入库、出库及库内移动任务的设备操作"
-    PROJECT_VERSION: str = "2.2.2"
+    PROJECT_VERSION: str = "2.3.0"
 
     # ===== 版本API添加前缀 =====
     API_V1_STR: str = "/api/v1"
